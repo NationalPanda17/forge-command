@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* Theme colours as RGB triplets so Tailwind's opacity modifiers work (see tailwind.config.js). */
+  --ops-bg: 6 11 20;
+  --ops-panel: 11 20 36;
+  --ops-panel2: 15 27 47;
+  --ops-line: 27 44 71;
+  --ops-dim: 112 136 168; /* #7088a8: 4.7:1 or better on every panel (WCAG AA) */
+  --ops-text: 201 216 236;
+  --ops-cyan: 56 214 245;
+  --ops-blue: 59 130 246;
+  --ops-green: 52 211 153;
+  --ops-amber: 245 177 61;
+  --ops-red: 242 84 91;
+  --ops-violet: 167 139 250;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ops-bg text-ops-text font-mono antialiased;
+  font-size: 12px;
+  background-image:
+    radial-gradient(ellipse at 50% -20%, rgba(56, 214, 245, 0.07), transparent 60%),
+    linear-gradient(rgba(56, 214, 245, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 214, 245, 0.025) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-md border border-ops-line bg-ops-panel/80 backdrop-blur-sm;
+    box-shadow: inset 0 1px 0 rgba(120, 180, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+  .panel-title {
+    @apply flex items-center justify-between gap-2 border-b border-ops-line px-3 py-2 font-sans text-[13px] font-semibold uppercase tracking-[0.14em] text-ops-cyan;
+  }
+  .label {
+    @apply text-[10px] uppercase tracking-[0.14em] text-ops-dim;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ops-line bg-ops-panel2 px-2.5 py-1 text-[11px] uppercase tracking-wider text-ops-text transition-colors hover:border-ops-cyan/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ops-line;
+  }
+  .btn-primary {
+    @apply border-ops-cyan/50 bg-ops-cyan/10 text-ops-cyan hover:bg-ops-cyan/20;
+  }
+  .btn-danger {
+    @apply border-ops-red/50 bg-ops-red/10 text-ops-red hover:bg-ops-red/20;
+  }
+  .btn-active {
+    @apply border-ops-cyan bg-ops-cyan/20 text-white;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-sm border px-1.5 py-[1px] text-[10px] font-medium uppercase tracking-wider;
+  }
+  .input {
+    @apply rounded border border-ops-line bg-ops-bg px-2 py-1 text-ops-text outline-none focus:border-ops-cyan;
+  }
+  .table-ops th {
+    @apply border-b border-ops-line px-2 py-1.5 text-left text-[10px] font-normal uppercase tracking-[0.12em] text-ops-dim;
+  }
+  .table-ops td {
+    @apply border-b border-ops-line/50 px-2 py-1.5 align-middle;
+  }
+  .table-ops tbody tr:hover {
+    @apply bg-ops-cyan/5;
+  }
+}
+
+input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
+.bar { @apply h-1.5 overflow-hidden rounded-sm bg-ops-line/70; }
+.bar > span { @apply block h-full; }
