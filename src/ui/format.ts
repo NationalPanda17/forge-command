@@ -1,6 +1,8 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+export const monthName = (m: number) => MONTHS[m % 12];
 export const monthLabel = (m: number) => `${MONTHS[m % 12]} · Year ${Math.floor(m / 12) + 1}`;
+export const shortMonth = (m: number) => `${MONTHS[m % 12]} Y${Math.floor(m / 12) + 1}`;
 
 /** $M in, short money string out. */
 export function money(m: number): string {
@@ -9,7 +11,8 @@ export function money(m: number): string {
   if (a >= 1000) return `${sign}$${(a / 1000).toFixed(2)}B`;
   if (a >= 10) return `${sign}$${a.toFixed(0)}M`;
   if (a >= 1) return `${sign}$${a.toFixed(1)}M`;
-  return `${sign}$${(a * 1000).toFixed(0)}K`;
+  if (a >= 0.001) return `${sign}$${(a * 1000).toFixed(0)}K`;
+  return `${sign}$0`;
 }
 
 export function qty(v: number): string {
@@ -18,6 +21,7 @@ export function qty(v: number): string {
   return v.toLocaleString('en-US', { maximumFractionDigits: digits });
 }
 
+export const int = (v: number) => Math.round(v).toLocaleString('en-US');
 export const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export function toneFor(ratio: number): string {
@@ -31,3 +35,10 @@ export function textToneFor(ratio: number): string {
   if (ratio >= 0.5) return 'text-ops-amber';
   return 'text-ops-red';
 }
+
+export const messageTone = {
+  good: 'text-ops-green',
+  bad: 'text-ops-red',
+  warn: 'text-ops-amber',
+  info: 'text-ops-text',
+} as const;

@@ -1,5 +1,12 @@
 export * from './types';
 export * from './data';
-export * from './game';
+export * from './selectors';
+export * from './setup';
+export * from './actions';
+export * from './turn';
+export * from './demand';
+export * from './partners';
+export * from './advisor';
+export * from './score';
 export * from './persistence';
 export { seedFrom } from './rng';
