@@ -222,6 +222,11 @@ export const THREATS: Record<ThreatId, ThreatDef> = {
   },
 };
 export const THREAT_IDS = Object.keys(THREATS) as ThreatId[];
+/** Lower-case plural for messages: "cruise missiles", "combat aircraft". */
+export const threatPlural = (t: ThreatId, n = 2) => {
+  const name = THREATS[t].name.toLowerCase();
+  return n === 1 || name.endsWith('aircraft') ? name : `${name}s`;
+};
 /** Expensive interceptors that conserve doctrine keeps off cheap threats. */
 export const PREMIUM_LINES: LineId[] = ['pac3', 'sm6'];
 export const CHEAP_THREATS: ThreatId[] = ['drone', 'rocket'];
@@ -279,7 +284,7 @@ export interface DifficultyRules {
 export const DIFFICULTY: Record<Difficulty, DifficultyRules> = {
   easy: {
     label: 'Easy', blurb: 'No component shortages, fast ramp-up, rare events, and an advisor that suggests orders.',
-    shortages: false, rampPerMonth: 0.15, capMult: 1.15, shockChance: 0, eventRate: 0.5, crisisChance: 0.05,
+    shortages: false, rampPerMonth: 0.15, capMult: 1.15, shockChance: 0, eventRate: 0.7, crisisChance: 0.06,
     appropriation: 165, startTreasury: 800, trainingMonths: 2, buildMonths: 6, qualifyMult: 0.6,
     advisor: 'full', adaptive: false, intelError: 0, sabotage: false,
   },

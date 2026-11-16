@@ -1,5 +1,5 @@
 // Demand: fictional threats arrive, interceptors are drawn from the reserve by doctrine, land fires by fire missions.
-import { CHEAP_THREATS, DIFFICULTY, LAND_LINES, LINES, LINE_IDS, PREMIUM_LINES, SCENARIOS, THREATS, THREAT_IDS } from './data';
+import { threatPlural, CHEAP_THREATS, DIFFICULTY, LAND_LINES, LINES, LINE_IDS, PREMIUM_LINES, SCENARIOS, THREATS, THREAT_IDS } from './data';
 import { pick, rand, randRange } from './rng';
 import { calmDraw, reserveTotal } from './selectors';
 import type { Forecast, GameState, LineId, MonthReport, ThreatId, ThreatTally } from './types';
@@ -175,12 +175,12 @@ export function resolveDemand(state: GameState): DemandResult {
     threats[t] = { arrived: n, stopped, leaked };
     leakSeverity += leaked * th.severity;
     if (leaked >= 0.5 && th.severity >= 1) {
-      messages.push({ tone: 'bad', text: `${Math.round(leaked)} ${th.name.toLowerCase()}${Math.round(leaked) === 1 ? '' : 's'} got through the defenses.` });
+      messages.push({ tone: 'bad', text: `${Math.round(leaked)} ${threatPlural(t, Math.round(leaked))} got through the defenses.` });
     }
     const dry = chain.filter((a) => a.weight > 0 && reserveTotal(state.reserves[a.line]) < 0.5).map((a) => LINES[a.line].name);
     if (remaining > 0.5 && weighted.length) state.reserves[weighted[0].line].unmet += Math.round(remaining);
     if (dry.length && remaining > 0.5) {
-      messages.push({ tone: 'bad', text: `Out of ${dry.join(' and ')}: ${Math.round(remaining)} shots against ${th.name.toLowerCase()}s could not be fired.` });
+      messages.push({ tone: 'bad', text: `Out of ${dry.join(' and ')}: ${Math.round(remaining)} shots against ${threatPlural(t)} could not be fired.` });
     }
   }
 

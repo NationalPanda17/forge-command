@@ -17,7 +17,7 @@ import {
   linesAt,
 } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import { freeBays, reserveTotal } from './selectors';
+import { freeBays, reserveTarget, reserveTotal } from './selectors';
 import type { CampusId, Decision, GameState, LineId, MonthReport, PartnerId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -126,6 +126,65 @@ export function rollEvents(state: GameState, messages: Messages): void {
       ],
       fallback: 'contest',
       data: { cost },
+    });
+  }
+
+  // A supplier wants more money.
+  if (!hasDecision(state, 'priceHike') && chance(0.025)) {
+    const withDeals = qualified.filter((sid) => state.components[SUPPLIERS[sid].component].contracts.some((k) => k.supplier === sid && k.monthsLeft > 0));
+    if (withDeals.length) {
+      const sid = pick(state, withDeals);
+      const pctUp = randInt(state, 8, 18);
+      addDecision(state, {
+        kind: 'priceHike',
+        title: `${SUPPLIERS[sid].name} demands a price rise`,
+        body: `${SUPPLIERS[sid].name} says its costs have soared. It wants ${pctUp}% more on every contract with you, or it will "prioritise other customers" for a while.`,
+        options: [
+          { id: 'accept', label: `Pay ${pctUp}% more`, detail: 'Every live contract with this supplier gets dearer.' },
+          { id: 'refuse', label: 'Refuse', detail: 'Its deliveries to you drop to about 60% for 3 months.' },
+        ],
+        fallback: 'refuse',
+        data: { supplier: sid, pct: pctUp },
+      });
+    }
+  }
+
+  // A partner wants to buy from the reserve in calm times.
+  if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03)) {
+    const p = pick(state, PARTNER_IDS);
+    const line = pick(state, PARTNERS[p].wants);
+    const stock = reserveTotal(state.reserves[line]);
+    if (stock > reserveTarget(state, line) * 0.8) {
+      const qty = Math.max(1, Math.round(stock * randRange(state, 0.1, 0.2)));
+      const price = Math.round(LINES[line].unitCost * randRange(state, 1.25, 1.6) * 10000) / 10000;
+      addDecision(state, {
+        kind: 'armsSale',
+        title: `${PARTNERS[p].name} asks to buy ${LINES[line].name}`,
+        body: `${PARTNERS[p].name} wants ${qty.toLocaleString('en-US')} ${LINES[line].name} from your reserve to rebuild its own stocks, and will pay well above cost.`,
+        options: [
+          { id: 'sell', label: `Sell for ${fmtMoney(qty * price)}`, detail: 'Money and goodwill now. A thinner reserve if trouble comes.' },
+          { id: 'decline', label: 'Decline', detail: 'Keep the rounds. A little goodwill lost.' },
+        ],
+        fallback: 'decline',
+        data: { partner: p, line, qty, price },
+      });
+    }
+  }
+
+  // Safety inspection.
+  if (!hasDecision(state, 'inspection') && chance(0.02)) {
+    const c = pick(state, CAMPUS_IDS);
+    const cost = Math.round(randRange(state, 6, 14));
+    addDecision(state, {
+      kind: 'inspection',
+      title: `Safety inspectors at ${CAMPUSES[c].name}`,
+      body: 'The explosives safety inspectorate found storage distances out of date and a fire-suppression system overdue for service.',
+      options: [
+        { id: 'fix', label: `Fix it now (${fmtMoney(cost)})`, detail: 'Done properly, no fuss.' },
+        { id: 'defer', label: 'Defer the work', detail: 'Free today. About even odds of a fine and an unhappy Committee.' },
+      ],
+      fallback: 'defer',
+      data: { campus: c, cost },
     });
   }
 
@@ -271,6 +330,47 @@ export function resolveDecision(state: GameState, decisionId: number, optionId: 
       }
       break;
     }
+    case 'priceHike': {
+      const sid = String(d.data.supplier);
+      if (opt === 'accept') {
+        const c = SUPPLIERS[sid].component;
+        for (const k of state.components[c].contracts) if (k.supplier === sid) k.unitPrice *= 1 + Number(d.data.pct) / 100;
+        messages.push({ tone: 'info', text: `New prices agreed with ${SUPPLIERS[sid].name}.` });
+      } else {
+        const st = state.suppliers[sid];
+        st.capFactor = Math.min(st.capFactor, 0.6);
+        st.shockMonths = Math.max(st.shockMonths, 3);
+        messages.push({ tone: 'warn', text: `${SUPPLIERS[sid].name} cuts your allocation after the price dispute.` });
+      }
+      break;
+    }
+    case 'armsSale': {
+      const p = d.data.partner as PartnerId;
+      const line = d.data.line as LineId;
+      if (opt === 'sell') {
+        const r = state.reserves[line];
+        const sold = Math.min(Number(d.data.qty), reserveTotal(r));
+        const full = Math.min(r.stock, sold);
+        r.stock -= full;
+        r.degraded -= sold - full;
+        const cash = sold * Number(d.data.price);
+        state.treasury += cash;
+        state.pending.revenue += cash;
+        state.partners[p].goodwill = clamp(state.partners[p].goodwill + 6);
+        messages.push({ tone: 'good', text: `Sold ${sold.toLocaleString('en-US')} ${LINES[line].name} to ${PARTNERS[p].name} for ${fmtMoney(cash)}.` });
+      } else {
+        state.partners[p].goodwill = clamp(state.partners[p].goodwill - 2);
+      }
+      break;
+    }
+    case 'inspection':
+      if (opt === 'fix') spend(state, Number(d.data.cost));
+      else if (rand(state) < 0.5) {
+        spend(state, 25);
+        state.confidence = clamp(state.confidence - 3);
+        messages.push({ tone: 'bad', text: `The inspectorate fines the Board $25M over safety work at ${CAMPUSES[d.data.campus as CampusId].name}.` });
+      }
+      break;
     case 'audit':
       if (opt === 'fix') spend(state, Number(d.data.cost));
       else {

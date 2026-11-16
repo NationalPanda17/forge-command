@@ -1,0 +1,17 @@
+{
+  "name": "Forge Command",
+  "short_name": "Forge Command",
+  "description": "Run a fictional nation's munitions production board: production lines, shared supply chains, month by month.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06111f",
+  "theme_color": "#06111f",
+  "categories": ["games", "education", "simulation"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
