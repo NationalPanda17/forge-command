@@ -1,4 +1,4 @@
-import { COMPONENT_IDS, LINE_IDS } from './data';
+import { CAMPUS_IDS, COMPONENT_IDS, LINE_IDS, SUPPLIER_IDS } from './data';
 import type { GameState } from './types';
 
 export function serialize(state: GameState): string {
@@ -10,9 +10,11 @@ export function deserialize(text: string | null | undefined): GameState | null {
   if (!text) return null;
   try {
     const s = JSON.parse(text) as GameState;
-    if (s?.version !== 1) return null;
+    if (s?.version !== 2) return null;
     if (!LINE_IDS.every((id) => s.lines?.[id] && s.reserves?.[id])) return null;
     if (!COMPONENT_IDS.every((id) => s.components?.[id])) return null;
+    if (!CAMPUS_IDS.every((id) => s.campuses?.[id])) return null;
+    if (!SUPPLIER_IDS.every((id) => s.suppliers?.[id])) return null;
     return s;
   } catch {
     return null;
