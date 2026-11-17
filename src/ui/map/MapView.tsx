@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type Ke
 import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef } from '../../sim/world';
 import * as G from './geo';
 import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
+import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
 
 // ---------- Public types ----------
 
@@ -41,8 +42,6 @@ const OWNER_COLOR: Record<SiteDef['owner'], string> = { state: ops('cyan'), priv
 const REGION_COLOR: Record<RegionId, string> = { north: ops('blue'), coast: ops('cyan'), east: ops('amber'), isles: ops('violet'), central: ops('green') };
 const FIGHTING: RegionId[] = ['north', 'coast', 'east', 'isles'];
 
-const FONT_MONO = '"JetBrains Mono", ui-monospace, monospace';
-const FONT_HEAD = '"Rajdhani", "Inter", system-ui, sans-serif';
 
 // ---------- View maths ----------
 
@@ -79,11 +78,6 @@ function zoomAbout(v: View, px: number, py: number, k: number): View {
 
 /** Level of detail from pixels per km. */
 const lodOf = (S: number) => (S < 1.6 ? 0 : S < 3 ? 1 : S < 6 ? 2 : 3);
-const markerPx = (S: number) => Math.max(11, Math.min(28, 18 + 4 * Math.log2(S)));
-/** Shrinks text on small maps (phones). */
-const uiScale = (S: number) => Math.max(0.72, Math.min(1, 0.6 + 0.4 * S));
-/** Smaller towns are unlabelled on very small maps. */
-const cityLabelled = (pop: number, S: number) => S >= 0.5 || pop >= 100;
 
 const LOD_CSS = `
 .fcm[data-lod="0"] .l1,.fcm[data-lod="0"] .l2,.fcm[data-lod="0"] .l3,.fcm[data-lod="1"] .l2,.fcm[data-lod="1"] .l3,.fcm[data-lod="2"] .l3{display:none}
@@ -321,136 +315,75 @@ const RoutesLayer = memo(
 
 const halo = (w: number) => ({ stroke: 'rgba(6, 11, 20, 0.88)', strokeWidth: w, paintOrder: 'stroke' as const, strokeLinejoin: 'round' as const });
 
-const LabelsLayer = memo(function LabelsLayer({ S, lod, labels, regions }: { S: number; lod: number; labels: boolean; regions: boolean }) {
-  const k = uiScale(S) / S;
+interface LabelsProps { S: number; geo: Layout['geo']; regions: Layout['regions']; exits: ExitGroup[] }
+
+const LabelsLayer = memo(function LabelsLayer({ S, geo, regions, exits }: LabelsProps) {
+  const u = uiScale(S);
+  const k = 1 / S;
   return (
     <g pointerEvents="none">
-      {labels &&
-        G.GEO_LABELS.filter((l) => l.lod <= lod).map((l, i) => {
-          const fill =
-            l.kind === 'sea' ? 'rgba(96, 178, 226, 0.55)' : l.kind === 'water' ? 'rgba(120, 190, 235, 0.85)' : l.kind === 'nation' ? 'rgba(242, 84, 91, 0.7)' : l.kind === 'island' ? 'rgba(201, 216, 236, 0.75)' : 'rgba(201, 216, 236, 0.5)';
-          const italic = l.kind === 'sea' || l.kind === 'water' || l.kind === 'relief';
-          return (
-            <g key={i} transform={`translate(${l.at[0]} ${l.at[1]}) scale(${k})${l.rot ? ` rotate(${l.rot})` : ''}`}>
-              <text
-                textAnchor="middle"
-                fontFamily={l.kind === 'water' || l.kind === 'island' ? FONT_MONO : FONT_HEAD}
-                fontWeight={l.kind === 'water' || l.kind === 'island' ? 400 : 600}
-                fontStyle={italic ? 'italic' : undefined}
-                fontSize={l.size + (l.kind === 'sea' || l.kind === 'nation' ? 1 : 0)}
-                letterSpacing={l.spacing ? `${l.spacing}em` : undefined}
-                fill={fill}
-                {...halo(l.kind === 'water' ? 2.5 : 3)}
-              >
-                {l.text}
-              </text>
-            </g>
-          );
-        })}
-      {regions &&
-        (Object.keys(G.REGION_LABEL_AT) as RegionId[]).map((r) => (
-          <g key={r} transform={`translate(${G.REGION_LABEL_AT[r][0]} ${G.REGION_LABEL_AT[r][1]}) scale(${k})`}>
-            <text textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={14} letterSpacing="0.2em" fill={r === 'central' ? ops('dim') : REGION_COLOR[r]} fillOpacity={0.9} {...halo(3)}>
-              {REGIONS[r].name.toUpperCase()}
-            </text>
-          </g>
-        ))}
-      {/* Off-map suppliers */}
-      {G.OFF_MAP_EXITS.map((e) => {
-        const deg = (e.angle * 180) / Math.PI;
-        // Push the caption inward, away from the sheet edge the lane leaves by.
-        const side = e.at[1] <= G.FRAME.y0 + 0.5 ? 'n' : e.at[1] >= G.FRAME.y1 - 0.5 ? 's' : e.at[0] <= G.FRAME.x0 + 0.5 ? 'w' : 'e';
-        const off = side === 'w' ? [30, -14] : side === 'e' ? [-30, -14] : side === 'n' ? [22, 22] : [24, -22];
-        const anchor = side === 'e' ? 'end' : 'start';
+      {G.GEO_LABELS.map((l, i) => {
+        const at = geo[i];
+        if (!at) return null;
+        const fill =
+          l.kind === 'sea' ? 'rgba(96, 178, 226, 0.55)' : l.kind === 'water' ? 'rgba(120, 190, 235, 0.85)' : l.kind === 'nation' ? 'rgba(242, 84, 91, 0.7)' : l.kind === 'island' ? 'rgba(201, 216, 236, 0.75)' : 'rgba(201, 216, 236, 0.5)';
+        const italic = l.kind === 'sea' || l.kind === 'water' || l.kind === 'relief';
+        const mono = l.kind === 'water' || l.kind === 'island';
         return (
-          <g key={e.siteId} transform={`translate(${e.at[0]} ${e.at[1]}) scale(${k})`}>
-            <g transform={`rotate(${deg})`}>
-              <path d="M-14 0H-2M-7 -5L0 0L-7 5" fill="none" stroke={ops('violet')} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-            <text x={off[0]} y={off[1]} textAnchor={anchor} fontFamily={FONT_HEAD} fontWeight={700} fontSize={12} letterSpacing="0.12em" fill={ops('violet')} {...halo(3)}>
-              {side === 'w' ? `← ${e.nation.toUpperCase()}` : side === 'e' ? `${e.nation.toUpperCase()} →` : side === 'n' ? `↑ ${e.nation.toUpperCase()}` : `↓ ${e.nation.toUpperCase()}`}
+          <g key={i} transform={`translate(${l.at[0]} ${l.at[1]}) scale(${k}) translate(${at[0]} ${at[1]})${l.rot ? ` rotate(${l.rot})` : ''}`}>
+            <text
+              textAnchor="middle"
+              fontFamily={mono ? FONT_MONO : FONT_HEAD}
+              fontWeight={mono ? 400 : 600}
+              fontStyle={italic ? 'italic' : undefined}
+              fontSize={(l.size + (l.kind === 'sea' || l.kind === 'nation' ? 1 : 0)) * u}
+              letterSpacing={l.spacing ? `${l.spacing}em` : undefined}
+              fill={fill}
+              {...halo(l.kind === 'water' ? 2.5 : 3)}
+            >
+              {l.text}
             </text>
-            {S >= 0.6 && (
-              <text x={off[0]} y={off[1] + 12} textAnchor={anchor} fontFamily={FONT_MONO} fontSize={9.5} fill={ops('dim')} {...halo(2.5)}>
-                {e.name}
-              </text>
-            )}
           </g>
         );
       })}
+      {(Object.keys(regions) as RegionId[]).map((r) => {
+        const d = regions[r]!;
+        return (
+          <g key={r} transform={`translate(${G.REGION_LABEL_AT[r][0]} ${G.REGION_LABEL_AT[r][1]}) scale(${k})`}>
+            <text x={d[0]} y={d[1]} textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={14 * u} letterSpacing="0.2em" fill={r === 'central' ? ops('dim') : REGION_COLOR[r]} fillOpacity={0.9} {...halo(3)}>
+              {REGIONS[r].name.toUpperCase()}
+            </text>
+          </g>
+        );
+      })}
+      {/* Off-map suppliers: an arrow where each lane leaves the sheet, one caption per nation and edge. */}
+      {G.OFF_MAP_EXITS.map((e) => (
+        <g key={e.siteId} transform={`translate(${e.at[0]} ${e.at[1]}) scale(${u * k}) rotate(${(e.angle * 180) / Math.PI})`}>
+          <path className="fcm-exit" d="M-14 0H-2M-7 -5L0 0L-7 5" fill="none" stroke={ops('violet')} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      ))}
+      {exits.map((g) =>
+        g.placed ? (
+          <g key={g.key} transform={`translate(${g.at[0]} ${g.at[1]}) scale(${k})`}>
+            <text x={g.placed.x} y={g.placed.y} textAnchor={g.placed.anchor} fontFamily={FONT_HEAD} fontWeight={700} fontSize={12 * u} letterSpacing="0.12em" fill={ops('violet')} {...halo(3)}>
+              {g.arrow}
+            </text>
+            {g.showNames &&
+              g.names.map((n, i) => (
+                <text key={n} x={g.placed!.x} y={g.placed!.y + (EXIT_FIRST_GAP + EXIT_LINE_GAP * i) * u} textAnchor={g.placed!.anchor} fontFamily={FONT_MONO} fontSize={9.5 * u} fill={ops('dim')} {...halo(2.5)}>
+                  {n}
+                </text>
+              ))}
+          </g>
+        ) : null,
+      )}
     </g>
   );
 });
 
 // ---------- Sites and cities ----------
 
-interface Box { x0: number; y0: number; x1: number; y1: number }
-const overlap = (a: Box, b: Box) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
-
-interface Placed { x: number; y: number; anchor: 'start' | 'middle' | 'end' }
-
-const cityDot = (pop: number) => 1.8 + Math.sqrt(pop) / 12;
-const citySize = (pop: number) => 10.5 + 4.5 * Math.max(0, Math.min(1, Math.log(pop / 30) / Math.log(1240 / 30)));
-
-function placeLabels(S: number, m: number, siteIds: string[]): { cities: Placed[]; sites: Record<string, Placed> } {
-  const taken: Box[] = [];
-  for (const s of SITES) {
-    const [x, y] = G.SITE_POS[s.id];
-    taken.push({ x0: x * S - m / 2, y0: y * S - m / 2, x1: x * S + m / 2, y1: y * S + m / 2 });
-  }
-  const pick = (cx: number, cy: number, cands: (Placed & { box: Box })[], force: boolean): Placed | null => {
-    let best: (Placed & { box: Box }) | null = null;
-    let bestScore = Infinity;
-    for (const c of cands) {
-      const b = { x0: c.box.x0 + cx, y0: c.box.y0 + cy, x1: c.box.x1 + cx, y1: c.box.y1 + cy };
-      let score = 0;
-      for (const t of taken) score += overlap(b, t);
-      if (score === 0) {
-        best = c;
-        bestScore = 0;
-        break;
-      }
-      if (score < bestScore) {
-        bestScore = score;
-        best = c;
-      }
-    }
-    if (!best || (bestScore > 0 && !force)) return null;
-    taken.push({ x0: best.box.x0 + cx, y0: best.box.y0 + cy, x1: best.box.x1 + cx, y1: best.box.y1 + cy });
-    return { x: best.x, y: best.y, anchor: best.anchor };
-  };
-  const u = uiScale(S);
-  const cities = CITIES.map((c) => {
-    if (!cityLabelled(c.pop, S)) return { x: 0, y: 0, anchor: 'start' as const };
-    const fs = citySize(c.pop) * u;
-    const w = c.name.length * fs * (c.pop >= 200 ? 0.66 : 0.52);
-    const r = (cityDot(c.pop) + (c.capital ? 3 : 0)) * u;
-    const h = fs * 0.8;
-    return pick(c.x * S, c.y * S, [
-      { x: r + 4, y: fs * 0.34, anchor: 'start', box: { x0: r + 3, y0: -h / 2 - 1, x1: r + 5 + w, y1: h / 2 + 1 } },
-      { x: -r - 4, y: fs * 0.34, anchor: 'end', box: { x0: -r - 5 - w, y0: -h / 2 - 1, x1: -r - 3, y1: h / 2 + 1 } },
-      { x: 0, y: -r - 4, anchor: 'middle', box: { x0: -w / 2, y0: -r - 4 - h, x1: w / 2, y1: -r - 3 } },
-      { x: 0, y: r + 4 + h, anchor: 'middle', box: { x0: -w / 2, y0: r + 3, x1: w / 2, y1: r + 5 + h } },
-    ], true) as Placed;
-  });
-  const sites: Record<string, Placed> = {};
-  for (const id of siteIds) {
-    const s = SITE_BY_ID[id];
-    const [x, y] = G.SITE_POS[id];
-    const w = s.name.length * 6.1;
-    const g = m / 2 + 4;
-    const p = pick(x * S, y * S, [
-      { x: g, y: 3.5, anchor: 'start', box: { x0: g - 1, y0: -6, x1: g + w + 1, y1: 6 } },
-      { x: -g, y: 3.5, anchor: 'end', box: { x0: -g - w - 1, y0: -6, x1: -g + 1, y1: 6 } },
-      { x: 0, y: g + 9, anchor: 'middle', box: { x0: -w / 2, y0: g, x1: w / 2, y1: g + 12 } },
-      { x: 0, y: -g - 3, anchor: 'middle', box: { x0: -w / 2, y0: -g - 12, x1: w / 2, y1: -g } },
-    ], siteIds.indexOf(id) < 3);
-    if (p) sites[id] = p;
-  }
-  return { cities, sites };
-}
-
-const CitiesLayer = memo(function CitiesLayer({ S, placed }: { S: number; placed: Placed[] }) {
+const CitiesLayer = memo(function CitiesLayer({ S, placed }: { S: number; placed: (Placed | null)[] }) {
   const u = uiScale(S);
   const k = u / S;
   return (
@@ -468,8 +401,8 @@ const CitiesLayer = memo(function CitiesLayer({ S, placed }: { S: number; placed
                 <circle r={r + 3.2} fill="none" stroke="#e8f0fa" strokeWidth={1.2} />
               </>
             )}
-            <circle r={r} fill={c.capital ? ops('amber') : '#dce6f2'} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.3} />
-            {cityLabelled(c.pop, S) && <text
+            <circle className="fcm-city" r={r} fill={c.capital ? ops('amber') : '#dce6f2'} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.3} />
+            {p && <text
               x={p.x / u}
               y={p.y / u}
               textAnchor={p.anchor}
@@ -496,20 +429,32 @@ interface SitesLayerProps {
   focused: string | null;
   hovered: string | null;
   labelIds: Record<string, Placed>;
+  spread: Record<string, [number, number]>;
   onActivate: (id: string, e: ReactMouseEvent | ReactKeyboardEvent) => void;
   onFocusSite: (id: string | null) => void;
   onHover: (id: string | null) => void;
 }
 
-const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, onActivate, onFocusSite, onHover }: SitesLayerProps) {
+const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, spread, onActivate, onFocusSite, onHover }: SitesLayerProps) {
   const k = 1 / S;
   const m = markerPx(S);
   const h = m / 2;
   const order = SITES.slice().sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
   return (
     <g>
+      {/* Leaders from where a site really is to where its marker was moved to keep it clear of its neighbours. */}
+      <g pointerEvents="none">
+        {SITES.map((s) => {
+          const d = spread[s.id];
+          if (!d || Math.hypot(d[0], d[1]) < h * 0.6) return null;
+          const [x, y] = G.SITE_POS[s.id];
+          return <line key={s.id} x1={x} y1={y} x2={x + d[0] * k} y2={y + d[1] * k} stroke={ops('text', 0.55)} strokeWidth={1} style={{ vectorEffect: 'non-scaling-stroke' }} />;
+        })}
+      </g>
       {order.map((s) => {
-        const [x, y] = G.SITE_POS[s.id];
+        const [mx, my] = markerAt(s.id, S, spread);
+        const x = mx * k;
+        const y = my * k;
         const mk = markers[s.id];
         const col = mk?.tone ? TONE_COLOR[mk.tone] : OWNER_COLOR[s.owner];
         const sel = s.id === selected;
@@ -574,16 +519,28 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
       <g pointerEvents="none">
         {Object.entries(labelIds).map(([id, p]) => {
           const s = SITE_BY_ID[id];
-          const [x, y] = G.SITE_POS[id];
+          const [mx, my] = markerAt(id, S, spread);
+          const x = mx * k;
+          const y = my * k;
           const hot = id === selected || id === hovered || id === focused;
           return (
             <g key={id} transform={`translate(${x} ${y}) scale(${k})`}>
-              <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={10} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
+              {p.lead && (
+                <line
+                  x1={(p.x / Math.hypot(p.x, p.y - SITE_FONT * 0.35)) * (m / 2 + 3)}
+                  y1={((p.y - SITE_FONT * 0.35) / Math.hypot(p.x, p.y - SITE_FONT * 0.35)) * (m / 2 + 3)}
+                  x2={p.x - (p.anchor === 'start' ? 2 : p.anchor === 'end' ? -2 : 0)}
+                  y2={p.y - SITE_FONT * 0.35}
+                  stroke={ops('cyan', 0.7)}
+                  strokeWidth={1}
+                />
+              )}
+              <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={SITE_FONT} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
                 {s.name}
               </text>
               {hot && (
-                <text x={p.x} y={p.y + 11} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={8.5} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
-                  {`${KIND_LABEL[s.kind].toUpperCase()} · ${REGIONS[s.region].name.toUpperCase()}`}
+                <text x={p.x} y={p.y + SITE_SUB_GAP} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={SITE_SUB_FONT} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
+                  {kindLine(id)}
                 </text>
               )}
             </g>
@@ -673,17 +630,17 @@ function niceKm(target: number): number {
   return 500;
 }
 
-const Furniture = memo(function Furniture({ view, size }: { view: View; size: Size }) {
+const Furniture = memo(function Furniture({ view, size, boxes }: { view: View; size: Size; boxes: Box[] }) {
   const { S, tx, ty } = view;
   const ticks: { x?: number; y?: number; v: number }[] = [];
   const step = S < 0.6 ? 200 : S < 3 ? 100 : S < 6 ? 50 : 25;
   for (let v = 0; v <= G.FRAME.x1; v += step) {
     const x = v * S + tx;
-    if (x > 34 && x < size.w - 60) ticks.push({ x, v });
+    if (x > 34 && x < size.w - 60 && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
   }
   for (let v = 0; v <= G.FRAME.y1; v += step) {
     const y = v * S + ty;
-    if (y > 64 && y < size.h - 70) ticks.push({ y, v });
+    if (y > 64 && y < size.h - 70 && !clashes(smallTextBox(String(v), 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
   }
   const km = niceKm(90 / S);
   const bar = km * S;
@@ -706,6 +663,9 @@ const Furniture = memo(function Furniture({ view, size }: { view: View; size: Si
           </g>
         ),
       )}
+      {/* Scale and north arrow sit on a plate, so nothing on the map runs underneath their text. */}
+      <g data-hud="">
+      <rect x={6} y={size.h - 52} width={Math.max(bar + 52, 120) + 22} height={46} rx={4} fill="#060b14" stroke={ops('line', 0.8)} />
       <g transform={`translate(16 ${size.h - 22})`}>
         {[0, 1, 2, 3].map((i) => (
           <rect key={i} x={(bar / 4) * i} y={0} width={bar / 4} height={4} fill={i % 2 ? 'rgba(6, 11, 20, 0.9)' : ops('text', 0.9)} stroke={ops('text', 0.9)} strokeWidth={0.8} />
@@ -724,6 +684,7 @@ const Furniture = memo(function Furniture({ view, size }: { view: View; size: Si
         <text y={-16} textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={11} fill={ops('cyan')} {...halo(2.5)}>
           N
         </text>
+      </g>
       </g>
     </g>
   );
@@ -979,7 +940,20 @@ export default function MapView(props: MapViewProps): JSX.Element {
 
   const lod = lodOf(view.S);
   const S = view.S;
-  const m = markerPx(S);
+
+  // Web fonts change text widths: lay out again once they have loaded.
+  const [fontsReady, setFontsReady] = useState(0);
+  useEffect(() => {
+    let live = true;
+    document.fonts?.ready.then(() => {
+      if (!live) return;
+      resetTextWidths();
+      setFontsReady((n) => n + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Labels to show: hot sites always, the rest from medium zoom.
   const labelOrder = useMemo(() => {
@@ -990,7 +964,24 @@ export default function MapView(props: MapViewProps): JSX.Element {
     const rest = SITES.filter((s) => !hot.includes(s.id)).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
     return [...hot, ...rest];
   }, [selected, focused, hovered, layers.labels, lod]);
-  const placement = useMemo(() => placeLabels(S, m, labelOrder), [S, m, labelOrder]);
+  const hotIds = useMemo(() => [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]), [selected, focused, hovered]);
+  const badgeSig = SITES.map((s) => markers[s.id]?.badge ?? '').join('|');
+  const spread = useMemo(() => spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge]))), [S, badgeSig]);
+  const placement = useMemo(
+    () =>
+      layoutMap({
+        S,
+        lod,
+        labels: layers.labels,
+        regions: layers.regions,
+        order: labelOrder,
+        hot: hotIds,
+        selected,
+        badges: Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])),
+        spread,
+      }),
+    [S, lod, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
+  );
 
   const useSig = routeUse ? Object.entries(routeUse).map(([k, v]) => `${k}:${v >= 0.85 ? 2 : v >= 0.6 ? 1 : 0}`).join(',') : '';
 
@@ -1032,19 +1023,19 @@ export default function MapView(props: MapViewProps): JSX.Element {
             </g>
             <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
             <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
-            <LabelsLayer S={S} lod={lod} labels={layers.labels} regions={layers.regions} />
-            <CitiesLayer S={S} placed={placement.cities} />
             {layers.flows && <ShipmentsLayer S={S} shipments={shipments} />}
-            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={placement.sites} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+            <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />
+            <CitiesLayer S={S} placed={placement.cities} />
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
           </g>
-          <Furniture view={view} size={size} />
+          <Furniture view={view} size={size} boxes={placement.boxes} />
         </svg>
       )}
-      <div className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg/75 px-2.5 py-1.5 backdrop-blur-sm">
+      <div data-hud="" className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5">
         <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">Commonwealth of Aldmere</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
-      <div className="absolute right-3 top-3 flex flex-col gap-1">
+      <div data-hud="" className="absolute right-3 top-3 flex flex-col gap-1">
         <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in">
           +
         </button>
@@ -1055,7 +1046,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           ⟲
         </button>
       </div>
-      <div className="pointer-events-none absolute bottom-2 right-3 text-[9.5px] tracking-wider text-ops-dim">
+      <div data-hud="" className="pointer-events-none absolute bottom-2 right-3 rounded border border-ops-line/80 bg-ops-bg px-1.5 py-0.5 text-[9.5px] tracking-wider text-ops-dim">
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim/70">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
       </div>
