@@ -5,6 +5,11 @@ import MarketsPanel from './MarketsPanel';
 import BuildPanel from './BuildPanel';
 import NewsPanel from './NewsPanel';
 import SandboxPanel from './SandboxPanel';
+import IntelPanel from './IntelPanel';
+import PolicyPanel from './PolicyPanel';
+import AdvisorCard from './AdvisorCard';
+import { Explain } from '../ui/Explain';
+import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
 import { sfx, setSoundEnabled } from '../ui/sound';
 import { loadAudioPrefs, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
@@ -26,7 +31,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -34,6 +39,8 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'material', label: 'Materials' },
   { id: 'markets', label: 'Markets' },
   { id: 'build', label: 'Build' },
+  { id: 'intel', label: 'Intel' },
+  { id: 'policy', label: 'Policy' },
   { id: 'stockpile', label: 'Stockpile' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'fight', label: 'Fight' },
@@ -194,20 +201,34 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         <div>
           <div className="label">Season</div>
           <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above the start of your term.`}>
-            {seasonOf(state.day)[0].toUpperCase() + seasonOf(state.day).slice(1)} <span className="text-ops-dim">· prices +{Math.round((state.priceIndex - 1) * 100)}%</span>
+            <Explain title="Season and prices" lines={() => seasonWhy(state)}>
+              {seasonOf(state.day)[0].toUpperCase() + seasonOf(state.day).slice(1)} <span className="text-ops-dim">· prices +{Math.round((state.priceIndex - 1) * 100)}%</span>
+            </Explain>
           </div>
         </div>
         <div>
           <div className="label">Treasury</div>
-          <div className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>{money(state.treasury)}</div>
+          <div className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>
+            <Explain title="Treasury" lines={() => treasuryWhy(state)}>
+              {money(state.treasury)}
+            </Explain>
+          </div>
         </div>
         <div>
           <div className="label">Readiness</div>
-          <div className={textToneFor(ready)}>{pct(ready)}</div>
+          <div className={textToneFor(ready)}>
+            <Explain title="Readiness" lines={() => readinessWhy(state)}>
+              {pct(ready)}
+            </Explain>
+          </div>
         </div>
         <div>
           <div className="label">Confidence</div>
-          <div className={textToneFor(state.confidence / 70)}>{Math.round(state.confidence)}</div>
+          <div className={textToneFor(state.confidence / 70)}>
+            <Explain title="Confidence" lines={() => confidenceWhy(state)}>
+              {Math.round(state.confidence)}
+            </Explain>
+          </div>
         </div>
         {state.crisis && (
           <div className={state.crisis.phase === 'active' ? 'text-ops-red' : 'text-ops-amber'}>
@@ -313,6 +334,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
             {panel === 'build' && <BuildPanel state={state} act={act} onHighlight={setHighlight} onSite={select} />}
             {panel === 'news' && <NewsPanel state={state} />}
+            {panel === 'intel' && <IntelPanel state={state} act={act} />}
+            {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
             {panel === 'site' && (selected ? <SitePanel state={state} siteId={selected} act={act} onMaterial={showMaterial} /> : <p className="p-3 text-[11px] text-ops-dim">Click any site on the map.</p>)}
             {panel === 'material' && <MaterialPanel state={state} material={material} onMaterial={showMaterial} onSite={select} />}
@@ -322,7 +345,12 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'strategy' && <StrategyPanel state={state} act={act} />}
             {panel === 'money' && <MoneyPanel state={state} />}
             {panel === 'feed' && <Feed state={state} onSite={select} />}
-            {panel === 'watch' && <WatchPanel state={state} onSite={select} onMaterial={showMaterial} />}
+            {panel === 'watch' && (
+              <>
+                <AdvisorCard state={state} act={act} onPanel={(p) => setPanel(p === 'programmes' ? 'policy' : p === 'site' ? 'site' : p)} onSite={select} onMaterial={showMaterial} />
+                <WatchPanel state={state} onSite={select} onMaterial={showMaterial} onPanel={(p) => setPanel(p)} />
+              </>
+            )}
             {panel === 'guide' && <GuidePanel />}
           </div>
         </aside>
@@ -330,7 +358,17 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       <footer className="panel max-h-28 overflow-y-auto">
         <Feed state={state} onSite={select} limit={6} />
       </footer>
-      {state.over && !reportClosed && <TermReport state={state} onClose={() => setReportClosed(true)} onMenu={() => onMenu(state)} />}
+      {state.over && !reportClosed && (
+        <TermReport
+          state={state}
+          onClose={() => setReportClosed(true)}
+          onMenu={() => onMenu(state)}
+          onSecondTerm={() => {
+            act({ type: 'secondTerm' });
+            setReportClosed(false);
+          }}
+        />
+      )}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
     </div>
   );

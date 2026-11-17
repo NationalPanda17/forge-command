@@ -8,6 +8,8 @@ import { MATERIALS, RECIPES, REGIONS, SITE_BY_ID, type LineId, type MaterialId }
 import { Bar, Btn, Chip, NumberInput, Segmented } from '../ui/kit';
 import { hardenCost } from '../sim/build';
 import PlantView from './PlantView';
+import { Explain } from '../ui/Explain';
+import { rateWhy } from './explain';
 import { money, qty } from '../ui/format';
 
 const OWNER = { state: 'Yours', private: 'Private company', foreign: 'Foreign supplier' } as const;
@@ -97,7 +99,10 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
                     <span className={lim.tone}>{lim.text}</span>
                   </div>
                   <div className="text-ops-dim">
-                    makes <MatLink m={rec.output} />: {qty(p.lastOutput)} {MATERIALS[rec.output].unit} yesterday · up to {qty(processRate(state, site, p))}/day
+                    makes <MatLink m={rec.output} />: {qty(p.lastOutput)} {MATERIALS[rec.output].unit} yesterday · up to{' '}
+                    <Explain title="Daily rate" lines={() => rateWhy(state, siteId, p)}>
+                      {qty(processRate(state, site, p))}/day
+                    </Explain>
                     {p.maturity < 0.99 && ` · ramping ${Math.round(p.maturity * 100)}%`}
                   </div>
                   {Object.keys(rec.inputs).length > 0 && (

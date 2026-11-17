@@ -8,7 +8,8 @@ import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type Mat
 
 export type ResearchId =
   | 'apkws' | 'coyote' | 'javelin' | 'galliumLight' | 'commonMotors' | 'digitalTest' | 'rapidQual' | 'imFill'
-  | 'yieldAnalytics' | 'seekerDTC' | 'smartFuzes' | 'hpm' | 'germaniumRecovery' | 'cleanDemil';
+  | 'yieldAnalytics' | 'seekerDTC' | 'smartFuzes' | 'hpm' | 'germaniumRecovery' | 'cleanDemil'
+  | 'swarmControl' | 'networkedFire' | 'seekerSoftware' | 'discrimination' | 'tamirSecondLine' | 'precisionKits';
 
 export interface ResearchDef {
   id: ResearchId;
@@ -34,6 +35,12 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
   hpm: { id: 'hpm', name: 'High-power microwave defense', cost: 200, days: 420, requires: ['coyote'], effect: '20% of drones are stopped before any interceptor fires.' },
   germaniumRecovery: { id: 'germaniumRecovery', name: 'Germanium recovery circuit', cost: 55, days: 210, requires: [], effect: 'Tarn Smelter recovers 60% more germanium.' },
   cleanDemil: { id: 'cleanDemil', name: 'Contained demilitarization', cost: 45, days: 150, requires: [], effect: 'Recycling at Karrow recovers twice the value and costs a third less.' },
+  swarmControl: { id: 'swarmControl', name: 'Counter-swarm fire control', cost: 70, days: 150, requires: [], effect: 'Counters drone swarms: cheap interceptors hit drones 12% more often, and fewer swarms get organised.' },
+  networkedFire: { id: 'networkedFire', name: 'Networked fire control', cost: 90, days: 180, requires: [], effect: 'Counters supersonic cruise missiles: IRIS-T, Coyote and Tamir regain their aim.' },
+  seekerSoftware: { id: 'seekerSoftware', name: 'Seeker software upgrade', cost: 80, days: 180, requires: [], effect: 'Counters manoeuvring warheads: each ballistic missile needs a fifth fewer interceptors.' },
+  discrimination: { id: 'discrimination', name: 'Decoy discrimination', cost: 75, days: 180, requires: [], effect: 'Counters decoys and jammers: cruise and ballistic missiles need 15% fewer interceptors.' },
+  tamirSecondLine: { id: 'tamirSecondLine', name: 'Second Tamir line', cost: 85, days: 210, requires: [], effect: 'Counters heavier rocket barrages: Tamir capacity at Northgate grows 40%.' },
+  precisionKits: { id: 'precisionKits', name: 'Precision guidance kits', cost: 70, days: 180, requires: [], effect: 'Counters new armoured divisions: land fighting needs 15% fewer shells and GMLRS.' },
 };
 export const RESEARCH_IDS = Object.keys(RESEARCH) as ResearchId[];
 
@@ -92,6 +99,7 @@ function finishResearch(s: SimState, r: ResearchId, feed: Feed): void {
     feed(s, 'info', `${MATERIALS[nl.line].name} line installed at ${SITE_BY_ID[nl.site].name}. Hire ${nl.crew} more workers there to run it.`, nl.site);
   }
   if (r === 'germaniumRecovery') for (const p of s.sites.tarnSmelter.processes) p.capacity *= 1.6;
+  if (r === 'tamirSecondLine') for (const p of s.sites.northgateCenter.processes) if (p.recipe === 'tamir') (p.ramp ??= []).push({ cap: p.capacity * 0.4, maturity: 0.2 });
 }
 
 // ---------- Key staff ----------

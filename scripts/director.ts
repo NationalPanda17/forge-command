@@ -2,6 +2,7 @@
 import { validate, type SimAction } from '../src/sim/actions';
 import { nationalStock, readiness, reserveTarget } from '../src/sim/selectors';
 import { bottleneck, monthsTo } from '../src/sim/analytics';
+import { DEVELOPMENTS } from '../src/sim/rival';
 import { routeByKey, routeCap } from '../src/sim/build';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import type { SimState } from '../src/sim/types';
@@ -41,7 +42,9 @@ export function active(s: SimState): SimAction[] {
     if (best) acts.push({ type: 'hireStaff', candidate: best.id });
   }
   if (!s.strategy.research.active) {
-    const next = RESEARCH_IDS.find((r) => validate(s, { type: 'research', research: r }) === null);
+    // Counters to the rival's announced weapons come first.
+    const counter = s.rival.known.map((k) => DEVELOPMENTS[k.id].counter).find((r) => validate(s, { type: 'research', research: r }) === null);
+    const next = counter ?? RESEARCH_IDS.find((r) => validate(s, { type: 'research', research: r }) === null);
     if (next && s.treasury > 300) acts.push({ type: 'research', research: next });
   }
   for (const def of SITES) if (def.owner === 'private' && !s.sites[def.id].qualified && s.treasury > 400) acts.push({ type: 'qualify', site: def.id });

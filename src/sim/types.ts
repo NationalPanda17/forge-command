@@ -1,5 +1,7 @@
 import type { LineId, MaterialId, RegionId } from './world';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
+import type { RivalState } from './rival';
+import type { PolicyId, Programme } from './commitments';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial';
@@ -175,6 +177,8 @@ export interface MonthReport {
   target?: Partial<Record<LineId, number>>;
   priceIndex?: number;
   exported?: number;
+  /** Where this month's change in confidence came from. */
+  why?: { readiness: number; leaks: number; land: number; debt: number; other: number };
 }
 
 /** One supplier's offer in a tender. */
@@ -283,6 +287,14 @@ export interface SimState {
   news: NewsEdition[];
   /** A scored campaign, or a sandbox where you set the rules as you go. */
   mode: 'campaign' | 'sandbox';
+  /** The rival and the weapons it fields over time. */
+  rival: RivalState;
+  /** Multi-year procurement programmes in force. */
+  programmes: Programme[];
+  /** Standing policies adopted. */
+  policies: PolicyId[];
+  /** Which term as Director this is. */
+  term: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

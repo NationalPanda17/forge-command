@@ -4,19 +4,23 @@ import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { monthsTo } from '../sim/analytics';
+import { DEVELOPMENTS } from '../sim/rival';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
+export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy';
 interface Watch {
   tone: 'bad' | 'warn' | 'info';
   text: string;
   site?: string;
   material?: MaterialId;
+  /** The tab where the fix lives. */
+  panel?: WatchPanelId;
 }
 
 export function watchList(s: SimState): Watch[] {
   const out: Watch[] = [];
-  if (s.strategy.decisions.length) out.push({ tone: 'warn', text: `${s.strategy.decisions.length} decision${s.strategy.decisions.length > 1 ? 's' : ''} waiting on the Board tab.` });
-  if (s.crisis) out.push({ tone: s.crisis.phase === 'active' ? 'bad' : 'warn', text: `${s.crisis.name}: ${s.crisis.phase === 'warning' ? 'raise the depot target in' : 'keep feeding'} ${REGIONS[s.crisis.region].name}.`, site: REGIONS[s.crisis.region].depot });
+  if (s.strategy.decisions.length) out.push({ tone: 'warn', text: `${s.strategy.decisions.length} decision${s.strategy.decisions.length > 1 ? 's' : ''} waiting on the Board tab.`, panel: 'strategy' });
+  if (s.crisis) out.push({ tone: s.crisis.phase === 'active' ? 'bad' : 'warn', text: `${s.crisis.name}: ${s.crisis.phase === 'warning' ? 'raise the depot target in' : 'keep feeding'} ${REGIONS[s.crisis.region].name}.`, panel: 'logistics' });
   // Your plants: what is holding them back.
   for (const def of SITES.filter((x) => x.owner === 'state' && x.processes.length)) {
     const site = s.sites[def.id];
@@ -56,53 +60,71 @@ export function watchList(s: SimState): Watch[] {
     if (site.fatigue >= 50) out.push({ tone: 'warn', text: `Crews at ${def.name} are exhausted (fatigue ${Math.round(site.fatigue)}). Ease off the round-the-clock shifts before someone gets hurt.`, site: def.id });
     if (site.morale < 40) out.push({ tone: 'warn', text: `Morale is low at ${def.name} (${Math.round(site.morale)}). A safety programme or a pay deal would help.`, site: def.id });
   }
-  for (const p of s.network.projects) if (p.days <= 14) out.push({ tone: 'info', text: `A building project finishes in ${p.days} days (Build tab).` });
+  for (const p of s.network.projects) if (p.days <= 14) out.push({ tone: 'info', text: `A building project finishes in ${p.days} days (Build tab).`, panel: 'build' });
   // A year ahead: rounds that will run low before you can react.
   for (const l of FINISHED as LineId[]) {
     if (!s.lines[l].unlocked || reserveTarget(s, l) <= 0) continue;
     if (nationalStock(s, l) / reserveTarget(s, l) < 0.5) continue;
     const m = monthsTo(s, l, 0.5, 9);
-    if (m !== null) out.push({ tone: 'warn', text: `Forecast: ${MATERIALS[l].name} falls below half of target in ${m} month${m > 1 ? 's' : ''} (Plan tab).`, material: l });
+    if (m !== null) out.push({ tone: 'warn', text: `Forecast: ${MATERIALS[l].name} falls below half of target in ${m} month${m > 1 ? 's' : ''} (Plan tab).`, material: l, panel: 'plan' });
   }
   // Markets.
   for (const c of s.contracts) {
     const left = c.endDay - s.day;
-    if (left <= 45 && !s.contracts.some((k) => k !== c && k.material === c.material && k.endDay > c.endDay)) out.push({ tone: 'warn', text: `Contract for ${MATERIALS[c.material].name.toLowerCase()} with ${SITE_BY_ID[c.site].name} ends in ${left} days. Tender for a new one (Markets tab).`, site: c.site, material: c.material });
+    if (left <= 45 && !s.contracts.some((k) => k !== c && k.material === c.material && k.endDay > c.endDay)) out.push({ tone: 'warn', text: `Contract for ${MATERIALS[c.material].name.toLowerCase()} with ${SITE_BY_ID[c.site].name} ends in ${left} days. Tender for a new one (Markets tab).`, material: c.material, panel: 'markets' });
   }
-  for (const t of s.tenders) out.push({ tone: 'info', text: `Bids for ${MATERIALS[t.material].name.toLowerCase()} are waiting to be awarded (Markets tab).`, material: t.material });
+  for (const t of s.tenders) out.push({ tone: 'info', text: `Bids for ${MATERIALS[t.material].name.toLowerCase()} are waiting to be awarded (Markets tab).`, panel: 'markets' });
   for (const x of s.exports) {
     const due = (x.qty * (s.day - x.start)) / Math.max(1, x.endDay - x.start);
-    if (x.delivered < due * 0.8 && s.day - x.start > 30) out.push({ tone: 'warn', text: `Export order for ${x.customer} is behind: ${Math.round(x.delivered)} of ${Math.round(x.qty)} delivered.`, material: x.line });
+    if (x.delivered < due * 0.8 && s.day - x.start > 30) out.push({ tone: 'warn', text: `Export order for ${x.customer} is behind: ${Math.round(x.delivered)} of ${Math.round(x.qty)} delivered.`, panel: 'markets' });
   }
   const retired = Object.values(s.sites).reduce((a, x) => a + Object.entries(x.unserviceable).reduce((b, [, q]) => b + (q ?? 0), 0), 0) - Object.values(s.sites.karrowDemil.unserviceable).reduce((a, q) => a + (q ?? 0), 0);
-  if (retired >= 1) out.push({ tone: 'info', text: `${Math.round(retired)} retired rounds are waiting to move to Karrow or be refurbished.` });
-  if (!s.strategy.research.active) out.push({ tone: 'info', text: 'Your engineers are idle (Board tab).' });
+  if (retired >= 1) out.push({ tone: 'info', text: `${Math.round(retired)} retired rounds are waiting to move to Karrow or be refurbished.`, panel: 'stockpile' });
+  for (const k of s.rival?.known ?? []) {
+    const d = DEVELOPMENTS[k.id];
+    if (s.strategy.research.done.includes(d.counter)) continue;
+    out.push({ tone: k.fielded <= s.day ? 'bad' : 'warn', text: `${d.name}: ${k.fielded <= s.day ? 'in the field' : `expected in ${Math.ceil((k.fielded - s.day) / 30)} months`}, and not yet countered (Intel tab).`, panel: 'intel' });
+  }
+  for (const p of s.programmes ?? []) if (p.misses > 0) out.push({ tone: 'warn', text: `${MATERIALS[p.line].name} programme: ${p.misses} missed month${p.misses > 1 ? 's' : ''}. Three cancel it.`, panel: 'policy', material: p.line });
+  if (!s.strategy.research.active) out.push({ tone: 'info', text: 'Your engineers are idle (Board tab).', panel: 'strategy' });
   const rank = { bad: 0, warn: 1, info: 2 } as const;
   return out.sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 30);
 }
 
-export function WatchPanel({ state, onSite, onMaterial }: { state: SimState; onSite: (id: string) => void; onMaterial: (m: MaterialId) => void }) {
+export function WatchPanel({ state, onSite, onMaterial, onPanel }: { state: SimState; onSite: (id: string) => void; onMaterial: (m: MaterialId) => void; onPanel: (p: WatchPanelId) => void }) {
   const items = watchList(state);
+  const go = (w: Watch) => (w.panel ? onPanel(w.panel) : w.site ? onSite(w.site) : w.material ? onMaterial(w.material) : undefined);
   return (
     <ul className="divide-y divide-ops-line/40 text-[11px]">
       {items.length === 0 && <li className="p-3 text-ops-dim">Nothing needs you right now.</li>}
-      {items.map((w, i) => (
-        <li key={i} className="flex items-start justify-between gap-2 px-3 py-1.5">
-          <span className={w.tone === 'bad' ? 'text-ops-red' : w.tone === 'warn' ? 'text-ops-amber' : 'text-ops-text'}>{w.text}</span>
-          <span className="flex shrink-0 gap-2">
-            {w.site && (
-              <button type="button" className="text-ops-cyan hover:underline" onClick={() => onSite(w.site!)}>
-                site
+      {items.map((w, i) => {
+        const tone = w.tone === 'bad' ? 'text-ops-red' : w.tone === 'warn' ? 'text-ops-amber' : 'text-ops-text';
+        const target = w.panel || w.site || w.material;
+        return (
+          <li key={i} className="flex items-start justify-between gap-2 px-3 py-1.5">
+            {target ? (
+              <button type="button" className={`min-w-0 text-left hover:underline ${tone}`} onClick={() => go(w)} title="Go to the fix">
+                {w.text}
               </button>
+            ) : (
+              <span className={tone}>{w.text}</span>
             )}
-            {w.material && (
-              <button type="button" className="text-ops-cyan hover:underline" onClick={() => onMaterial(w.material!)}>
-                chain
-              </button>
-            )}
-          </span>
-        </li>
-      ))}
+            <span className="flex shrink-0 gap-2">
+              {w.site && w.panel && (
+                <button type="button" className="text-ops-cyan hover:underline" onClick={() => onSite(w.site!)}>
+                  site
+                </button>
+              )}
+              {w.material && (
+                <button type="button" className="text-ops-cyan hover:underline" onClick={() => onMaterial(w.material!)}>
+                  chain
+                </button>
+              )}
+              {target && <span className="text-ops-cyan" aria-hidden="true">›</span>}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

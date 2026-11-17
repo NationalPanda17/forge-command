@@ -8,11 +8,12 @@ import { int, money, pct, qty } from '../ui/format';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { recordScore } from './scores';
 import { useMemo } from 'react';
+import { canSecondTerm } from '../sim/commitments';
 import { monthLabel2 } from './useSim';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
 
-export default function TermReport({ state, onClose, onMenu }: { state: SimState; onClose: () => void; onMenu: () => void }) {
+export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { state: SimState; onClose: () => void; onMenu: () => void; onSecondTerm?: () => void }) {
   const r = termReport(state);
   const board = useMemo(() => recordScore(state), [state]);
   const rank = board.findIndex((e) => e.key.startsWith(`${state.seed}-${state.scenario}-${state.difficulty}-${state.day}-`)) + 1;
@@ -32,7 +33,7 @@ export default function TermReport({ state, onClose, onMenu }: { state: SimState
           <div className="min-w-0">
             <div className="label">{state.mode === 'sandbox' ? 'Sandbox · ' : ''}{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
             <h2 id="term-title" className="font-sans text-2xl font-bold tracking-[0.12em] text-white">
-              {state.outcome === 'dismissed' ? 'Dismissed' : 'Term complete'}
+              {state.outcome === 'dismissed' ? 'Dismissed' : (state.term ?? 1) > 1 ? `Term ${state.term} complete` : 'Term complete'}
             </h2>
             <p className="text-ops-dim">{state.outcome === 'dismissed' ? 'The Defence Committee lost confidence in you.' : 'Your term as Director of the Munitions Production Board is over.'}</p>
           </div>
@@ -101,6 +102,11 @@ export default function TermReport({ state, onClose, onMenu }: { state: SimState
 
         <div className="flex flex-wrap justify-end gap-2">
           <Btn onClick={onClose}>Look at the map</Btn>
+          {onSecondTerm && canSecondTerm(state) === null && (
+            <Btn kind="warn" onClick={onSecondTerm} title="Carry on with everything you built and every round you leave in the depots">
+              Serve a second term
+            </Btn>
+          )}
           <Btn kind="primary" onClick={onMenu}>
             Main menu
           </Btn>
