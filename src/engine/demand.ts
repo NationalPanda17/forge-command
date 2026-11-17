@@ -251,7 +251,7 @@ export function resolveDemand(state: GameState): DemandResult {
     }
     if (unfired > 0.5 && weighted.length) {
       state.reserves[weighted[0].line].unmet += Math.round(unfired);
-      messages.push({ tone: 'bad', text: `${Math.round(unfired)} shots against ${threatPlural(t)} could not be fired: the depots were empty and airlift could not cover the gap.` });
+      messages.push({ tone: 'bad', text: `${Math.round(unfired)} shot${Math.round(unfired) === 1 ? '' : 's'} against ${threatPlural(t)} could not be fired: the depots were empty and airlift could not cover the gap.` });
     }
   }
 
