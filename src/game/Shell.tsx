@@ -1,5 +1,5 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import MapView, { DEFAULT_LAYERS, MapLayerToggles, MapLegend, type MapLayers, type MapMarker, type MapShipment } from '../ui/map/MapView';
 import { readiness } from '../sim/selectors';
 import type { SimState } from '../sim/types';
@@ -59,13 +59,15 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
       if (e.key === ' ') {
         e.preventDefault();
-        setSpeed(speed === 0 ? 1 : 0);
+        setSpeed(speed === 0 ? lastSpeed.current : 0);
       } else if (['1', '2', '3', '4'].includes(e.key)) setSpeed(([1, 2, 4, 8] as Speed[])[Number(e.key) - 1]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [speed, setSpeed]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
+  const lastSpeed = useRef<Speed>(1);
+  if (speed > 0) lastSpeed.current = speed;
 
   const markers = useMemo(() => markersFor(state), [state]);
   const shipments: MapShipment[] = useMemo(
@@ -139,7 +141,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           </span>
           <span className="flex gap-1">
             {state.alert.site && <Btn onClick={() => select(state.alert!.site!)}>Show</Btn>}
-            <Btn kind="primary" onClick={() => setSpeed(1)}>
+            <Btn kind="primary" onClick={() => setSpeed(lastSpeed.current)}>
               Resume
             </Btn>
           </span>
