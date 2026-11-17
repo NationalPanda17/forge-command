@@ -23,7 +23,7 @@ export interface CostExchangeRow {
 }
 
 export function costExchange(state: GameState): CostExchangeRow[] {
-  return LINE_IDS.filter((id) => LINES[id].family === 'air').map((id) => {
+  return LINE_IDS.filter((id) => LINES[id].family === 'air' && (state.lines[id].tranches.length > 0 || state.reserves[id].used > 0)).map((id) => {
     const r = state.reserves[id];
     const spend = r.used * LINES[id].unitCost;
     return { line: id, made: r.made, used: r.used, spend, stopped: r.valueStopped, ratio: spend > 0 ? r.valueStopped / spend : 0 };

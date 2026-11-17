@@ -1,16 +1,21 @@
 // Derived values. Pure reads of GameState, shared by the engine, the advisor and the UI.
+import { pressureOf, rulesOf } from './rules';
 import {
   BASE_BAYS_PER_LINE,
+  FACILITIES,
+  FACILITY_IDS,
+  FAI_MONTHS,
+  INVEST_STEP,
+  tier2For,
+  NEW_TRANCHE_MATURITY,
   CAMPUSES,
   COMPONENTS,
-  DIFFICULTY,
   LINES,
   LINE_IDS,
   PREMIUM_WAGE,
   RUN_CREW,
   RUN_FACTOR,
   RUN_OVERHEAD,
-  SCENARIOS,
   STORAGE_RATE,
   SUPPLIERS,
   THREATS,
@@ -19,13 +24,50 @@ import {
   linesAt,
   suppliersOf,
 } from './data';
-import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ReserveState } from './types';
+import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ResearchId, ReserveState, ThreatId, Tranche } from './types';
+
+/** New capacity: first-article inspection first, then ramp-up from about 30%. */
+export const newTranche = (state: GameState, capacity: number): Tranche => ({
+  capacity,
+  maturity: NEW_TRANCHE_MATURITY,
+  base: false,
+  faiMonths: FAI_MONTHS[state.difficulty],
+});
+
+// ---------- Research and established lines ----------
+
+export const hasResearch = (state: GameState, r: ResearchId) => state.research.done.includes(r);
+/** A line exists once its floor has been set up (base lines exist from the start). */
+export const isEstablished = (state: GameState, id: LineId) => state.lines[id].tranches.length > 0;
+export const activeLines = (state: GameState) => LINE_IDS.filter((id) => isEstablished(state, id));
+
+/** Parts per round after research. */
+export function bomOf(state: GameState, id: LineId): Partial<Record<ComponentId, number>> {
+  const out: Partial<Record<ComponentId, number>> = { ...LINES[id].bom };
+  const scale = (c: ComponentId, m: number) => {
+    if (out[c] !== undefined) out[c] = out[c]! * m;
+  };
+  if (hasResearch(state, 'galliumLight')) scale('criticalMaterials', 0.6);
+  if (hasResearch(state, 'commonMotors')) scale('srm', 0.85);
+  if (hasResearch(state, 'imFill')) scale('energetics', 0.9);
+  if (hasResearch(state, 'seekerDTC')) {
+    scale('rfSeeker', 0.8);
+    scale('irSeeker', 0.8);
+  }
+  return out;
+}
+export const testHoursMult = (state: GameState) => (hasResearch(state, 'digitalTest') ? 0.7 : 1);
+export const maxUpgrade = (state: GameState, kind: 'automation' | 'quality') => (kind === 'automation' && hasResearch(state, 'lightsOut') ? 3 : 2);
+/** Share of a threat class that reaches the interceptors after passive defenses. */
+export const passiveFilter = (state: GameState, t: ThreatId) => (t === 'drone' && hasResearch(state, 'hpm') ? 0.8 : 1);
+/** Demand multiplier on a land line's fire missions. */
+export const landEfficiency = (state: GameState, id: LineId) => (id === 'shell155' && hasResearch(state, 'smartFuzes') ? 0.85 : 1);
 
 export const installedCapacity = (line: LineState) => line.tranches.reduce((s, t) => s + t.capacity, 0);
 export const expansions = (line: LineState) => line.tranches.filter((t) => !t.base).length;
 
 export function effectiveCapacity(line: LineState): number {
-  const raw = line.tranches.reduce((s, t) => s + t.capacity * t.maturity, 0);
+  const raw = line.tranches.reduce((s, t) => s + (t.faiMonths > 0 ? 0 : t.capacity * t.maturity), 0);
   return line.installing ? raw * 0.85 : raw;
 }
 
@@ -36,7 +78,7 @@ export function productivity(line: LineState): number {
 }
 
 export function usedBays(state: GameState, campus: CampusId): number {
-  const lines = linesAt(campus).reduce((s, id) => s + BASE_BAYS_PER_LINE + expansions(state.lines[id]), 0);
+  const lines = linesAt(campus).reduce((s, id) => s + (state.lines[id].tranches.length > 0 ? BASE_BAYS_PER_LINE : 0) + expansions(state.lines[id]), 0);
   return lines + state.campuses[campus].retooling.length;
 }
 export const freeBays = (state: GameState, campus: CampusId) => state.campuses[campus].bays - usedBays(state, campus);
@@ -48,8 +90,20 @@ export function crewNeed(state: GameState, id: LineId): number {
   return (def.baseCrew * (installedCapacity(line) / def.baseCapacity) * RUN_CREW[line.run] * auto) / productivity(line);
 }
 
+/** Crew for in-house plants on this campus. */
+export function facilityCrewAt(state: GameState, campus: CampusId): number {
+  let n = 0;
+  for (const f of FACILITY_IDS) {
+    const st = state.facilities[f];
+    if (FACILITIES[f].campus !== campus || st.status !== 'running') continue;
+    const installed = st.tranches.reduce((a, t) => a + t.capacity, 0);
+    n += FACILITIES[f].crew * (installed / FACILITIES[f].baseCap) * (st.run === 'idle' ? 0.15 : 1);
+  }
+  return n;
+}
+
 export const campusCrewNeed = (state: GameState, campus: CampusId) =>
-  linesAt(campus).reduce((s, id) => s + crewNeed(state, id), 0);
+  linesAt(campus).reduce((s, id) => s + crewNeed(state, id), 0) + facilityCrewAt(state, campus);
 
 /** 0..1: share of crew needs the campus can cover this month. */
 export function staffing(state: GameState, campus: CampusId): number {
@@ -70,7 +124,7 @@ export function plannedOutput(state: GameState, id: LineId): number {
 }
 
 export function plannedNeed(state: GameState, c: ComponentId): number {
-  return LINE_IDS.reduce((s, id) => s + plannedOutput(state, id) * (LINES[id].bom[c] ?? 0), 0);
+  return LINE_IDS.reduce((s, id) => s + plannedOutput(state, id) * (bomOf(state, id)[c] ?? 0), 0);
 }
 
 /** What one supplier can ship this month. */
@@ -78,8 +132,9 @@ export function supplierCap(state: GameState, sid: string): number {
   const def = SUPPLIERS[sid];
   const st = state.suppliers[sid];
   if (!st.qualified || st.bankrupt || st.embargoMonths > 0) return 0;
-  const congestion = st.congestionMonths > 0 ? 0.5 : 1;
-  return def.baseCap * DIFFICULTY[state.difficulty].capMult * st.capFactor * congestion;
+  const t = tier2For(def.component);
+  const feed = t && rulesOf(state).shortages ? state.tier2[t].availability : 1;
+  return def.baseCap * (1 + INVEST_STEP * st.capBonus) * rulesOf(state).capMult * st.capFactor * feed;
 }
 
 export const componentCap = (state: GameState, c: ComponentId) =>
@@ -95,13 +150,16 @@ export const backlogOf = (cs: ComponentState) => cs.contracts.reduce((s, k) => s
 
 /** Expected calm-time draw per month (doctrine weights, no crisis). */
 export function calmDraw(state: GameState, id: LineId): number {
-  const pressure = SCENARIOS[state.scenario].pressure;
+  const pressure = pressureOf(state);
   const def = LINES[id];
-  if (def.family === 'land') return (def.landDraw ?? 0) * pressure;
+  if (!isEstablished(state, id)) return 0;
+  if (def.family === 'land') return (def.landDraw ?? 0) * pressure * landEfficiency(state, id);
   let shots = 0;
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
-    for (const a of th.assign) if (a.line === id) shots += th.calm * th.shots * a.weight;
+    const live = th.assign.filter((a) => a.weight > 0 && isEstablished(state, a.line));
+    const wsum = live.reduce((s, a) => s + a.weight, 0);
+    for (const a of live) if (a.line === id) shots += th.calm * passiveFilter(state, t) * th.shots * (a.weight / wsum);
   }
   return shots * pressure;
 }
@@ -110,8 +168,16 @@ export const RESERVE_TARGET_MONTHS = 6;
 export const reserveTarget = (state: GameState, id: LineId) => calmDraw(state, id) * RESERVE_TARGET_MONTHS;
 export const reserveTotal = (r: ReserveState) => r.stock + r.degraded;
 
+/** Every round of a type in the country: central reserve, regional depots and convoys on the road. */
+export function nationalStock(state: GameState, id: LineId): number {
+  let n = reserveTotal(state.reserves[id]);
+  for (const t of Object.values(state.theaters)) n += t.depot[id].full + t.depot[id].degraded;
+  for (const c of state.convoys) if (c.line === id) n += c.full + c.degraded;
+  return n;
+}
+
 export function readiness(state: GameState): number {
-  const parts = LINE_IDS.map((id) => Math.min(1, reserveTotal(state.reserves[id]) / reserveTarget(state, id)));
+  const parts = activeLines(state).map((id) => Math.min(1, nationalStock(state, id) / Math.max(1, reserveTarget(state, id))));
   return parts.reduce((a, b) => a + b, 0) / parts.length;
 }
 
@@ -119,7 +185,7 @@ export function readiness(state: GameState): number {
 export function coverMonths(state: GameState, id: LineId): number {
   const f = state.forecast.draw[id];
   const avg = f.reduce((a, b) => a + b, 0) / Math.max(1, f.length) || calmDraw(state, id);
-  return reserveTotal(state.reserves[id]) / Math.max(0.01, avg);
+  return nationalStock(state, id) / Math.max(0.01, avg);
 }
 
 export function wageBill(state: GameState, campus: CampusId): number {

@@ -19,6 +19,11 @@ export const STEPS: Step[] = [
     text: 'On the right: each interceptor and artillery type, against a goal of 6 months of calm-time draw. Every month, threats arrive and rounds leave the reserve. When a type runs dry, threats get through.',
   },
   {
+    tab: 'map',
+    title: 'The map',
+    text: 'Four regions, each with a depot. Rounds are fired from the local depot first, and convoys refill it every month. When intel warns of a crisis, raise that region\'s stock target so the rounds are there in time.',
+  },
+  {
     tab: 'supply',
     title: 'Supply chain',
     text: 'Seven shared components feed every line. Your starting contracts run out in 9 months and only cover 85% of what the lines need, so sign new ones here. Then look at the suppliers that are not qualified yet: qualifying a second source takes months, so start before trouble hits.',
@@ -26,7 +31,7 @@ export const STEPS: Step[] = [
   {
     tab: 'plants',
     title: 'Plants and lines',
-    text: 'Three campuses, seven lines. Surge for 30% more output (it wears the line and morale), expand into free bays (new capacity ramps up from 30%), retool bays between lines, and install upgrades. Substitute chips let a starved line keep running on lower-grade parts.',
+    text: 'Three campuses, seven lines. Each line is a chain of stages, from motors through guidance and assembly to acceptance test: watch for the bottleneck and widen it. Acceptance shares each campus\'s test cells. Surge for 30% more output, expand into free bays (new capacity is inspected, then ramps up from 30%), retool, and upgrade.',
   },
   {
     tab: 'workforce',
@@ -51,7 +56,7 @@ export const STEPS: Step[] = [
   {
     tab: 'overview',
     title: 'Your move',
-    text: 'The advisor panel suggests moves (one click on Easy, hints on Normal, silence on Hard). Decision cards appear here too. When you are ready, press End month. The Guide tab explains everything in detail.',
+    text: 'There is more: Research licenses new products and better designs, Politics is where you hire key staff and keep the Committee factions on side, and Analytics charts everything. The advisor panel suggests moves (one click on Easy, hints on Normal, silence on Hard). Press End month (or E) when you are ready. The Guide tab explains everything in detail.',
   },
 ];
 

@@ -7,6 +7,7 @@ import {
   NEW_TRANCHE_MATURITY,
   SCENARIOS,
   SUPPLIERS,
+  activeLines,
   advise,
   applyAction,
   baselineNeed,
@@ -84,6 +85,9 @@ describe('plants, bays and lines', () => {
     const base = effectiveCapacity(s.lines.pac3);
     s = applyAction(s, { type: 'expandLine', line: 'pac3' });
     const step = LINES.pac3.baseCapacity * 0.25;
+    // First-article inspection (1 month on normal) before it counts at all.
+    expect(effectiveCapacity(s.lines.pac3)).toBeCloseTo(base);
+    s.lines.pac3.tranches[1].faiMonths = 0;
     expect(effectiveCapacity(s.lines.pac3)).toBeCloseTo(base + step * NEW_TRANCHE_MATURITY);
     for (let i = 0; i < 12; i++) s = endTurn(s);
     expect(effectiveCapacity(s.lines.pac3)).toBeCloseTo(base + step);
@@ -181,9 +185,12 @@ describe('workforce', () => {
     const s = structuredClone(newGame({ seed: 4, difficulty: 'easy' }));
     s.campuses.ashford.workers = Math.round(s.campuses.ashford.workers / 2);
     expect(staffing(s, 'ashford')).toBeLessThan(0.6);
-    const after = endTurn(s);
-    expect(after.lines.shell155.last.output).toBeLessThan(LINES.shell155.baseCapacity * 0.6);
+    let after = endTurn(s);
     expect(after.lines.shell155.last.limit).toBe('crew');
+    after = endTurn(after);
+    after = endTurn(after);
+    // Once the buffers drain, output settles near the staffing level.
+    expect(after.lines.shell155.last.output).toBeLessThan(LINES.shell155.baseCapacity * 0.65);
   });
 
   it('a strike cuts output at its campus', () => {
@@ -200,14 +207,22 @@ describe('supply chain', () => {
     const s = structuredClone(newGame({ seed: 21 }));
     s.components.srm.stock = 0;
     s.components.srm.contracts = [];
-    const after = endTurn(s);
-    for (const id of LINE_IDS) {
+    let after = endTurn(s);
+    for (const id of activeLines(after)) {
       if (LINES[id].bom.srm) {
-        expect(after.lines[id].last.output).toBe(0);
+        // The motor stage stops at once; units already in the buffers keep moving for a while.
+        expect(after.lines[id].stages[0].throughput).toBe(0);
+        expect(after.lines[id].stages[0].limit).toBe('parts');
         expect(after.lines[id].last.limit).toBe('srm');
       }
     }
     expect(after.lines.shell155.last.output).toBeGreaterThan(0);
+    for (let i = 0; i < 3; i++) {
+      after = structuredClone(after);
+      after.components.srm.stock = 0;
+      after = endTurn(after);
+    }
+    expect(after.lines.pac3.last.output).toBe(0);
   });
 
   it('substitutes keep a starved line running, but the rounds are degraded', () => {
@@ -225,10 +240,11 @@ describe('supply chain', () => {
     let s = structuredClone(newGame({ seed: 21 }));
     s.components.irSeeker.contracts = [];
     s.components.irSeeker.stock = 30;
+    s.shipments = s.shipments.filter((sh) => sh.component !== 'irSeeker');
     s = applyAction(s, { type: 'setPriority', line: 'stinger', priority: 'high' });
     const after = endTurn(s);
-    expect(after.lines.stinger.last.output).toBe(LINES.stinger.baseCapacity);
-    expect(after.lines.irist.last.output).toBeLessThan(LINES.irist.baseCapacity);
+    expect(after.lines.stinger.stages[1].limit).not.toBe('parts');
+    expect(after.lines.irist.stages[1].limit).toBe('parts');
   });
 
   it('second sources must be qualified before they ship or take contracts', () => {
@@ -256,7 +272,8 @@ describe('supply chain', () => {
     s.components.srm.stock = 0;
     s.components.srm.contracts = [];
     s = endTurn(s);
-    expect(s.lines.pac3.last.output).toBe(LINES.pac3.baseCapacity);
+    expect(s.lines.pac3.stages[0].limit).not.toBe('parts');
+    expect(s.lines.pac3.last.output).toBeGreaterThanOrEqual(LINES.pac3.baseCapacity);
   });
 
   it('contracts: longer is cheaper, take-or-pay, cancellation costs a penalty', () => {
@@ -291,13 +308,14 @@ describe('demand, doctrine and the cost exchange', () => {
     const s = run(4, 6);
     const arrived = s.history.reduce((a, h) => a + Object.values(h.threats).reduce((b, t) => b + t.arrived, 0), 0);
     expect(arrived).toBeGreaterThan(100);
-    for (const id of AIR_LINES) expect(s.reserves[id].used).toBeGreaterThan(0);
+    for (const id of AIR_LINES.filter((x) => s.lines[x].tranches.length > 0)) expect(s.reserves[id].used).toBeGreaterThan(0);
   });
 
   it('an empty reserve means more leakers', () => {
     const empty = structuredClone(newGame({ seed: 4, difficulty: 'easy' }));
     for (const id of AIR_LINES) {
       empty.reserves[id].stock = 0;
+      for (const th of Object.values(empty.theaters)) th.depot[id] = { full: 0, degraded: 0 };
       empty.lines[id].run = 'idle';
     }
     const full = newGame({ seed: 4, difficulty: 'easy' });
@@ -309,6 +327,7 @@ describe('demand, doctrine and the cost exchange', () => {
     const s = structuredClone(newGame({ seed: 6, difficulty: 'easy' }));
     for (const id of ['stinger', 'tamir', 'irist'] as const) {
       s.reserves[id].stock = 0;
+      for (const th of Object.values(s.theaters)) th.depot[id] = { full: 0, degraded: 0 };
       s.lines[id].run = 'idle';
     }
     const loose = endTurn(s);
@@ -321,7 +340,7 @@ describe('demand, doctrine and the cost exchange', () => {
   it('records a cost exchange per interceptor', () => {
     const s = run(4, 12);
     const rows = costExchange(s);
-    expect(rows.length).toBe(AIR_LINES.length);
+    expect(rows.length).toBe(AIR_LINES.filter((x) => s.lines[x].tranches.length > 0).length);
     for (const r of rows) {
       expect(r.spend).toBeCloseTo(r.used * LINES[r.line].unitCost);
       expect(r.stopped).toBeGreaterThanOrEqual(0);

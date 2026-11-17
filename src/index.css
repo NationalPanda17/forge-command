@@ -76,3 +76,9 @@ body {
 input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .bar { @apply h-1.5 overflow-hidden rounded-sm bg-ops-line/70; }
 .bar > span { @apply block h-full; }
+
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.ticker { animation: ticker linear infinite; }
+@media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
+
+html.rm *, html.rm *::before, html.rm *::after { animation: none !important; transition: none !important; }

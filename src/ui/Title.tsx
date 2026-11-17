@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { DIFFICULTY, SCENARIOS, newGame, seedFrom, type Difficulty, type GameState, type ScenarioId } from '../engine';
+import { DIFFICULTY, SCENARIOS, newGame, seedFrom, type CustomRules, type Difficulty, type GameState, type Modifier, type ScenarioId } from '../engine';
+import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { Btn } from './kit';
 import { SLOTS, describeSave, importSave, loadAutosave, loadSlot } from './saves';
 
@@ -9,6 +10,26 @@ export default function Title({ onStart, onCancel }: { onStart: (s: GameState, f
   const [months, setMonths] = useState(48);
   const [seed, setSeed] = useState(() => String(Math.floor(Math.random() * 1e6)));
   const [error, setError] = useState<string | null>(null);
+  const [mods, setMods] = useState<Modifier[]>([]);
+  const [sandbox, setSandbox] = useState(false);
+  const [custom, setCustom] = useState<CustomRules>({ treasuryMult: 1, budgetMult: 1, pressureMult: 1, crisisMult: 1, eventMult: 1, reserveMonths: 3, allResearch: false });
+  const got = loadAchievements();
+  const toggle = (m: Modifier) => setMods((x) => (x.includes(m) ? x.filter((y) => y !== m) : [...x, m]));
+  const startDaily = () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const ids = Object.keys(SCENARIOS) as ScenarioId[];
+    const sc = ids[seedFrom(day) % ids.length];
+    onStart(newGame({ seed: seedFrom(`daily-${day}`), difficulty: 'normal', scenario: sc, months: 48, modifiers: ['ironman'] }), true);
+  };
+  const slider = (key: keyof Omit<CustomRules, 'allResearch'>, label: string, min: number, max: number, step: number, fmt: (v: number) => string) => (
+    <label className="block text-[11px]">
+      <span className="flex justify-between">
+        <span className="text-ops-dim">{label}</span>
+        <span className="text-white">{fmt(custom[key])}</span>
+      </span>
+      <input type="range" className="w-full accent-cyan-400" min={min} max={max} step={step} value={custom[key]} onChange={(e) => setCustom({ ...custom, [key]: Number(e.target.value) })} />
+    </label>
+  );
   const file = useRef<HTMLInputElement>(null);
   const auto = loadAutosave();
 
@@ -81,8 +102,51 @@ export default function Title({ onStart, onCancel }: { onStart: (s: GameState, f
               <input className="input w-full" value={seed} onChange={(e) => setSeed(e.target.value)} />
             </label>
           </div>
-          <div className="flex justify-end">
-            <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={() => onStart(newGame({ seed: seedFrom(seed.trim() || '0'), difficulty, scenario, months }), true)}>
+          <div>
+            <div className="label mb-2">Challenge modifiers</div>
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  ['ironman', 'Ironman', 'One autosave. No loading slots, no going back.'],
+                  ['austerity', 'Austerity', 'The budget is 20% smaller, every year.'],
+                  ['embargoWorld', 'Embargo world', 'Export bans three times as often; suppliers stumble more.'],
+                  ['endless', 'Endless', 'No end date. How long can you last?'],
+                ] as [Modifier, string, string][]
+              ).map(([m, name, tip]) => (
+                <Btn key={m} pressed={mods.includes(m)} title={tip} onClick={() => toggle(m)}>
+                  {name}
+                </Btn>
+              ))}
+            </div>
+          </div>
+          <div>
+            <button type="button" className="label hover:text-ops-text" aria-expanded={sandbox} onClick={() => setSandbox((x) => !x)}>
+              {sandbox ? '▾' : '▸'} Sandbox: custom rules {sandbox ? '(on: achievements are off)' : ''}
+            </button>
+            {sandbox && (
+              <div className="mt-2 grid gap-3 rounded border border-ops-line/60 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                {slider('treasuryMult', 'Starting treasury', 0.25, 4, 0.25, (v) => `×${v}`)}
+                {slider('budgetMult', 'Monthly budget', 0.5, 2, 0.05, (v) => `×${v.toFixed(2)}`)}
+                {slider('pressureMult', 'Threat pressure', 0.5, 2, 0.05, (v) => `×${v.toFixed(2)}`)}
+                {slider('crisisMult', 'Crisis frequency', 0, 3, 0.25, (v) => `×${v}`)}
+                {slider('eventMult', 'Event frequency', 0, 3, 0.25, (v) => `×${v}`)}
+                {slider('reserveMonths', 'Starting reserve', 0, 8, 1, (v) => `${v} months`)}
+                <label className="flex items-center gap-2 text-[11px]">
+                  <input type="checkbox" checked={custom.allResearch} onChange={(e) => setCustom({ ...custom, allResearch: e.target.checked })} />
+                  <span className="text-ops-dim">All research done from the start</span>
+                </label>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Btn className="px-4 py-2 text-[12px]" title="Same world for everyone today. Normal difficulty, ironman." onClick={startDaily}>
+              Daily challenge
+            </Btn>
+            <Btn
+              kind="primary"
+              className="px-5 py-2 text-[13px]"
+              onClick={() => onStart(newGame({ seed: seedFrom(seed.trim() || '0'), difficulty, scenario, months, modifiers: mods, custom: sandbox ? custom : null }), true)}
+            >
               Take command →
             </Btn>
           </div>
@@ -117,6 +181,26 @@ export default function Title({ onStart, onCancel }: { onStart: (s: GameState, f
           />
           {error && <p className="w-full text-[11px] text-ops-red">{error}</p>}
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-title">
+          <span>Achievements</span>
+          <span className="label normal-case tracking-normal">
+            {Object.keys(got).length} of {ACHIEVEMENTS.length}
+          </span>
+        </div>
+        <ul className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ACHIEVEMENTS.map((a) => (
+            <li key={a.id} className={`rounded border p-2 text-[11px] ${got[a.id] ? 'border-ops-amber/60' : 'border-ops-line/50 opacity-60'}`}>
+              <div className={got[a.id] ? 'text-ops-amber' : 'text-ops-text'}>
+                {got[a.id] ? '★ ' : '☆ '}
+                {a.name}
+              </div>
+              <div className="text-[10px] text-ops-dim">{a.text}</div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <p className="pb-6 text-center text-[10px] text-ops-dim">

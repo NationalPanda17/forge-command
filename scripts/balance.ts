@@ -13,7 +13,7 @@ export function advisorPolicy(s: GameState): Action[] {
 const idle = (s: GameState): Action[] => s.decisions.map((d) => ({ type: 'resolveDecision', decision: d.id, option: d.fallback }) as Action);
 const mode = process.argv.includes('idle') ? 'idle' : 'advisor';
 
-for (const difficulty of ['easy', 'normal', 'hard'] as Difficulty[]) {
+if (!process.env.NO_MAIN) for (const difficulty of ['easy', 'normal', 'hard'] as Difficulty[]) {
   for (const scenario of ['standard', 'brokenChain', 'longWar', 'rebuild'] as ScenarioId[]) {
     for (const seed of [1, 2]) {
       let s = newGame({ seed, difficulty, scenario });

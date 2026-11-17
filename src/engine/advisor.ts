@@ -1,6 +1,7 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
-import { expandCost, qualifyCost, reworkCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, SUPPLIERS, suppliersOf } from './data';
+import {  rulesOf } from './rules';
+import { debottleneckCost, establishCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, STAFF_ROLES, STAFF_ROLE_IDS, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -11,6 +12,7 @@ import {
   plannedNeed,
   supplierCap,
 } from './selectors';
+import { loanQty } from './logistics';
 import type { Action, GameState } from './types';
 
 export interface Advice {
@@ -36,7 +38,7 @@ export function advise(state: GameState): Advice[] {
     if (need <= 0) continue;
     const live = cs.contracts.reduce((t, k) => t + (k.monthsLeft > 1 ? k.qtyPerMonth : 0), 0);
     const cap = componentCap(state, c);
-    if (live < need * 0.75 && DIFFICULTY[state.difficulty].shortages) {
+    if (live < need * 0.75 && rulesOf(state).shortages) {
       const options = suppliersOf(c)
         .filter((sid) => state.suppliers[sid].qualified && !state.suppliers[sid].bankrupt)
         .map((sid) => ({ sid, free: supplierCap(state, sid) - contractedPerMonth(cs, sid) }))
@@ -67,7 +69,7 @@ export function advise(state: GameState): Advice[] {
         actionLabel: 'Allow substitute',
       });
     }
-    if (cap < need * 0.95 && DIFFICULTY[state.difficulty].shortages) {
+    if (cap < need * 0.95 && rulesOf(state).shortages) {
       const cand = suppliersOf(c).find((sid) => !state.suppliers[sid].qualified && !state.suppliers[sid].bankrupt && state.suppliers[sid].qualifyingMonths === null);
       const qualifying = suppliersOf(c).some((sid) => state.suppliers[sid].qualifyingMonths !== null);
       if (cand && !qualifying) {
@@ -84,7 +86,7 @@ export function advise(state: GameState): Advice[] {
   }
 
   // Reserve versus forecast.
-  for (const id of LINE_IDS) {
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
     const line = state.lines[id];
     const cover = coverMonths(state, id);
     if (cover < 2 && line.run !== 'surge' && line.wear < 55) {
@@ -111,6 +113,58 @@ export function advise(state: GameState): Advice[] {
     }
   }
 
+  // Factory floor: test cells and stage bottlenecks.
+  for (const c of CAMPUS_IDS) {
+    const cs = state.campuses[c];
+    const t = cs.lastTestHours;
+    if (t.avail > 0 && t.need > t.avail * 1.02 && cs.testCellBuilds.length === 0) {
+      const action: Action = { type: 'buildTestCell', campus: c };
+      out.push({
+        id: `testcell-${c}`,
+        tone: t.need > t.avail * 1.15 ? 'urgent' : 'suggest',
+        text: `Acceptance testing at ${CAMPUSES[c].name} needs ${Math.round(t.need)} test-cell hours a month and has ${Math.round(t.avail)}. Finished rounds are queuing for test.`,
+        action: ok(action) ? action : undefined,
+        actionLabel: `Build test cell ($${testCellCost(c)}M)`,
+      });
+    }
+  }
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
+    const line = state.lines[id];
+    if (line.run === 'idle' || line.debottlenecking || coverMonths(state, id) > 4) continue;
+    const st = line.stages;
+    for (let i = 0; i < st.length - 1; i++) {
+      if (st[i].limit === 'capacity' && st[i + 1].limit === 'starved' && st[i].throughput > 0) {
+        const action: Action = { type: 'debottleneck', line: id, stage: i };
+        if (ok(action) && state.treasury > debottleneckCost(id) + 100) {
+          out.push({
+            id: `debottleneck-${id}`,
+            tone: 'suggest',
+            text: `${STAGES[id][i].name} is the slowest step on the ${LINES[id].name} line: the next stage sits waiting. Widen it.`,
+            action,
+            actionLabel: `Widen +20% ($${debottleneckCost(id)}M)`,
+          });
+        }
+        break;
+      }
+    }
+  }
+  for (const f of FACILITY_IDS) {
+    const def = FACILITIES[f];
+    if (state.facilities[f].status !== 'none') continue;
+    const troubled = suppliersOf(def.component).some(
+      (sid) => state.suppliers[sid].qualified && (state.suppliers[sid].embargoMonths > 0 || state.suppliers[sid].shockMonths > 0 || state.suppliers[sid].health < 35),
+    );
+    if (troubled && state.treasury > def.buildCost + 250) {
+      out.push({
+        id: `facility-${f}`,
+        tone: 'info',
+        text: `${COMPONENTS[def.component].name} keep running short. Building ${def.name} would make you independent of suppliers for part of your needs.`,
+        action: { type: 'buildFacility', facility: f },
+        actionLabel: `Build ($${def.buildCost}M)`,
+      });
+    }
+  }
+
   // Workforce.
   for (const c of CAMPUS_IDS) {
     const cs = state.campuses[c];
@@ -120,13 +174,69 @@ export function advise(state: GameState): Advice[] {
     if (gap > 5) {
       const n = Math.min(gap, cs.pool);
       const action: Action = { type: 'hire', campus: c, count: n };
-      out.push({ id: `hire-${c}`, tone: cs.workers < need * 0.9 ? 'urgent' : 'suggest', text: `${CAMPUSES[c].name} is short ${gap} workers for the current plan. Training takes ${DIFFICULTY[state.difficulty].trainingMonths} months.`, action: n > 0 && ok(action) ? action : undefined, actionLabel: `Hire ${n}` });
+      out.push({ id: `hire-${c}`, tone: cs.workers < need * 0.9 ? 'urgent' : 'suggest', text: `${CAMPUSES[c].name} is short ${gap} workers for the current plan. Training takes ${rulesOf(state).trainingMonths} months.`, action: n > 0 && ok(action) ? action : undefined, actionLabel: `Hire ${n}` });
     }
     if (cs.morale < 40) {
       out.push({ id: `morale-${c}`, tone: 'urgent', text: `Morale at ${CAMPUSES[c].name} is ${Math.round(cs.morale)}. Strikes are possible. Ease off surge shifts or pay premium wages.`, action: cs.wage === 'standard' ? { type: 'setWage', campus: c, wage: 'premium' } : undefined, actionLabel: 'Premium wages' });
     }
     if (freeBays(state, c) === 0 && !cs.construction.length) {
-      out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${DIFFICULTY[state.difficulty].buildMonths} months.` });
+      out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${rulesOf(state).buildMonths} months.` });
+    }
+  }
+
+  // Logistics: stock the region a crisis is heading for, keep convoys moving, borrow in a pinch.
+  const c = state.crisis;
+  if (c && state.theaters[c.theater].targetMonths < 3) {
+    out.push({
+      id: 'depot-crisis',
+      tone: c.phase === 'warning' ? 'urgent' : 'suggest',
+      text: `The ${c.name} will hit ${THEATERS[c.theater].name}. Raise that depot's stock target so convoys move rounds there before they are needed.`,
+      action: { type: 'setDepotTarget', theater: c.theater, months: 3 },
+      actionLabel: 'Target 3 months',
+    });
+  }
+  if (!c) {
+    for (const th of THEATER_IDS) {
+      if (state.theaters[th].targetMonths > DEFAULT_DEPOT_MONTHS) {
+        out.push({ id: `depot-calm-${th}`, tone: 'info', text: `${THEATERS[th].name} is quiet again. A lower depot target frees convoys and stock for elsewhere.`, action: { type: 'setDepotTarget', theater: th, months: DEFAULT_DEPOT_MONTHS }, actionLabel: `Back to ${DEFAULT_DEPOT_MONTHS} months` });
+        break;
+      }
+    }
+  }
+  const last = state.history.at(-1);
+  if (last && last.messages.some((m) => m.text.startsWith('Convoys ran at full capacity')) && validateAction(state, { type: 'buyTransport' }) === null) {
+    out.push({ id: 'transport', tone: 'suggest', text: 'Convoys are running at full capacity. More rail wagons and trucks would keep the depots stocked.', action: { type: 'buyTransport' }, actionLabel: `+${TRANSPORT_STEP} t ($${TRANSPORT_COST}M)` });
+  }
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
+    if (coverMonths(state, id) >= 0.8) continue;
+    const p = PARTNER_IDS.find((q) => validateAction(state, { type: 'requestLoan', partner: q, line: id }) === null);
+    if (p) {
+      out.push({ id: `loan-${id}`, tone: 'urgent', text: `${LINES[id].name} is nearly gone. ${PARTNERS[p].name} could lend you ${loanQty(id).toLocaleString('en-US')} now, repaid from production later.`, action: { type: 'requestLoan', partner: p, line: id }, actionLabel: 'Ask for a loan' });
+      break;
+    }
+  }
+
+  // Staff: fill empty posts with the best candidate you can afford.
+  for (const role of STAFF_ROLE_IDS) {
+    if (state.staff[role]) continue;
+    const best = state.candidates.filter((c) => c.role === role).sort((a, b) => b.skill - a.skill || a.salary - b.salary)[0];
+    if (best && state.treasury > 150 && validateAction(state, { type: 'hireStaff', candidate: best.id }) === null) {
+      out.push({ id: `staff-${role}`, tone: 'suggest', text: `Nobody is ${STAFF_ROLES[role].title}. ${best.name} (skill ${best.skill}) is available: ${STAFF_ROLES[role].effect(best.skill).toLowerCase()}.`, action: { type: 'hireStaff', candidate: best.id }, actionLabel: `Hire ${best.name.split(' ')[0]}` });
+      break;
+    }
+  }
+
+  // Research: keep the engineers busy.
+  if (!state.research.active && state.treasury > 250) {
+    const order: (keyof typeof RESEARCH)[] = ['galliumLight', 'apkws', 'digitalTest', 'rapidQual', 'commonMotors', 'yieldAnalytics', 'imFill', 'leanAssembly', 'seekerDTC', 'javelin', 'coyote', 'smartFuzes', 'lightsOut', 'hpm'];
+    const next = order.find((r) => validateAction(state, { type: 'startResearch', research: r }) === null);
+    if (next) {
+      out.push({ id: 'research', tone: 'info', text: `Your engineers are idle. Next up could be ${RESEARCH[next].name}: ${RESEARCH[next].effect}`, action: { type: 'startResearch', research: next }, actionLabel: `Start ($${RESEARCH[next].cost}M)` });
+    }
+  }
+  for (const id of LINE_IDS) {
+    if (state.lines[id].tranches.length === 0 && validateAction(state, { type: 'establishLine', line: id }) === null && state.treasury > establishCost(id) + 200) {
+      out.push({ id: `establish-${id}`, tone: 'suggest', text: `${LINES[id].name} is ready to build. Set up the line at ${CAMPUSES[LINES[id].campus].name}.`, action: { type: 'establishLine', line: id }, actionLabel: `Set up ($${establishCost(id)}M)` });
     }
   }
 

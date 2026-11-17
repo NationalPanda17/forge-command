@@ -18,6 +18,19 @@ import type {
   ThreatDef,
   ThreatId,
   Family,
+  FacilityDef,
+  FacilityId,
+  StageDef,
+  Tier2Def,
+  Tier2Id,
+  ResearchDef,
+  ResearchId,
+  TheaterDef,
+  TheaterId,
+  StaffRole,
+  Quirk,
+  FactionId,
+  ExportPolicy,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -162,6 +175,27 @@ export const LINES: Record<LineId, LineDef> = {
     bom: { shellBodies: 1, energetics: 0.011 }, landDraw: 16500,
     blurb: 'The ammunition of attrition. Volume is everything.',
   },
+  apkws: {
+    id: 'apkws', name: 'APKWS', maker: 'BAE Systems', campus: 'northgate', family: 'air', role: 'Laser-guided rocket, against drones',
+    baseCapacity: 400, publicRate: 'about 25,000 per year (stated goal)', unitCost: 0.03, overhead: 1.2, baseCrew: 260, expandCost: 30,
+    bom: { srm: 0.3, energetics: 0.005, microelectronics: 2, criticalMaterials: 0.05 },
+    blurb: 'A guidance kit turns a cheap unguided rocket into a drone killer that costs about what the drone does.',
+    research: 'apkws',
+  },
+  coyote: {
+    id: 'coyote', name: 'Coyote Block 2', maker: 'RTX', campus: 'corran', family: 'air', role: 'Interceptor drone, against drones and cruise missiles',
+    baseCapacity: 25, publicRate: 'about 1,500 per year', unitCost: 0.11, overhead: 0.8, baseCrew: 220, expandCost: 40,
+    bom: { srm: 0.2, rfSeeker: 0.5, energetics: 0.003, microelectronics: 2, criticalMaterials: 0.2 },
+    blurb: 'A jet-powered interceptor drone: cheaper than a missile, faster than a drone.',
+    research: 'coyote',
+  },
+  javelin: {
+    id: 'javelin', name: 'Javelin', maker: 'Javelin Joint Venture (Lockheed Martin, RTX)', campus: 'ashford', family: 'land', role: 'Anti-armor missile',
+    baseCapacity: 66, publicRate: '3,960 per year (stated goal)', unitCost: 0.2, overhead: 1.5, baseCrew: 300, expandCost: 45,
+    bom: { srm: 0.5, irSeeker: 1.5, energetics: 0.008, microelectronics: 3, criticalMaterials: 0.8 }, landDraw: 40,
+    blurb: 'Fire-and-forget anti-armor. Land offensives burn through them.',
+    research: 'javelin',
+  },
 };
 
 export const LINE_IDS = Object.keys(LINES) as LineId[];
@@ -175,6 +209,8 @@ export const THREATS: Record<ThreatId, ThreatDef> = {
   drone: {
     id: 'drone', name: 'One-way attack drone', estCost: 0.035, shots: 1.2, severity: 0.15, calm: 14,
     assign: [
+      { line: 'apkws', weight: 0.5, pk: 0.8 },
+      { line: 'coyote', weight: 0.2, pk: 0.9 },
       { line: 'stinger', weight: 0.55, pk: 0.75 },
       { line: 'tamir', weight: 0.35, pk: 0.85 },
       { line: 'irist', weight: 0.1, pk: 0.9 },
@@ -196,6 +232,7 @@ export const THREATS: Record<ThreatId, ThreatDef> = {
     id: 'cruise', name: 'Cruise missile', estCost: 1.5, shots: 1.5, severity: 1, calm: 5,
     assign: [
       { line: 'irist', weight: 0.5, pk: 0.85 },
+      { line: 'coyote', weight: 0.15, pk: 0.7 },
       { line: 'sm6', weight: 0.25, pk: 0.9 },
       { line: 'pac3', weight: 0.25, pk: 0.85 },
       { line: 'tamir', weight: 0, pk: 0.6 },
@@ -233,9 +270,9 @@ export const CHEAP_THREATS: ThreatId[] = ['drone', 'rocket'];
 
 export const PARTNERS: Record<PartnerId, PartnerDef> = {
   varenna: { id: 'varenna', name: 'Republic of Varenna', blurb: 'A coastal republic with a long, exposed shoreline.', wants: ['pac3', 'sm6', 'irist'] },
-  osterholm: { id: 'osterholm', name: 'Kingdom of Osterholm', blurb: 'A northern kingdom rebuilding its air defenses.', wants: ['irist', 'stinger', 'gmlrs'] },
-  sundar: { id: 'sundar', name: 'Sundaric League', blurb: 'An island federation under constant rocket harassment.', wants: ['tamir', 'stinger', 'shell155'] },
-  calder: { id: 'calder', name: 'Free State of Calder', blurb: 'A landlocked ally with a long land border to hold.', wants: ['gmlrs', 'shell155', 'tamir'] },
+  osterholm: { id: 'osterholm', name: 'Kingdom of Osterholm', blurb: 'A northern kingdom rebuilding its air defenses.', wants: ['irist', 'stinger', 'gmlrs', 'javelin'] },
+  sundar: { id: 'sundar', name: 'Sundaric League', blurb: 'An island federation under constant rocket harassment.', wants: ['tamir', 'stinger', 'shell155', 'apkws'] },
+  calder: { id: 'calder', name: 'Free State of Calder', blurb: 'A landlocked ally with a long land border to hold.', wants: ['gmlrs', 'shell155', 'tamir', 'javelin', 'coyote'] },
 };
 export const PARTNER_IDS = Object.keys(PARTNERS) as PartnerId[];
 
@@ -243,18 +280,19 @@ export interface CrisisDef {
   id: string;
   name: string;
   family: Family;
+  theater: TheaterId;
   mix: Partial<Record<ThreatId, number>>;
   blurb: string;
 }
 
 export const CRISES: CrisisDef[] = [
-  { id: 'halvard', name: 'Halvard Strait air campaign', family: 'air', mix: { cruise: 3, ballistic: 2, aircraft: 3, drone: 1.5 }, blurb: 'Waves of aircraft and cruise missiles across the strait.' },
-  { id: 'meric', name: 'Raids on the port of Meric', family: 'air', mix: { rocket: 3, drone: 2, ballistic: 1.5 }, blurb: 'Rockets and drones against the busiest port in the north.' },
-  { id: 'velm', name: 'Drone waves over the Velm Plateau', family: 'air', mix: { drone: 4, cruise: 1.5 }, blurb: 'Night after night of cheap drones, with the odd cruise missile hidden among them.' },
-  { id: 'skerry', name: 'Missile salvos on the Skerry Isles', family: 'air', mix: { ballistic: 3, cruise: 2 }, blurb: 'Ballistic salvos against island air bases.' },
-  { id: 'marches', name: 'Eastern Marches offensive', family: 'land', mix: {}, blurb: 'A grinding offensive along the eastern border.' },
-  { id: 'karrow', name: 'Artillery duel at Karrow Gap', family: 'land', mix: {}, blurb: 'Both sides dig in and trade shells.' },
-  { id: 'riverline', name: 'Riverline counteroffensive', family: 'land', mix: {}, blurb: 'A river crossing that needs every rocket and shell.' },
+  { id: 'halvard', name: 'Halvard Strait air campaign', family: 'air', theater: 'coast', mix: { cruise: 3, ballistic: 2, aircraft: 3, drone: 1.5 }, blurb: 'Waves of aircraft and cruise missiles across the strait.' },
+  { id: 'meric', name: 'Raids on the port of Meric', family: 'air', theater: 'north', mix: { rocket: 3, drone: 2, ballistic: 1.5 }, blurb: 'Rockets and drones against the busiest port in the north.' },
+  { id: 'velm', name: 'Drone waves over the Velm Plateau', family: 'air', theater: 'east', mix: { drone: 4, cruise: 1.5 }, blurb: 'Night after night of cheap drones, with the odd cruise missile hidden among them.' },
+  { id: 'skerry', name: 'Missile salvos on the Skerry Isles', family: 'air', theater: 'isles', mix: { ballistic: 3, cruise: 2 }, blurb: 'Ballistic salvos against island air bases.' },
+  { id: 'marches', name: 'Eastern Marches offensive', family: 'land', theater: 'east', mix: {}, blurb: 'A grinding offensive along the eastern border.' },
+  { id: 'karrow', name: 'Artillery duel at Karrow Gap', family: 'land', theater: 'east', mix: {}, blurb: 'Both sides dig in and trade shells.' },
+  { id: 'riverline', name: 'Riverline counteroffensive', family: 'land', theater: 'north', mix: {}, blurb: 'A river crossing that needs every rocket and shell.' },
 ];
 
 export type AdvisorLevel = 'full' | 'hints' | 'none';
@@ -296,8 +334,8 @@ export const DIFFICULTY: Record<Difficulty, DifficultyRules> = {
   },
   hard: {
     label: 'Hard', blurb: 'Tighter supply, slow ramp-up, frequent events and sabotage, no advisor, and an adaptive opponent with unreliable intel.',
-    shortages: true, rampPerMonth: 0.05, capMult: 0.92, shockChance: 0.035, eventRate: 1.5, crisisChance: 0.11,
-    appropriation: 140, startTreasury: 450, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
+    shortages: true, rampPerMonth: 0.05, capMult: 0.94, shockChance: 0.03, eventRate: 1.4, crisisChance: 0.1,
+    appropriation: 150, startTreasury: 500, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
     advisor: 'none', adaptive: true, intelError: 0.3, sabotage: true,
   },
 };
@@ -323,7 +361,7 @@ export interface ScenarioDef {
 
 export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   standard: { id: 'standard', name: 'Standing Watch', blurb: 'A calm start. Build up before the storms come.', pressure: 1, reserveMonths: 3, budgetMult: 1, treasuryMult: 1, quietMonths: 3 },
-  longWar: { id: 'longWar', name: 'The Long War', blurb: 'An air campaign is already under way, and the pressure never really lets up.', pressure: 1.15, reserveMonths: 4, budgetMult: 1.25, treasuryMult: 1, openingCrisis: 'halvard', quietMonths: 0 },
+  longWar: { id: 'longWar', name: 'The Long War', blurb: 'An air campaign is already under way, and the pressure never really lets up.', pressure: 1.1, reserveMonths: 5, budgetMult: 1.25, treasuryMult: 1, openingCrisis: 'halvard', quietMonths: 0 },
   brokenChain: { id: 'brokenChain', name: 'Broken Chain', blurb: 'The Karsk Federation halts gallium and germanium exports, and Sable Circuit Works is struggling. Find new sources fast.', pressure: 1, reserveMonths: 3, budgetMult: 1.05, treasuryMult: 1.2, embargo: { supplier: 'karskmetals', months: 10 }, shock: { supplier: 'sable', factor: 0.55, months: 6 }, quietMonths: 4 },
   rebuild: { id: 'rebuild', name: 'Empty Racks', blurb: 'Years of neglect left the reserve nearly empty. The money is finally there: spend it well.', pressure: 1, reserveMonths: 1, budgetMult: 1.2, treasuryMult: 1.6, quietMonths: 8 },
 };
@@ -352,6 +390,180 @@ export const UPGRADE: Record<'automation' | 'quality', { name: string; costShare
 export const MAX_UPGRADE = 2;
 export const REWORK_COST_SHARE = 0.15;
 export const MIN_SAFE_TEST_SHARE = 0.03;
+
+// ---------- Factory floor ----------
+
+const motor = (comps: ComponentId[]): StageDef => ({ id: 'motor', name: 'Motor & airframe', mult: 1.15, yield: 0.99, comps });
+const guidance = (comps: ComponentId[]): StageDef => ({ id: 'guidance', name: 'Guidance integration', mult: 1.1, yield: 0.98, comps });
+const assembly: StageDef = { id: 'assembly', name: 'Final assembly', mult: 1.06, yield: 0.995, comps: [] };
+const acceptance = (testHours: number): StageDef => ({ id: 'acceptance', name: 'Acceptance test', mult: 1.25, yield: 0.975, comps: [], testHours });
+
+/** Each line is a chain of stages; units wait in buffers between them. */
+export const STAGES: Record<LineId, StageDef[]> = {
+  pac3: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(28)],
+  sm6: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(42)],
+  tamir: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(1.5)],
+  irist: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(6)],
+  stinger: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(3)],
+  gmlrs: [motor(['srm', 'energetics']), guidance(['microelectronics']), assembly, acceptance(1.2)],
+  apkws: [motor(['srm', 'energetics']), guidance(['microelectronics', 'criticalMaterials']), assembly, acceptance(0.2)],
+  coyote: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(2)],
+  javelin: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(4)],
+  shell155: [
+    { id: 'machining', name: 'Body machining', mult: 1.1, yield: 0.99, comps: ['shellBodies'] },
+    { id: 'fill', name: 'Fill & pack', mult: 1.06, yield: 0.99, comps: ['energetics'] },
+    { id: 'acceptance', name: 'Lot acceptance', mult: 1.3, yield: 0.995, comps: [], testHours: 0.01 },
+  ],
+};
+/** Buffers hold at most this many months of line capacity. */
+export const WIP_MONTHS = 1.5;
+/** Buffers start with this many months of line capacity. */
+export const START_WIP_MONTHS = 0.15;
+export const DEBOTTLENECK_STEP = 0.2;
+export const MAX_DEBOTTLENECK = 2;
+export const DEBOTTLENECK_COST_SHARE = 0.3;
+export const DEBOTTLENECK_MONTHS = 2;
+
+export const TEST_CELL_HOURS = 200;
+export const TEST_CELLS: Record<CampusId, { start: number; cost: number; months: number }> = {
+  corran: { start: 3, cost: 40, months: 4 },
+  northgate: { start: 1, cost: 20, months: 3 },
+  ashford: { start: 3, cost: 25, months: 3 },
+};
+export const FAI_MONTHS: Record<Difficulty, number> = { easy: 0, normal: 1, hard: 2 };
+
+export const FACILITIES: Record<FacilityId, FacilityDef> = {
+  motorWorks: {
+    id: 'motorWorks', name: 'Aldmere Motor Works', campus: 'ashford', component: 'srm',
+    buildCost: 380, baseCap: 150, expandCap: 75, expandCost: 90, maxExpansions: 3, crew: 280,
+    inputs: { energetics: 0.06 }, unitCost: 0.012, overhead: 3,
+    blurb: 'Cast your own solid rocket motors. Expensive and slow to build, but nobody can embargo it, and each motor costs a fraction of the market price.',
+  },
+  arsenalForge: {
+    id: 'arsenalForge', name: 'Arsenal Forge', campus: 'ashford', component: 'shellBodies',
+    buildCost: 200, baseCap: 8000, expandCap: 4000, expandCost: 60, maxExpansions: 3, crew: 220,
+    inputs: {}, unitCost: 0.0005, overhead: 2,
+    blurb: 'A state forge for 155mm shell bodies, so Greystone is no longer the only game in town.',
+  },
+  opticsLab: {
+    id: 'opticsLab', name: 'Northgate Optics Lab', campus: 'northgate', component: 'irSeeker',
+    buildCost: 150, baseCap: 18, expandCap: 9, expandCost: 45, maxExpansions: 2, crew: 120,
+    inputs: { criticalMaterials: 0.6, microelectronics: 0.5 }, unitCost: 0.012, overhead: 1.5,
+    blurb: 'Integrate imaging IR seekers at home instead of shipping them across the strait.',
+  },
+};
+export const FACILITY_IDS = Object.keys(FACILITIES) as FacilityId[];
+
+// ---------- Deep supply chain ----------
+
+/** What your suppliers buy: feedstock markets. */
+export const TIER2: Record<Tier2Id, Tier2Def> = {
+  perchlorate: { id: 'perchlorate', name: 'Ammonium perchlorate', feeds: ['srm'], source: 'Cinder Flats Chemical, the only domestic oxidizer plant', blurb: 'The oxidizer in nearly every solid rocket motor. One plant, one point of failure.' },
+  nitro: { id: 'nitro', name: 'Nitrocellulose & nitramines', feeds: ['energetics'], source: 'Varn River Cellulose and imported cotton linters', blurb: 'Base chemicals for explosive fill and gun propellant.' },
+  steel: { id: 'steel', name: 'Forging billet', feeds: ['shellBodies'], source: 'Domestic steel mills', blurb: 'High-fragmentation steel bar for shell bodies.' },
+  wafers: { id: 'wafers', name: 'Semiconductor wafers', feeds: ['microelectronics', 'rfSeeker'], source: 'A world market dominated by a few foundries', blurb: 'Every guidance board and radar seeker starts as a wafer somewhere else.' },
+  ore: { id: 'ore', name: 'Gallium & germanium concentrates', feeds: ['criticalMaterials'], source: 'Zinc and aluminium smelter by-products, mostly in the Karsk Federation', blurb: 'Recovered in tiny amounts from other metals: supply follows someone else\'s smelters.' },
+  optics: { id: 'optics', name: 'Optical glass & IR crystals', feeds: ['irSeeker'], source: 'Specialist glassworks in the Corvane Union', blurb: 'Germanium windows and lenses for infrared seekers.' },
+};
+export const TIER2_IDS = Object.keys(TIER2) as Tier2Id[];
+export const tier2For = (c: ComponentId): Tier2Id | null => TIER2_IDS.find((t) => TIER2[t].feeds.includes(c)) ?? null;
+
+/** Months a shipment takes from each supplier nation. */
+export const LEAD_TIME: Record<NationId, number> = { aldmere: 0, corvane: 1, ostrel: 2, karsk: 2 };
+/** Components that age: stock beyond this many months of baseline need loses a share each month. */
+export const SHELF_LIFE: Partial<Record<ComponentId, { months: number; loss: number }>> = {
+  srm: { months: 6, loss: 0.04 },
+  energetics: { months: 6, loss: 0.04 },
+};
+export const INVEST_STEP = 0.3;
+export const MAX_INVEST = 2;
+export const INVEST_MONTHS = 8;
+
+// ---------- Research ----------
+
+export const RESEARCH: Record<ResearchId, ResearchDef> = {
+  apkws: { id: 'apkws', name: 'Laser-guided rockets', cost: 60, months: 6, requires: [], effect: 'Unlocks the APKWS line (Northgate).', blurb: 'License guidance kits that turn cheap rockets into drone killers.' },
+  coyote: { id: 'coyote', name: 'Interceptor drones', cost: 90, months: 8, requires: [], effect: 'Unlocks the Coyote Block 2 line (Corran).', blurb: 'Small jet interceptors for drones and slow cruise missiles.' },
+  javelin: { id: 'javelin', name: 'Javelin production licence', cost: 80, months: 6, requires: [], effect: 'Unlocks the Javelin line (Ashford).', blurb: 'Anti-armor missiles for the land war.' },
+  galliumLight: { id: 'galliumLight', name: 'Gallium-light RF modules', cost: 70, months: 8, requires: [], effect: 'Every line uses 40% less gallium and germanium.', blurb: 'Redesigned power amplifiers that need far less of the scarcest materials.' },
+  commonMotors: { id: 'commonMotors', name: 'Common motor cases', cost: 80, months: 9, requires: [], effect: 'Every line uses 15% less rocket motor.', blurb: 'Shared case and nozzle designs cut motor material and waste.' },
+  digitalTest: { id: 'digitalTest', name: 'Digital-twin acceptance', cost: 50, months: 6, requires: [], effect: 'Acceptance tests take 30% fewer test-cell hours.', blurb: 'Simulation replaces much of the time on the test stand.' },
+  rapidQual: { id: 'rapidQual', name: 'Rapid supplier qualification', cost: 30, months: 4, requires: [], effect: 'Qualifying a second source takes half as long.', blurb: 'Shared test data and pre-approved processes.' },
+  imFill: { id: 'imFill', name: 'Insensitive-munition fills', cost: 45, months: 6, requires: [], effect: 'Every line uses 10% less energetics, and energetics keep twice as long.', blurb: 'Safer, longer-lasting explosive fills.' },
+  leanAssembly: { id: 'leanAssembly', name: 'Lean final assembly', cost: 60, months: 6, requires: ['digitalTest'], effect: 'Final assembly runs 15% faster on every line.', blurb: 'Flow lines, kitting and fewer handoffs.' },
+  yieldAnalytics: { id: 'yieldAnalytics', name: 'Yield analytics', cost: 40, months: 5, requires: [], effect: 'Scrap falls by another 30% on every stage.', blurb: 'Statistical process control finds where units go wrong.' },
+  seekerDTC: { id: 'seekerDTC', name: 'Design-to-cost seekers', cost: 90, months: 10, requires: ['galliumLight'], effect: 'Every line uses 20% fewer RF and IR seeker units.', blurb: 'Simpler seekers with fewer parts and fewer rare materials.' },
+  lightsOut: { id: 'lightsOut', name: 'Lights-out cells', cost: 120, months: 10, requires: ['leanAssembly'], effect: 'Allows a third level of automation.', blurb: 'Robotic cells that run through the night.' },
+  smartFuzes: { id: 'smartFuzes', name: 'Precision fuzes for 155mm', cost: 70, months: 8, requires: [], effect: 'Fire missions need 15% fewer shells.', blurb: 'Course-correcting fuzes put more rounds on target.' },
+  hpm: { id: 'hpm', name: 'High-power microwave defense', cost: 200, months: 14, requires: ['coyote'], effect: '20% of drones are stopped before any interceptor is fired.', blurb: 'A directed-energy shield over key sites. Expensive, but it never runs out of rounds.' },
+};
+export const RESEARCH_IDS = Object.keys(RESEARCH) as ResearchId[];
+/** Bays and money needed to set up a new line once its research is done. */
+export const ESTABLISH_COST_SHARE = 3;
+
+// ---------- World and logistics ----------
+
+export const THEATERS: Record<TheaterId, TheaterDef> = {
+  north: { id: 'north', name: 'Northern Ports', threatShare: 0.25, landShare: 0.4, blurb: 'Meric and the northern harbours, the Riverline beyond.' },
+  coast: { id: 'coast', name: 'Halvard Coast', threatShare: 0.3, landShare: 0, blurb: 'Cities and air bases facing the Halvard Strait.' },
+  east: { id: 'east', name: 'Eastern Marches', threatShare: 0.3, landShare: 0.6, blurb: 'The long land border, the Velm Plateau and Karrow Gap.' },
+  isles: { id: 'isles', name: 'Skerry Isles', threatShare: 0.15, landShare: 0, blurb: 'Island air bases far out at sea. Everything arrives by ship.' },
+};
+export const THEATER_IDS = Object.keys(THEATERS) as TheaterId[];
+/** Tonnes per round, for convoy planning. */
+export const WEIGHT: Record<LineId, number> = {
+  pac3: 0.9, sm6: 1.5, tamir: 0.09, irist: 0.09, stinger: 0.016, gmlrs: 0.3, shell155: 0.045, apkws: 0.015, coyote: 0.06, javelin: 0.022,
+};
+export const START_TRANSPORT = 1300;
+export const TRANSPORT_STEP = 300;
+export const TRANSPORT_COST = 35;
+export const MAX_TRANSPORT = START_TRANSPORT + TRANSPORT_STEP * 5;
+/** Share of a depot's shortfall that can be airlifted from the central reserve in time. */
+export const AIRLIFT_SHARE = { air: 0.6, land: 0.35 } as const;
+/** Airlift cost as a share of the round's value. */
+export const AIRLIFT_COST = 0.03;
+export const DEPOT_TARGETS = [0, 1, 1.5, 2, 3] as const;
+export const DEFAULT_DEPOT_MONTHS = 1.5;
+export const RIVAL_NAME = 'Vardan Directorate';
+export const LOAN_GOODWILL = 55;
+export const LOAN_COOLDOWN = 12;
+
+// ---------- People and politics ----------
+
+export const STAFF_ROLES: Record<StaffRole, { title: string; effect: (skill: number) => string }> = {
+  procurement: { title: 'Chief of Procurement', effect: (k) => `Contracts and spot buys ${k * 4}% cheaper` },
+  quality: { title: 'Quality Director', effect: (k) => `Quality faults ${k * 15}% rarer` },
+  logistics: { title: 'Head of Logistics', effect: (k) => `Convoys carry ${k * 10}% more; airlifts ${k * 20}% cheaper` },
+  research: { title: 'Chief Engineer', effect: (k) => `Research projects ${k * 12}% faster` },
+  labor: { title: 'Labour Relations Director', effect: (k) => `Morale +${k * 3} on every campus` },
+};
+export const STAFF_ROLE_IDS = Object.keys(STAFF_ROLES) as StaffRole[];
+export const QUIRKS: Record<Quirk, { name: string; blurb: string }> = {
+  none: { name: 'Steady', blurb: 'No surprises.' },
+  abrasive: { name: 'Abrasive', blurb: 'Gets results, but morale drops 3 on every campus.' },
+  connected: { name: 'Well connected', blurb: 'Old friends abroad: partner goodwill creeps up every month.' },
+  frugal: { name: 'Frugal', blurb: 'Watches every penny. The treasury faction likes that.' },
+  favourite: { name: 'Committee favourite', blurb: 'Popular with the hawks.' },
+};
+/** Fictional names for candidates. */
+export const FIRST_NAMES = ['Mara', 'Tomas', 'Ilse', 'Oren', 'Petra', 'Dag', 'Selin', 'Arvid', 'Noor', 'Calla', 'Bram', 'Ysolde', 'Kai', 'Rhea', 'Lio', 'Hester', 'Juno', 'Fenn', 'Asha', 'Corin'];
+export const LAST_NAMES = ['Venn', 'Hale', 'Oduya', 'Marsk', 'Thorne', 'Kessler', 'Ardent', 'Lund', 'Brask', 'Ferreira', 'Okonkwo-Hart', 'Saelen', 'Drummond', 'Ivarsen', 'Quill', 'Ostrander', 'Mbeki-Lowe', 'Caradoc', 'Halloran', 'Vey'];
+export const SALARY_PER_SKILL = 0.12;
+export const HIRE_MONTHS_SALARY = 3;
+
+export const FACTIONS: Record<FactionId, { name: string; weight: number; wants: string }> = {
+  hawks: { name: 'Defence hawks', weight: 0.3, wants: 'Full racks, few leakers, a strong answer in a crisis.' },
+  treasury: { name: 'Treasury bench', weight: 0.25, wants: 'Staying within budget. Overspending infuriates them.' },
+  regions: { name: 'Regional members', weight: 0.15, wants: 'Jobs at the campuses in their districts. Strikes and layoffs hurt.' },
+  industry: { name: 'Industry caucus', weight: 0.15, wants: 'Buying at home: domestic suppliers and your own plants.' },
+  internationalists: { name: 'Alliance group', weight: 0.15, wants: 'Good relations with partner nations and steady exports.' },
+};
+export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
+export const EXPORT_POLICIES: Record<ExportPolicy, { name: string; blurb: string; tenderRate: number; priceMult: number }> = {
+  restrictive: { name: 'Restrictive', blurb: 'Few export licences. Hawks approve; partners and the alliance group do not.', tenderRate: 0.4, priceMult: 1 },
+  balanced: { name: 'Balanced', blurb: 'Case by case.', tenderRate: 1, priceMult: 1 },
+  open: { name: 'Open', blurb: 'Sell to friends freely: more tenders at better prices, but the hawks worry about the reserve.', tenderRate: 1.8, priceMult: 1.1 },
+};
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */

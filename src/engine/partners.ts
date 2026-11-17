@@ -1,11 +1,16 @@
 // Partner nations: tenders, delivery contracts and goodwill.
-import { LINES, PARTNERS, PARTNER_IDS } from './data';
+import { EXPORT_POLICIES, LINES, PARTNERS, PARTNER_IDS } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import type { GameState, LineId, MonthReport, PartnerContract, Tender } from './types';
+import type { GameState, LineId, MonthReport, PartnerContract, PartnerId, Tender } from './types';
 
-export function spawnTender(state: GameState): Tender {
+/** Lines a partner wants that you actually make. */
+export const wantsOf = (state: GameState, p: PartnerId) => PARTNERS[p].wants.filter((l) => state.lines[l].tranches.length > 0);
+
+export function spawnTender(state: GameState): Tender | null {
   const partner = pick(state, PARTNER_IDS);
-  const line = pick(state, PARTNERS[partner].wants);
+  const wants = wantsOf(state, partner);
+  if (!wants.length) return null;
+  const line = pick(state, wants);
   const def = LINES[line];
   const qty = Math.max(1, Math.round(def.baseCapacity * randRange(state, 0.08, 0.25)));
   const tender: Tender = {
@@ -14,7 +19,7 @@ export function spawnTender(state: GameState): Tender {
     line,
     qtyPerMonth: qty,
     months: randInt(state, 6, 18),
-    unitPrice: Math.round(def.unitCost * randRange(state, 1.15, 1.5) * 10000) / 10000,
+    unitPrice: Math.round(def.unitCost * randRange(state, 1.15, 1.5) * EXPORT_POLICIES[state.exportPolicy].priceMult * 10000) / 10000,
     expires: state.month + 3,
   };
   state.tenders.push(tender);
@@ -23,9 +28,9 @@ export function spawnTender(state: GameState): Tender {
 
 export function maybeSpawnTender(state: GameState, messages: MonthReport['messages']): void {
   state.tenders = state.tenders.filter((t) => t.expires > state.month);
-  if (state.tenders.length < 3 && rand(state) < 0.2) {
+  if (state.tenders.length < 3 && rand(state) < 0.2 * EXPORT_POLICIES[state.exportPolicy].tenderRate) {
     const t = spawnTender(state);
-    messages.push({
+    if (t) messages.push({
       tone: 'info',
       text: `Tender: ${PARTNERS[t.partner].name} wants ${t.qtyPerMonth.toLocaleString('en-US')} ${LINES[t.line].name} a month for ${t.months} months.`,
     });

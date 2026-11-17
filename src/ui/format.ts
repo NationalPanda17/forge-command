@@ -12,6 +12,7 @@ export function money(m: number): string {
   if (a >= 10) return `${sign}$${a.toFixed(0)}M`;
   if (a >= 1) return `${sign}$${a.toFixed(1)}M`;
   if (a >= 0.001) return `${sign}$${(a * 1000).toFixed(0)}K`;
+  if (a >= 0.000001) return `${sign}$${Math.round(a * 1e6)}`;
   return `${sign}$0`;
 }
 

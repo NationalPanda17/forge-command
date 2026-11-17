@@ -1,15 +1,14 @@
 // Random events and decision cards. Everything here is fictional.
+import {  rulesOf } from './rules';
 import {
   CAMPUSES,
   CAMPUS_IDS,
   COMPONENTS,
   COMPONENT_IDS,
-  DIFFICULTY,
   EXPAND_STEP,
   GRACE_MONTHS,
   LINES,
   NATIONS,
-  NEW_TRANCHE_MATURITY,
   PARTNERS,
   PARTNER_IDS,
   SUPPLIERS,
@@ -17,7 +16,9 @@ import {
   linesAt,
 } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import { freeBays, reserveTarget, reserveTotal } from './selectors';
+import { freeBays, newTranche, reserveTarget, reserveTotal } from './selectors';
+import { wantsOf } from './partners';
+import { resolvePoliticsDecision } from './politics';
 import type { CampusId, Decision, GameState, LineId, MonthReport, PartnerId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -34,7 +35,7 @@ const fmtMoney = (m: number) => (m >= 1000 ? `$${(m / 1000).toFixed(1)}B` : `$${
 /** Rolls this month's random events. */
 export function rollEvents(state: GameState, messages: Messages): void {
   if (state.month < GRACE_MONTHS) return;
-  const rules = DIFFICULTY[state.difficulty];
+  const rules = rulesOf(state);
   const r = rules.eventRate;
   const chance = (p: number) => rand(state) < p * r;
   const qualified = SUPPLIER_IDS.filter((s) => state.suppliers[s].qualified && !state.suppliers[s].bankrupt);
@@ -72,7 +73,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   }
 
   // Export restrictions on foreign suppliers.
-  if (chance(0.02)) {
+  if (chance(0.02 * (state.modifiers.includes('embargoWorld') ? 3 : 1))) {
     const foreign = qualified.filter((s) => SUPPLIERS[s].nation !== 'aldmere' && state.suppliers[s].embargoMonths === 0);
     const weighted = foreign.flatMap((s) => Array(SUPPLIERS[s].nation === 'karsk' ? 4 : SUPPLIERS[s].nation === 'ostrel' ? 2 : 1).fill(s));
     if (weighted.length) {
@@ -93,7 +94,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
         hit++;
       }
     }
-    if (hit) messages.push({ tone: 'warn', text: `Port congestion at Halvard Docks: foreign deliveries arrive at half rate for ${months} months.` });
+    if (hit) messages.push({ tone: 'warn', text: `Port congestion at Halvard Docks: shipments from abroad take an extra month for the next ${months} months.` });
   }
 
   // A defective lot of components is quarantined.
@@ -150,9 +151,9 @@ export function rollEvents(state: GameState, messages: Messages): void {
   }
 
   // A partner wants to buy from the reserve in calm times.
-  if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03)) {
+  if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03 * (state.exportPolicy === 'open' ? 2 : state.exportPolicy === 'restrictive' ? 0.3 : 1))) {
     const p = pick(state, PARTNER_IDS);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     const stock = reserveTotal(state.reserves[line]);
     if (stock > reserveTarget(state, line) * 0.8) {
       const qty = Math.max(1, Math.round(stock * randRange(state, 0.1, 0.2)));
@@ -231,7 +232,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   // Co-funded expansion from a friendly partner.
   if (friends.length && !hasDecision(state, 'cofund') && chance(0.025)) {
     const p = pick(state, friends);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     addDecision(state, {
       kind: 'cofund',
       title: `${PARTNERS[p].name} offers to co-fund ${LINES[line].name} capacity`,
@@ -248,7 +249,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   // Emergency airlift during crises.
   if (state.crisis?.phase === 'active' && !hasDecision(state, 'airlift') && chance(0.12)) {
     const p = pick(state, PARTNER_IDS);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     const qty = Math.max(1, Math.round(LINES[line].baseCapacity * randRange(state, 0.3, 0.8)));
     const price = Math.round(LINES[line].unitCost * 1.4 * 10000) / 10000;
     addDecision(state, {
@@ -300,6 +301,7 @@ export function resolveDecision(state: GameState, decisionId: number, optionId: 
   if (!d) return;
   state.decisions = state.decisions.filter((x) => x.id !== decisionId);
   const opt = d.options.some((o) => o.id === optionId) ? optionId : d.fallback;
+  if (resolvePoliticsDecision(state, d.kind, opt, d.data, messages)) return;
   switch (d.kind) {
     case 'bailout': {
       const sid = String(d.data.supplier);
@@ -416,7 +418,7 @@ export function resolveDecision(state: GameState, decisionId: number, optionId: 
           messages.push({ tone: 'warn', text: `No free bay at ${CAMPUSES[LINES[line].campus].name}: ${PARTNERS[p].name}'s offer lapses.` });
           break;
         }
-        state.lines[line].tranches.push({ capacity: LINES[line].baseCapacity * EXPAND_STEP, maturity: NEW_TRANCHE_MATURITY, base: false });
+        state.lines[line].tranches.push(newTranche(state, LINES[line].baseCapacity * EXPAND_STEP));
         state.partnerContracts.push({
           id: state.nextId++,
           partner: p,

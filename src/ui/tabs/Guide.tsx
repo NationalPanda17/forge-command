@@ -76,6 +76,80 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
     ),
   },
   {
+    id: 'floor',
+    title: 'The factory floor',
+    body: () => (
+      <>
+        <P>
+          Every line is a chain of stages. Missiles go through motor & airframe, then guidance integration, then final assembly, then acceptance test. Shells go
+          through body machining, then fill & pack, then lot acceptance. Units wait in buffers between stages.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>Bottlenecks:</b> the slowest stage sets the pace. The stage after it sits <i>waiting for work</i>. Widen a single stage by 20% (twice at most) without buying a whole bay.</Li>
+          <Li><b>Buffers</b> soak up hiccups: when a part runs short, units already in the buffers keep moving for a while. When a buffer fills, the stage before it stops.</Li>
+          <Li><b>Parts are used where they are needed:</b> motors and energetics at the first stage, seekers and electronics at guidance.</Li>
+          <Li><b>Yields:</b> every stage scraps a little. Experience on the line removes up to 40% of that scrap.</Li>
+          <Li><b>Test cells:</b> acceptance testing on each campus shares a pool of test cells, 200 hours each a month. A PAC-3 needs 30 hours, a Tamir 1.5. Surge every line and testing becomes the bottleneck. Build more cells.</Li>
+          <Li><b>First-article inspection:</b> new bays (and new plants) sit idle for {`0 to 2`} months while the first units are inspected, then ramp up from about 30%.</Li>
+          <Li><b>In-house plants</b> (in Supply chain): build your own motor works, shell forge or optics lab. They are slow and costly to build, need crew from their campus, and make parts far cheaper than the market. No one can embargo them.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'research',
+    title: 'Research and new lines',
+    body: () => (
+      <>
+        <P>
+          Your engineers run one project at a time, paid up front. Projects license new products, redesign rounds to need fewer scarce parts, speed up the
+          factory, or change the fight itself.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>New lines:</b> APKWS (laser-guided rockets, about $30K a round), Coyote Block 2 interceptor drones and Javelin. Research licenses the design. Then you set up the line in 4 free bays, inspect the first units, ramp up, and hire crew for it.</Li>
+          <Li><b>The cost exchange:</b> once APKWS and Coyote are running, doctrine sends them at drones first. Shooting a $35K drone with a $30K rocket instead of a $480K Stinger is how you win the cost exchange.</Li>
+          <Li><b>Design changes</b> cut gallium, motor, energetics and seeker use on every line, and stretch whatever supply you have.</Li>
+          <Li><b>Process projects</b> cut test-cell hours, speed up final assembly, cut scrap, unlock a third automation level, and halve supplier qualification time.</Li>
+          <Li><b>High-power microwave</b> stops one drone in five before any interceptor fires.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'map',
+    title: 'Regions, depots and convoys',
+    body: () => (
+      <>
+        <P>
+          Aldmere has four regions: the Northern Ports, the Halvard Coast, the Eastern Marches and the Skerry Isles. Each has a depot. Threats and fire missions
+          arrive by region, and a crisis hits its own region hardest. Intel tells you which one, two months ahead.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>Depots first:</b> rounds are fired from the regional depot. If it runs dry, only part of the gap (60% for interceptors, 35% for land rounds) can be airlifted from the central reserve in time, at a price.</Li>
+          <Li><b>Convoys</b> leave every month and arrive the next, topping each depot up toward its stock target. Raise the target where a crisis is coming, and lower it where things are quiet.</Li>
+          <Li><b>Transport</b> is limited by tonnage. Shells are heavy and take most of it. Buy more wagons and trucks if convoys run full.</Li>
+          <Li><b>Allies</b> with goodwill of 55 or more will lend you rounds in an emergency, repaid from your production over 8 months.</Li>
+          <Li><b>The {`Vardan Directorate`}</b>, a rival power, keeps building its arms industry, so every new crisis gets a little fiercer. Keep readiness above 85% and its growth slows.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'politics',
+    title: 'People and politics',
+    body: () => (
+      <>
+        <ul className="list-disc pl-5">
+          <Li><b>Key staff:</b> five posts (procurement, quality, logistics, research, labour relations). Each hire brings a skill from 1 to 3 that improves their area, and often a quirk, good or bad. Hiring costs three months' salary, and letting someone go costs the same in severance. Good people get poached: match the offer or lose them. New candidates appear every six months.</Li>
+          <Li><b>The Committee</b> is five factions. The hawks want full racks, the treasury bench wants you within budget, the regional members want jobs at the campuses, the industry caucus wants you to buy at home, and the alliance group wants good partner relations. Their average pulls your confidence up or down every month.</Li>
+          <Li><b>Public support</b> rises in a crisis and falls when threats get through. It moves the hawks.</Li>
+          <Li><b>Budget requests:</b> at the end of each fiscal year, accept the Committee's figure, ask for less to please the treasury bench, or push for 12% more and risk a cut.</Li>
+          <Li><b>Export policy:</b> open brings more and better-paid tenders but worries the hawks. Restrictive does the opposite.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: 'workforce',
     title: 'Workforce',
     body: () => (
@@ -97,7 +171,11 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
         <Li>Spot buys fill after contracts at a 30% premium, from the cheapest supplier with room.</Li>
         <Li>Suppliers have financial health. Distressed ones ask for bailouts, and bankrupt ones take their contracts with them. Foreign suppliers can be hit by export bans and port congestion.</Li>
         <Li>Substitutes keep starved lines running with lower-grade parts. Degraded interceptors are about 15% less likely to stop their target.</Li>
-        <Li>Stock costs 0.5% of its value a month to store.</Li>
+        <Li>Stock costs 0.5% of its value a month to store. Rocket motors and energetics beyond six months of need slowly age out.</Li>
+        <Li><b>Feedstock markets:</b> your suppliers depend on ammonium perchlorate, nitrocellulose, billet steel, wafers, gallium concentrates and optical crystals. A disruption there cuts what every supplier of the affected parts can ship, and drives prices up.</Li>
+        <Li><b>Prices:</b> spot buys pay today's market price. Contracts lock the price on the day you sign, so long contracts are also a hedge.</Li>
+        <Li><b>Shipping:</b> parts from the Corvane Union take a month to arrive, from Ostrel and Karsk two. Port congestion adds a month, and now and then a shipment is lost at sea, more often during air campaigns over the strait.</Li>
+        <Li><b>Supplier investment:</b> pay for a qualified supplier to expand by 30% (twice at most). It takes eight months and steadies the supplier's finances.</Li>
       </ul>
     ),
   },

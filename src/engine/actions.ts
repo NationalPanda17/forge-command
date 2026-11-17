@@ -1,40 +1,71 @@
 // Player actions: validateAction explains why one is not allowed, applyAction never mutates its input.
+import {  rulesOf } from './rules';
 import {
   CAMPUSES,
   CANCEL_PENALTY,
   COMPONENTS,
   CONTRACT_DISCOUNT,
-  DIFFICULTY,
   EXPAND_STEP,
   HIRE_COST,
   LINES,
   MAX_UPGRADE,
-  NEW_TRANCHE_MATURITY,
   RETOOL_COST_SHARE,
   RETOOL_MONTHS,
   REWORK_COST_SHARE,
+  STAGES,
   SUPPLIERS,
+  TEST_CELLS,
   UPGRADE,
+  DEBOTTLENECK_COST_SHARE,
+  DEBOTTLENECK_MONTHS,
+  MAX_DEBOTTLENECK,
+  FACILITIES,
+  INVEST_MONTHS,
+  MAX_INVEST,
+  RESEARCH,
+  PARTNERS,
+  ESTABLISH_COST_SHARE,
+  BASE_BAYS_PER_LINE,
+  DEPOT_TARGETS,
+  MAX_TRANSPORT,
+  TRANSPORT_COST,
+  TRANSPORT_STEP,
+  HIRE_MONTHS_SALARY,
+  STAFF_ROLES,
+  EXPORT_POLICIES,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
-import { expansions, freeBays } from './selectors';
-import type { Action, CampusId, GameState, LineId, UpgradeKind } from './types';
+import { loanBlocker, takeLoan } from './logistics';
+import { procurementMult, researchMult } from './politics';
+import { expansions, freeBays, hasResearch, isEstablished, maxUpgrade, newTranche } from './selectors';
+import type { Action, CampusId, FacilityId, GameState, LineId, UpgradeKind } from './types';
 
 export const expandCost = (id: LineId) => LINES[id].expandCost;
 export const retoolCost = (to: LineId) => Math.round(LINES[to].expandCost * RETOOL_COST_SHARE);
 export const upgradeCost = (id: LineId, kind: UpgradeKind) => Math.round(LINES[id].expandCost * UPGRADE[kind].costShare);
 export const buildCost = (c: CampusId) => CAMPUSES[c].buildCost;
-export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * DIFFICULTY[state.difficulty].qualifyMult);
-export const qualifyMonths = (state: GameState, sid: string) => Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult));
+export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * rulesOf(state).qualifyMult);
+export const qualifyMonths = (state: GameState, sid: string) =>
+  Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * rulesOf(state).qualifyMult * (hasResearch(state, 'rapidQual') ? 0.5 : 1)));
+export const researchMonths = (state: GameState, r: keyof typeof RESEARCH) => Math.max(2, Math.round(RESEARCH[r].months * researchMult(state)));
+export const hireCost = (p: { salary: number }) => p.salary * HIRE_MONTHS_SALARY;
+export const establishCost = (id: LineId) => LINES[id].expandCost * ESTABLISH_COST_SHARE;
+export const researchAvailable = (state: GameState, r: keyof typeof RESEARCH) =>
+  !hasResearch(state, r) && state.research.active?.id !== r && RESEARCH[r].requires.every((q) => hasResearch(state, q));
 export const reworkCost = (state: GameState, id: LineId) =>
   state.lines[id].quarantine.reduce((s, q) => s + q.qty, 0) * LINES[id].unitCost * REWORK_COST_SHARE;
-export const contractPrice = (sid: string, months: 12 | 24 | 36) =>
-  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months];
+/** Contracts lock today's market price for their whole term. */
+export const contractPrice = (state: GameState, sid: string, months: 12 | 24 | 36) =>
+  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months] * state.components[SUPPLIERS[sid].component].priceIndex * procurementMult(state);
+export const investCost = (sid: string) => Math.max(10, Math.round(SUPPLIERS[sid].baseCap * COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * 8));
 export const cancelPenalty = (state: GameState, component: keyof GameState['components'], contract: number) => {
   const k = state.components[component].contracts.find((x) => x.id === contract);
   return k ? k.qtyPerMonth * k.monthsLeft * k.unitPrice * CANCEL_PENALTY : 0;
 };
+export const debottleneckCost = (id: LineId) => Math.round(LINES[id].expandCost * DEBOTTLENECK_COST_SHARE);
+export const testCellCost = (c: CampusId) => TEST_CELLS[c].cost;
+export const facilityBuildMonths = (state: GameState) => rulesOf(state).buildMonths + 3;
 export const supplementalAvailable = (state: GameState) => state.mods.supplementalCooldown === 0 && !state.mods.supplementalPending;
 
 const funds = (state: GameState, cost: number) => (state.treasury >= cost ? null : `Not enough funds (needs $${Math.round(cost)}M).`);
@@ -64,9 +95,32 @@ export function validateAction(state: GameState, a: Action): string | null {
     case 'upgradeLine': {
       const line = state.lines[a.line];
       if (line.installing) return 'An upgrade is already being installed.';
-      if (line.upgrades[a.kind] >= MAX_UPGRADE) return 'Already at the top level.';
+      if (line.upgrades[a.kind] >= maxUpgrade(state, a.kind)) return line.upgrades[a.kind] >= MAX_UPGRADE && a.kind === 'automation' && !hasResearch(state, 'lightsOut') ? 'Research lights-out cells for a third level.' : 'Already at the top level.';
       return funds(state, upgradeCost(a.line, a.kind));
     }
+    case 'debottleneck': {
+      const line = state.lines[a.line];
+      if (!STAGES[a.line][a.stage]) return 'Unknown stage.';
+      if (line.debottlenecking) return 'Another stage on this line is already being widened.';
+      if ((line.debottleneck[a.stage] ?? 0) >= MAX_DEBOTTLENECK) return 'This stage is already as wide as it gets.';
+      return funds(state, debottleneckCost(a.line));
+    }
+    case 'buildTestCell':
+      if (state.campuses[a.campus].testCellBuilds.length >= 2) return 'Two test cells are already under construction here.';
+      return funds(state, testCellCost(a.campus));
+    case 'buildFacility': {
+      const st = state.facilities[a.facility];
+      if (st.status !== 'none') return st.status === 'building' ? 'Already under construction.' : 'Already built.';
+      return funds(state, FACILITIES[a.facility].buildCost);
+    }
+    case 'expandFacility': {
+      const st = state.facilities[a.facility];
+      if (st.status !== 'running') return 'Build the plant first.';
+      if (st.tranches.length - 1 >= FACILITIES[a.facility].maxExpansions) return 'No room left to expand this plant.';
+      return funds(state, FACILITIES[a.facility].expandCost);
+    }
+    case 'setFacilityRun':
+      return state.facilities[a.facility].status === 'running' ? null : 'Build the plant first.';
     case 'reworkQuarantine':
       if (!state.lines[a.line].quarantine.length) return 'Nothing in quarantine.';
       return funds(state, reworkCost(state, a.line));
@@ -98,6 +152,50 @@ export function validateAction(state: GameState, a: Action): string | null {
       if (st.qualifyingMonths !== null) return 'Qualification already under way.';
       return funds(state, qualifyCost(state, a.supplier));
     }
+    case 'investSupplier': {
+      const st = state.suppliers[a.supplier];
+      if (!st) return 'Unknown supplier.';
+      if (st.bankrupt) return 'That supplier is bankrupt.';
+      if (!st.qualified) return 'Qualify this supplier first.';
+      if (st.investingMonths !== null) return 'An expansion is already being built there.';
+      if (st.capBonus >= MAX_INVEST) return 'This supplier cannot grow any further.';
+      return funds(state, investCost(a.supplier));
+    }
+    case 'startResearch': {
+      const r = RESEARCH[a.research];
+      if (!r) return 'Unknown project.';
+      if (hasResearch(state, a.research)) return 'Already done.';
+      if (state.research.active) return 'Your engineers are busy with another project.';
+      const missing = r.requires.filter((q) => !hasResearch(state, q));
+      if (missing.length) return `Needs ${missing.map((q) => RESEARCH[q].name).join(', ')} first.`;
+      return funds(state, r.cost);
+    }
+    case 'establishLine': {
+      const def = LINES[a.line];
+      if (isEstablished(state, a.line)) return 'This line already exists.';
+      if (def.research && !hasResearch(state, def.research)) return `Research ${RESEARCH[def.research].name} first.`;
+      if (freeBays(state, def.campus) < BASE_BAYS_PER_LINE) return `Needs ${BASE_BAYS_PER_LINE} free bays at ${CAMPUSES[def.campus].name}.`;
+      return funds(state, establishCost(a.line));
+    }
+    case 'setDepotTarget':
+      return (DEPOT_TARGETS as readonly number[]).includes(a.months) ? null : 'Pick one of the listed targets.';
+    case 'buyTransport':
+      if (state.transport >= MAX_TRANSPORT) return 'The rail network cannot take more.';
+      return funds(state, TRANSPORT_COST);
+    case 'requestLoan':
+      return loanBlocker(state, a.partner, a.line);
+    case 'hireStaff': {
+      const p = state.candidates.find((c) => c.id === a.candidate);
+      if (!p) return 'That candidate has taken another job.';
+      return funds(state, hireCost(p) + (state.staff[p.role] ? hireCost(state.staff[p.role]!) : 0));
+    }
+    case 'fireStaff': {
+      const p = state.staff[a.role];
+      if (!p) return 'Nobody holds that post.';
+      return funds(state, hireCost(p));
+    }
+    case 'setExportPolicy':
+      return EXPORT_POLICIES[a.policy] ? null : 'Unknown policy.';
     case 'acceptTender':
     case 'declineTender':
       return state.tenders.some((t) => t.id === a.tender) ? null : 'That tender is gone.';
@@ -110,6 +208,15 @@ export function validateAction(state: GameState, a: Action): string | null {
     case 'setDoctrine':
       return null;
   }
+}
+
+function buildFacility(s: GameState, f: FacilityId): void {
+  const def = FACILITIES[f];
+  charge(s, def.buildCost);
+  const st = s.facilities[f];
+  st.status = 'building';
+  st.monthsLeft = facilityBuildMonths(s);
+  st.tranches = [{ ...newTranche(s, def.baseCap), base: true }];
 }
 
 function charge(s: GameState, cost: number): void {
@@ -138,7 +245,7 @@ export function applyAction(state: GameState, a: Action): GameState {
       break;
     case 'expandLine':
       charge(s, expandCost(a.line));
-      s.lines[a.line].tranches.push({ capacity: LINES[a.line].baseCapacity * EXPAND_STEP, maturity: NEW_TRANCHE_MATURITY, base: false });
+      s.lines[a.line].tranches.push(newTranche(s, LINES[a.line].baseCapacity * EXPAND_STEP));
       break;
     case 'retoolBay': {
       charge(s, retoolCost(a.to));
@@ -154,13 +261,31 @@ export function applyAction(state: GameState, a: Action): GameState {
     }
     case 'buildBays': {
       charge(s, buildCost(a.campus));
-      const months = DIFFICULTY[s.difficulty].buildMonths;
+      const months = rulesOf(s).buildMonths;
       s.campuses[a.campus].construction.push({ bays: CAMPUSES[a.campus].buildBays, monthsLeft: months, total: months });
       break;
     }
     case 'upgradeLine':
       charge(s, upgradeCost(a.line, a.kind));
       s.lines[a.line].installing = { kind: a.kind, monthsLeft: UPGRADE[a.kind].months };
+      break;
+    case 'debottleneck':
+      charge(s, debottleneckCost(a.line));
+      s.lines[a.line].debottlenecking = { stage: a.stage, monthsLeft: DEBOTTLENECK_MONTHS };
+      break;
+    case 'buildTestCell':
+      charge(s, testCellCost(a.campus));
+      s.campuses[a.campus].testCellBuilds.push(TEST_CELLS[a.campus].months);
+      break;
+    case 'buildFacility':
+      buildFacility(s, a.facility);
+      break;
+    case 'expandFacility':
+      charge(s, FACILITIES[a.facility].expandCost);
+      s.facilities[a.facility].tranches.push(newTranche(s, FACILITIES[a.facility].expandCap));
+      break;
+    case 'setFacilityRun':
+      s.facilities[a.facility].run = a.run;
       break;
     case 'reworkQuarantine': {
       charge(s, reworkCost(s, a.line));
@@ -177,7 +302,7 @@ export function applyAction(state: GameState, a: Action): GameState {
       charge(s, n * HIRE_COST);
       const c = s.campuses[a.campus];
       c.pool -= n;
-      c.trainees.push({ count: n, monthsLeft: DIFFICULTY[s.difficulty].trainingMonths });
+      c.trainees.push({ count: n, monthsLeft: rulesOf(s).trainingMonths });
       break;
     }
     case 'setWage':
@@ -193,7 +318,7 @@ export function applyAction(state: GameState, a: Action): GameState {
         qtyPerMonth: Math.round(a.qtyPerMonth * 100) / 100,
         monthsLeft: a.months,
         months: a.months,
-        unitPrice: contractPrice(a.supplier, a.months),
+        unitPrice: contractPrice(s, a.supplier, a.months),
         backlog: 0,
       });
       break;
@@ -208,6 +333,53 @@ export function applyAction(state: GameState, a: Action): GameState {
       charge(s, qualifyCost(s, a.supplier));
       s.suppliers[a.supplier].qualifyingMonths = qualifyMonths(s, a.supplier);
       break;
+    case 'investSupplier':
+      charge(s, investCost(a.supplier));
+      s.suppliers[a.supplier].investingMonths = INVEST_MONTHS;
+      s.suppliers[a.supplier].health = Math.min(100, s.suppliers[a.supplier].health + 20);
+      break;
+    case 'startResearch':
+      charge(s, RESEARCH[a.research].cost);
+      s.research.active = { id: a.research, monthsLeft: researchMonths(s, a.research) };
+      break;
+    case 'establishLine': {
+      charge(s, establishCost(a.line));
+      const line = s.lines[a.line];
+      line.tranches = [{ ...newTranche(s, LINES[a.line].baseCapacity), base: true }];
+      line.run = 'normal';
+      break;
+    }
+    case 'setDepotTarget':
+      s.theaters[a.theater].targetMonths = a.months;
+      break;
+    case 'buyTransport':
+      charge(s, TRANSPORT_COST);
+      s.transport += TRANSPORT_STEP;
+      break;
+    case 'hireStaff': {
+      const p = s.candidates.find((c) => c.id === a.candidate)!;
+      const old = s.staff[p.role];
+      charge(s, hireCost(p) + (old ? hireCost(old) : 0));
+      s.staff[p.role] = { ...p, tenure: 0 };
+      s.candidates = s.candidates.filter((c) => c.id !== p.id);
+      s.inbox.push({ tone: 'good', text: `${p.name} joins as ${STAFF_ROLES[p.role].title}.${old ? ` ${old.name} leaves with severance.` : ''}` });
+      break;
+    }
+    case 'fireStaff': {
+      const p = s.staff[a.role]!;
+      charge(s, hireCost(p));
+      s.staff[a.role] = null;
+      s.inbox.push({ tone: 'info', text: `${p.name} leaves with severance. The post of ${STAFF_ROLES[a.role].title} is vacant.` });
+      break;
+    }
+    case 'setExportPolicy':
+      s.exportPolicy = a.policy;
+      break;
+    case 'requestLoan': {
+      const qty = takeLoan(s, a.partner, a.line);
+      s.inbox.push({ tone: 'good', text: `${PARTNERS[a.partner].name} lends you ${qty.toLocaleString('en-US')} ${LINES[a.line].name}, to be repaid from production over 8 months.` });
+      break;
+    }
     case 'acceptTender':
       acceptTender(s, a.tender);
       break;

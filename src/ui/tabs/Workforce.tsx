@@ -71,7 +71,7 @@ function CampusCard({ state, campus, act }: { state: GameState; campus: CampusId
           </div>
           <table className="w-full text-[11px]">
             <tbody>
-              {linesAt(campus).map((id) => (
+              {linesAt(campus).filter((id) => state.lines[id].tranches.length > 0).map((id) => (
                 <tr key={id}>
                   <td className="text-ops-dim">{LINES[id].name}</td>
                   <td className="text-right">{int(crewNeed(state, id))} crew</td>

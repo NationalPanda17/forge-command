@@ -10,7 +10,22 @@ export type ComponentId =
   | 'criticalMaterials'
   | 'shellBodies';
 
-export type LineId = 'pac3' | 'sm6' | 'tamir' | 'irist' | 'stinger' | 'gmlrs' | 'shell155';
+export type LineId = 'pac3' | 'sm6' | 'tamir' | 'irist' | 'stinger' | 'gmlrs' | 'shell155' | 'apkws' | 'coyote' | 'javelin';
+export type ResearchId =
+  | 'apkws'
+  | 'coyote'
+  | 'javelin'
+  | 'galliumLight'
+  | 'commonMotors'
+  | 'digitalTest'
+  | 'rapidQual'
+  | 'imFill'
+  | 'leanAssembly'
+  | 'yieldAnalytics'
+  | 'seekerDTC'
+  | 'lightsOut'
+  | 'smartFuzes'
+  | 'hpm';
 export type CampusId = 'corran' | 'northgate' | 'ashford';
 export type ThreatId = 'drone' | 'rocket' | 'cruise' | 'ballistic' | 'aircraft';
 export type PartnerId = 'varenna' | 'osterholm' | 'sundar' | 'calder';
@@ -22,6 +37,44 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type Modifier = 'ironman' | 'austerity' | 'embargoWorld' | 'endless';
+
+export interface CustomRules {
+  treasuryMult: number;
+  budgetMult: number;
+  pressureMult: number;
+  crisisMult: number;
+  eventMult: number;
+  reserveMonths: number;
+  allResearch: boolean;
+}
+
+export interface ObjectiveState {
+  id: string;
+  status: 'open' | 'done' | 'failed';
+}
+
+export type StaffRole = 'procurement' | 'quality' | 'logistics' | 'research' | 'labor';
+export type Quirk = 'none' | 'abrasive' | 'connected' | 'frugal' | 'favourite';
+export type FactionId = 'hawks' | 'treasury' | 'regions' | 'industry' | 'internationalists';
+export type ExportPolicy = 'restrictive' | 'balanced' | 'open';
+
+export interface Person {
+  id: number;
+  name: string;
+  role: StaffRole;
+  /** 1..3 */
+  skill: number;
+  quirk: Quirk;
+  /** $M a month. */
+  salary: number;
+  /** Months in post. */
+  tenure: number;
+}
+
+export type TheaterId = 'north' | 'coast' | 'east' | 'isles';
+export type Tier2Id = 'perchlorate' | 'nitro' | 'steel' | 'wafers' | 'ore' | 'optics';
+export type FacilityId = 'motorWorks' | 'arsenalForge' | 'opticsLab';
 
 // ---------- Static catalog ----------
 
@@ -91,6 +144,19 @@ export interface LineDef {
   /** Land fires only: units drawn per month in calm times. */
   landDraw?: number;
   blurb: string;
+  /** Needs this research before the line can be set up. */
+  research?: ResearchId;
+}
+
+export interface ResearchDef {
+  id: ResearchId;
+  name: string;
+  /** $M up front. */
+  cost: number;
+  months: number;
+  requires: ResearchId[];
+  effect: string;
+  blurb: string;
 }
 
 export interface ThreatDef {
@@ -125,6 +191,119 @@ export interface Tranche {
   maturity: number;
   /** True for the original floor (4 bays, never retooled). */
   base: boolean;
+  /** Months of first-article inspection left before this capacity counts. */
+  faiMonths: number;
+}
+
+export interface StageDef {
+  id: string;
+  name: string;
+  /** Stage capacity relative to the line's capacity. */
+  mult: number;
+  /** Share of units that pass this stage (before learning). */
+  yield: number;
+  /** Components consumed at this stage. */
+  comps: ComponentId[];
+  /** Acceptance stage: test-cell hours per unit. */
+  testHours?: number;
+}
+
+export interface StageLast {
+  cap: number;
+  throughput: number;
+  scrap: number;
+  /** What held this stage back. */
+  limit: 'capacity' | 'starved' | 'blocked' | 'parts' | 'tests' | null;
+}
+
+export interface FacilityDef {
+  id: FacilityId;
+  name: string;
+  campus: CampusId;
+  component: ComponentId;
+  buildCost: number;
+  baseCap: number;
+  expandCap: number;
+  expandCost: number;
+  maxExpansions: number;
+  crew: number;
+  /** Other components consumed per unit made. */
+  inputs: Partial<Record<ComponentId, number>>;
+  /** $M per unit of raw materials and consumables. */
+  unitCost: number;
+  /** $M per month to keep it running. */
+  overhead: number;
+  blurb: string;
+}
+
+export interface Tier2Def {
+  id: Tier2Id;
+  name: string;
+  feeds: ComponentId[];
+  source: string;
+  blurb: string;
+}
+
+export interface Tier2State {
+  id: Tier2Id;
+  /** Share of normal feedstock reaching suppliers, 0.3..1.05. */
+  availability: number;
+  /** Market price relative to normal. */
+  priceIndex: number;
+  disruptionMonths: number;
+}
+
+export interface Shipment {
+  id: number;
+  component: ComponentId;
+  supplier: string;
+  qty: number;
+  /** Month it reaches your stock. */
+  arrive: number;
+}
+
+export interface TheaterDef {
+  id: TheaterId;
+  name: string;
+  /** Share of air threats that arrive here in calm times. */
+  threatShare: number;
+  /** Share of land fire missions fired from here. */
+  landShare: number;
+  blurb: string;
+}
+
+export interface DepotStock {
+  full: number;
+  degraded: number;
+}
+
+export interface TheaterState {
+  id: TheaterId;
+  depot: Record<LineId, DepotStock>;
+  /** Months of local draw the convoys try to keep here. */
+  targetMonths: number;
+  /** Units airlifted from the central reserve last month. */
+  lastAirlift: number;
+  lastLeaked: number;
+}
+
+export interface Convoy {
+  id: number;
+  theater: TheaterId;
+  line: LineId;
+  full: number;
+  degraded: number;
+  arrive: number;
+}
+
+export interface FacilityState {
+  id: FacilityId;
+  status: 'none' | 'building' | 'running';
+  monthsLeft: number;
+  tranches: Tranche[];
+  run: 'idle' | 'normal';
+  lastOutput: number;
+  lastLimit: ComponentId | 'capacity' | 'crew' | 'idle' | null;
 }
 
 export interface LineLast {
@@ -135,7 +314,7 @@ export interface LineLast {
   toPartners: number;
   toReserve: number;
   staffing: number;
-  limit: ComponentId | 'capacity' | 'idle' | 'crew' | 'strike' | null;
+  limit: ComponentId | 'capacity' | 'idle' | 'crew' | 'strike' | 'tests' | 'stage' | null;
   usedSubstitutes: ComponentId[];
 }
 
@@ -154,6 +333,12 @@ export interface LineState {
   /** Units held for inspection: rework or scrap. */
   quarantine: { qty: number; monthsLeft: number }[];
   substitutes: Partial<Record<ComponentId, boolean>>;
+  /** Units waiting between stages (one buffer after every stage but the last). */
+  wip: number[];
+  /** Debottleneck level per stage (each +20% to that stage). */
+  debottleneck: number[];
+  debottlenecking: { stage: number; monthsLeft: number } | null;
+  stages: StageLast[];
   /** Fraction of output to test & evaluation. */
   testShare: number;
   /** Latent defect risk from thin testing, 0..1. */
@@ -181,6 +366,10 @@ export interface CampusState {
   /** Security sweeps lower sabotage risk for a while. */
   securityMonths: number;
   lastCrewNeed: number;
+  testCells: number;
+  /** Months left on each test cell under construction. */
+  testCellBuilds: number[];
+  lastTestHours: { need: number; avail: number };
 }
 
 export interface SupplierState {
@@ -195,6 +384,9 @@ export interface SupplierState {
   congestionMonths: number;
   bankrupt: boolean;
   lastDelivered: number;
+  /** Expansion levels you paid for (+30% each). */
+  capBonus: number;
+  investingMonths: number | null;
 }
 
 export interface Contract {
@@ -216,6 +408,12 @@ export interface ComponentState {
   lastUsed: number;
   lastShort: number;
   lastSubstituted: number;
+  /** Market price relative to normal: spot buys and new contracts pay it. */
+  priceIndex: number;
+  /** Stock lost to age last month. */
+  lastAged: number;
+  /** Stock lost in transit last month. */
+  lastLost: number;
 }
 
 export interface ReserveState {
@@ -257,12 +455,15 @@ export interface Tender {
 export interface PartnerState {
   id: PartnerId;
   goodwill: number;
+  /** Months before this partner will lend again. */
+  loanCooldown: number;
 }
 
 export interface Crisis {
   id: string;
   name: string;
   family: Family;
+  theater: TheaterId;
   phase: 'warning' | 'active';
   monthsLeft: number;
   intensity: number;
@@ -312,6 +513,8 @@ export interface Ledger {
   revenue: number;
   appropriation: number;
   penalties: number;
+  /** Transport upkeep and emergency airlifts. */
+  logistics: number;
 }
 
 export interface ThreatTally {
@@ -331,6 +534,10 @@ export interface MonthReport {
   threats: Record<ThreatId, ThreatTally>;
   interceptorSpend: number;
   threatValueStopped: number;
+  /** Component stock at month end (optional in older saves). */
+  stocks?: Partial<Record<ComponentId, number>>;
+  /** National stock per line at month end. */
+  national?: Partial<Record<LineId, number>>;
   messages: { tone: 'good' | 'bad' | 'warn' | 'info'; text: string }[];
 }
 
@@ -345,7 +552,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 2;
+  version: 8;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -360,6 +567,27 @@ export interface GameState {
   suppliers: Record<string, SupplierState>;
   components: Record<ComponentId, ComponentState>;
   reserves: Record<LineId, ReserveState>;
+  facilities: Record<FacilityId, FacilityState>;
+  tier2: Record<Tier2Id, Tier2State>;
+  theaters: Record<TheaterId, TheaterState>;
+  convoys: Convoy[];
+  /** Tonnes a month the convoys can move. */
+  transport: number;
+  /** The rival power's arms industry, 100 at the start. */
+  rival: number;
+  staff: Record<StaffRole, Person | null>;
+  candidates: Person[];
+  factions: Record<FactionId, number>;
+  /** Public support for the defense effort, 0..100. */
+  publicSupport: number;
+  exportPolicy: ExportPolicy;
+  /** Workers on the books at the start, for the regions faction. */
+  startWorkers: number;
+  modifiers: Modifier[];
+  custom: CustomRules | null;
+  objectives: ObjectiveState[];
+  research: { done: ResearchId[]; active: { id: ResearchId; monthsLeft: number } | null };
+  shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;
   partnerContracts: PartnerContract[];
   tenders: Tender[];
@@ -389,6 +617,11 @@ export type Action =
   | { type: 'retoolBay'; from: LineId; to: LineId }
   | { type: 'buildBays'; campus: CampusId }
   | { type: 'upgradeLine'; line: LineId; kind: UpgradeKind }
+  | { type: 'debottleneck'; line: LineId; stage: number }
+  | { type: 'buildTestCell'; campus: CampusId }
+  | { type: 'buildFacility'; facility: FacilityId }
+  | { type: 'expandFacility'; facility: FacilityId }
+  | { type: 'setFacilityRun'; facility: FacilityId; run: 'idle' | 'normal' }
   | { type: 'reworkQuarantine'; line: LineId }
   | { type: 'setSubstitute'; line: LineId; component: ComponentId; on: boolean }
   | { type: 'setSubstituteAll'; component: ComponentId; on: boolean }
@@ -399,6 +632,15 @@ export type Action =
   | { type: 'signContract'; component: ComponentId; supplier: string; qtyPerMonth: number; months: 12 | 24 | 36 }
   | { type: 'cancelContract'; component: ComponentId; contract: number }
   | { type: 'qualifySupplier'; supplier: string }
+  | { type: 'investSupplier'; supplier: string }
+  | { type: 'startResearch'; research: ResearchId }
+  | { type: 'setDepotTarget'; theater: TheaterId; months: number }
+  | { type: 'hireStaff'; candidate: number }
+  | { type: 'fireStaff'; role: StaffRole }
+  | { type: 'setExportPolicy'; policy: ExportPolicy }
+  | { type: 'buyTransport' }
+  | { type: 'requestLoan'; partner: PartnerId; line: LineId }
+  | { type: 'establishLine'; line: LineId }
   | { type: 'acceptTender'; tender: number }
   | { type: 'declineTender'; tender: number }
   | { type: 'resolveDecision'; decision: number; option: string }
