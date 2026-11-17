@@ -1,5 +1,11 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
 import { useMemo, useRef, useState } from 'react';
+import { seasonOf } from '../sim/living';
+import MarketsPanel from './MarketsPanel';
+import PlanPanel from './PlanPanel';
+import TermReport from './TermReport';
+import { STEPS, TUTORIAL_DONE, TutorialCard } from './Tutorial';
+import { checkAchievements, type AchievementDef } from './achievements';
 import MapView, { DEFAULT_LAYERS, MapLayerToggles, MapLegend, type MapLayers, type MapMarker, type MapShipment } from '../ui/map/MapView';
 import { readiness } from '../sim/selectors';
 import type { SimState } from '../sim/types';
@@ -14,11 +20,13 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'material' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed' | 'guide';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed' | 'guide';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
+  { id: 'plan', label: 'Plan' },
   { id: 'material', label: 'Materials' },
+  { id: 'markets', label: 'Markets' },
   { id: 'stockpile', label: 'Stockpile' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'fight', label: 'Fight' },
@@ -69,6 +77,24 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   const lastSpeed = useRef<Speed>(1);
   if (speed > 0) lastSpeed.current = speed;
 
+  // Tutorial: each step finishes when the player has done it.
+  useEffect(() => {
+    const step = state.tutorial?.step;
+    if (step === undefined || step >= STEPS.length) return;
+    if (STEPS[step].done(state, { panel, selected, speed }, initial)) act({ type: 'tutorial', step: step + 1 });
+  }, [state, panel, selected, speed, act, initial]);
+
+  // Achievements, checked once a month and at the end.
+  const [toast, setToast] = useState<AchievementDef[]>([]);
+  useEffect(() => {
+    const fresh = checkAchievements(state);
+    if (!fresh.length) return;
+    setToast(fresh);
+    const t = setTimeout(() => setToast([]), 7000);
+    return () => clearTimeout(t);
+  }, [state.history.length, state.over, state.tutorial?.step]);
+
+  const [reportClosed, setReportClosed] = useState(false);
   const markers = useMemo(() => markersFor(state), [state]);
   const shipments: MapShipment[] = useMemo(
     () =>
@@ -102,6 +128,12 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <div className="text-white">{dateLabel(state.day)}</div>
         </div>
         <div>
+          <div className="label">Season</div>
+          <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above the start of your term.`}>
+            {seasonOf(state.day)[0].toUpperCase() + seasonOf(state.day).slice(1)} <span className="text-ops-dim">· prices +{Math.round((state.priceIndex - 1) * 100)}%</span>
+          </div>
+        </div>
+        <div>
           <div className="label">Treasury</div>
           <div className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>{money(state.treasury)}</div>
         </div>
@@ -133,6 +165,17 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           </Btn>
         </div>
       </header>
+
+      {toast.length > 0 && (
+        <div role="status" className="panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
+          <span>★ Achievement{toast.length > 1 ? 's' : ''}:</span>
+          {toast.map((a) => (
+            <span key={a.id} className="text-white">
+              {a.title} <span className="text-ops-dim">· {a.text}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {state.alert && speed === 0 && (
         <div role="status" className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${state.alert.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : state.alert.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
@@ -173,7 +216,10 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
               </button>
             ))}
           </nav>
+          {state.tutorial && state.tutorial.step < TUTORIAL_DONE && <TutorialCard state={state} onStep={(step) => act({ type: 'tutorial', step })} />}
           <div className="min-h-0 flex-1 overflow-y-auto">
+            {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}
+            {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
             {panel === 'site' && (selected ? <SitePanel state={state} siteId={selected} act={act} onMaterial={showMaterial} /> : <p className="p-3 text-[11px] text-ops-dim">Click any site on the map.</p>)}
             {panel === 'material' && <MaterialPanel state={state} material={material} onMaterial={showMaterial} onSite={select} />}
             {panel === 'stockpile' && <StockpilePanel state={state} act={act} onMaterial={showMaterial} />}
@@ -190,6 +236,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       <footer className="panel max-h-28 overflow-y-auto">
         <Feed state={state} onSite={select} limit={6} />
       </footer>
+      {state.over && !reportClosed && <TermReport state={state} onClose={() => setReportClosed(true)} onMenu={() => onMenu(state)} />}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
     </div>
   );

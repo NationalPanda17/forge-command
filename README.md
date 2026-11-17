@@ -30,6 +30,15 @@ Everything moves on a rail, road, sea and air network where each route carries o
 - Fires, failures, floods and strikes ripple down the chain.
 - Fictional crises hit one region at a time, with two months' warning.
 
+## Plan, buy and adapt
+
+- **Plan:** each round's stock a year ahead, and the weakest link under it, traced down to the mine.
+- **Markets:** prices rise, contracts lock them, and tenders make suppliers bid against each other.
+- **The world:** seasons close sea lanes and slow roads. Allies ask for help or sell you rounds, foreign customers
+  place export orders, and disputes, recalls and accidents unfold in stages.
+- **Scenarios:** Peacetime, War footing, Sanctions and Rebuild, plus a guided tutorial. Achievements and an
+  end-of-term report.
+
 ## Real time
 
 The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
@@ -38,7 +47,9 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 ## Panels
 - **Watch:** what needs you, most urgent first.
 - **Site:** the inspector for any site, with your controls on your own plants.
+- **Plan:** forecasts and the weakest links in the chain.
 - **Materials:** any material traced from finished round down to the mine.
+- **Markets:** prices, tenders and bids, contracts, exports, allies and developing situations.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.
 - **Fight:** threats, leakers, doctrine.

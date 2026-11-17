@@ -1,8 +1,9 @@
 // Forge Command 2.0: title screen and game.
 import { useRef, useState } from 'react';
-import { migrate, newSim } from '../sim/setup';
+import { SCENARIOS, migrate, newSim } from '../sim/setup';
+import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { openCampaign } from '../sim/tick';
-import type { Difficulty, SimState } from '../sim/types';
+import type { Difficulty, ScenarioId, SimState } from '../sim/types';
 import { seedFrom } from '../sim/rng';
 import { Btn } from '../ui/kit';
 import Shell from './Shell';
@@ -20,6 +21,9 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [err, setErr] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [years, setYears] = useState(4);
+  const [scenario, setScenario] = useState<ScenarioId>('standard');
+  const earned = loadAchievements();
+  const start = (sc: ScenarioId) => onStart(openCampaign(newSim({ seed: seedFrom(seed || '0'), difficulty, scenario: sc, months: years * 12 })));
   const [seed, setSeed] = useState(() => String(Math.floor(Math.random() * 1e6)));
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
@@ -34,6 +38,15 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           </Btn>
         </div>
       )}
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4 text-[12px]">
+        <div className="min-w-0">
+          <div className="font-sans text-[15px] font-semibold text-white">New to Forge Command?</div>
+          <p className="text-ops-dim">{SCENARIOS.tutorial.blurb}</p>
+        </div>
+        <Btn kind="primary" className="px-4 py-2" onClick={() => start('tutorial')}>
+          Play the tutorial
+        </Btn>
+      </section>
       <section className="panel">
         <div className="panel-title">New campaign</div>
         <div className="space-y-4 p-4 text-[12px]">
@@ -41,6 +54,25 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             You are Director of the Munitions Production Board of the Commonwealth of Aldmere. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
             air-defense batteries and a demilitarization yard, all tied together by rail, road, sea and air. Keep the rounds flowing.
           </p>
+          <div>
+            <div className="label mb-1">Scenario</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(Object.keys(SCENARIOS) as ScenarioId[])
+                .filter((id) => id !== 'tutorial')
+                .map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={scenario === id}
+                    onClick={() => setScenario(id)}
+                    className={`rounded border p-2 text-left ${scenario === id ? 'border-ops-cyan bg-ops-cyan/10' : 'border-ops-line hover:border-ops-dim'}`}
+                  >
+                    <div className={`font-sans text-[14px] font-semibold ${scenario === id ? 'text-ops-cyan' : 'text-white'}`}>{SCENARIOS[id].name}</div>
+                    <div className="text-[11px] text-ops-dim">{SCENARIOS[id].blurb}</div>
+                  </button>
+                ))}
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <div className="label mb-1">Difficulty</div>
@@ -69,7 +101,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             </label>
           </div>
           <div className="flex justify-end">
-            <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={() => onStart(openCampaign(newSim({ seed: seedFrom(seed || '0'), difficulty, months: years * 12 })))}>
+            <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={() => start(scenario)}>
               Take command →
             </Btn>
           </div>
@@ -117,6 +149,19 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           </label>
           {err && <p className="w-full text-ops-red">{err}</p>}
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-title">
+          Achievements · {ACHIEVEMENTS.filter((a) => earned[a.id]).length} of {ACHIEVEMENTS.length}
+        </div>
+        <ul className="grid gap-x-4 gap-y-1 p-4 text-[11px] sm:grid-cols-2">
+          {ACHIEVEMENTS.map((a) => (
+            <li key={a.id} className={earned[a.id] ? 'text-ops-green' : 'text-ops-dim'}>
+              {earned[a.id] ? '★' : '☆'} <span className={earned[a.id] ? 'text-white' : ''}>{a.title}</span> · {a.text}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <p className="text-center text-[10px] text-ops-dim">A game. Designations and makers are real; every site, company, nation and person is fictional.</p>
