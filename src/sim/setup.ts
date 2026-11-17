@@ -109,6 +109,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
       lots: {},
       unserviceable: {},
       workers: def.crew,
+      trainees: [],
       health: def.owner === 'state' ? 100 : Math.round(55 + rand(state) * 30),
       qualified: def.qualified,
       qualifyingDays: null,

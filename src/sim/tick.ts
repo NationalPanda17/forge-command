@@ -255,6 +255,10 @@ function logistics(s: SimState): void {
   s.shipments = s.shipments.filter((sh) => sh.arrive > s.day);
   for (const sh of here) {
     const site = s.sites[sh.to];
+    if (sh.to === DEMIL_SITE && isLine(sh.material)) {
+      site.unserviceable[sh.material] = (site.unserviceable[sh.material] ?? 0) + sh.qty;
+      continue;
+    }
     if (isLine(sh.material)) addLots(site, sh.material, sh.lots ?? [{ qty: sh.qty, made: s.day, until: s.day + MATERIALS[sh.material].shelfDays }]);
     else site.stock[sh.material] = (site.stock[sh.material] ?? 0) + sh.qty;
   }
@@ -420,12 +424,12 @@ function lifecycle(s: SimState): void {
   // Demilitarization: burn or recycle what has arrived at Karrow.
   const demil = s.sites[DEMIL_SITE];
   let tonnes = DEMIL_TPD * (demil.status === 'active' ? 1 : 0);
-  for (const line of Object.keys(demil.lots) as LineId[]) {
+  for (const line of Object.keys(demil.unserviceable) as LineId[]) {
     if (tonnes <= 0) break;
     const w = MATERIALS[line].weight;
-    const q = Math.min(lotQty(demil.lots[line]), tonnes / w);
+    const q = Math.min(demil.unserviceable[line] ?? 0, tonnes / w);
     if (q <= 0) continue;
-    takeLots(demil, line, q);
+    demil.unserviceable[line] = (demil.unserviceable[line] ?? 0) - q;
     tonnes -= q * w;
     s.month.demilled += q;
     const t = q * w;
@@ -488,6 +492,15 @@ function world(s: SimState): void {
       }
     }
     for (const p of site.processes) if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + 0.08 / DAYS_PER_MONTH);
+    if (site.trainees.length) {
+      for (const t of site.trainees) t.days--;
+      const done = site.trainees.filter((t) => t.days <= 0).reduce((a, t) => a + t.count, 0);
+      site.trainees = site.trainees.filter((t) => t.days > 0);
+      if (done) {
+        site.workers += done;
+        feed(s, 'good', `${done} trainees qualify at ${def.name}.`, site.id);
+      }
+    }
     if (s.day < 60 || !site.processes.length) continue;
     if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < 0.025 / DAYS_PER_MONTH) {
       site.disruptionDays = randInt(s, 20, 90);
@@ -507,7 +520,7 @@ function payDaily(s: SimState): void {
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
     if (def.owner !== 'state') continue;
-    ops += site.workers * WAGE_PER_DAY;
+    ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
     ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? 0.3 : p.run === 'surge' ? 1.35 : 1), 0);
   }
   s.treasury -= ops;

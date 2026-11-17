@@ -41,6 +41,8 @@ export interface SiteState {
   /** Rounds past their service life, waiting for refurbishment or demilitarization. */
   unserviceable: Partial<Record<LineId, number>>;
   workers: number;
+  /** New hires still in training. */
+  trainees: { count: number; days: number }[];
   /** Private and foreign companies: 0..100 financial health. */
   health: number;
   qualified: boolean;
