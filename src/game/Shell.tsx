@@ -10,10 +10,13 @@ import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
 import SitePanel from './SitePanel';
 import StrategyPanel from './StrategyPanel';
+import { GuidePanel, WatchPanel } from './WatchGuide';
+import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'site' | 'material' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed';
+type PanelId = 'watch' | 'site' | 'material' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed' | 'guide';
 const PANELS: { id: PanelId; label: string }[] = [
+  { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
   { id: 'material', label: 'Materials' },
   { id: 'stockpile', label: 'Stockpile' },
@@ -22,6 +25,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'strategy', label: 'Board' },
   { id: 'money', label: 'Money' },
   { id: 'feed', label: 'Feed' },
+  { id: 'guide', label: 'Guide' },
 ];
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
 
@@ -47,7 +51,20 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   const { state, speed, setSpeed, act, step } = useSim(initial, autoPause);
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
-  const [panel, setPanel] = useState<PanelId>('site');
+  const [panel, setPanel] = useState<PanelId>('watch');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        setSpeed(speed === 0 ? 1 : 0);
+      } else if (['1', '2', '3', '4'].includes(e.key)) setSpeed(([1, 2, 4, 8] as Speed[])[Number(e.key) - 1]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [speed, setSpeed]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
 
   const markers = useMemo(() => markersFor(state), [state]);
@@ -163,6 +180,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'strategy' && <StrategyPanel state={state} act={act} />}
             {panel === 'money' && <MoneyPanel state={state} />}
             {panel === 'feed' && <Feed state={state} onSite={select} />}
+            {panel === 'watch' && <WatchPanel state={state} onSite={select} onMaterial={showMaterial} />}
+            {panel === 'guide' && <GuidePanel />}
           </div>
         </aside>
       </div>
