@@ -312,7 +312,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
         toPartners: deliv.delivered,
         toReserve: full + degraded,
         staffing: staffed[campus],
-        limit: strike ? 'strike' : partsLimit && stageLast.some((x) => x.limit === 'parts') ? partsLimit : testsLimited ? 'tests' : staffed[campus] < 0.98 ? 'crew' : stageLast.some((x) => x.limit === 'starved' || x.limit === 'blocked') ? 'stage' : 'capacity',
+        limit: strike ? 'strike' : partsLimit && stageLast.some((x) => x.limit === 'parts') ? partsLimit : testsLimited ? 'tests' : staffed[campus] < 0.98 ? 'crew' : 'capacity',
         usedSubstitutes: [...new Set(used)],
       };
     }

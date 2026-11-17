@@ -365,8 +365,8 @@ const acceptance = (testHours: number): StageDef => ({ id: 'acceptance', name: '
 
 /** Each line is a chain of stages; units wait in buffers between them. */
 export const STAGES: Record<LineId, StageDef[]> = {
-  pac3: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(30)],
-  sm6: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(45)],
+  pac3: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(28)],
+  sm6: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(42)],
   tamir: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(1.5)],
   irist: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(6)],
   stinger: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(3)],
@@ -374,13 +374,13 @@ export const STAGES: Record<LineId, StageDef[]> = {
   shell155: [
     { id: 'machining', name: 'Body machining', mult: 1.1, yield: 0.99, comps: ['shellBodies'] },
     { id: 'fill', name: 'Fill & pack', mult: 1.06, yield: 0.99, comps: ['energetics'] },
-    { id: 'acceptance', name: 'Lot acceptance', mult: 1.3, yield: 0.995, comps: [], testHours: 0.012 },
+    { id: 'acceptance', name: 'Lot acceptance', mult: 1.3, yield: 0.995, comps: [], testHours: 0.01 },
   ],
 };
 /** Buffers hold at most this many months of line capacity. */
 export const WIP_MONTHS = 1.5;
 /** Buffers start with this many months of line capacity. */
-export const START_WIP_MONTHS = 0.3;
+export const START_WIP_MONTHS = 0.15;
 export const DEBOTTLENECK_STEP = 0.2;
 export const MAX_DEBOTTLENECK = 2;
 export const DEBOTTLENECK_COST_SHARE = 0.3;

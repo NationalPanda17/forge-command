@@ -26,7 +26,7 @@ export const STEPS: Step[] = [
   {
     tab: 'plants',
     title: 'Plants and lines',
-    text: 'Three campuses, seven lines. Surge for 30% more output (it wears the line and morale), expand into free bays (new capacity ramps up from 30%), retool bays between lines, and install upgrades. Substitute chips let a starved line keep running on lower-grade parts.',
+    text: 'Three campuses, seven lines. Each line is a chain of stages, from motors through guidance and assembly to acceptance test: watch for the bottleneck and widen it. Acceptance shares each campus\'s test cells. Surge for 30% more output, expand into free bays (new capacity is inspected, then ramps up from 30%), retool, and upgrade.',
   },
   {
     tab: 'workforce',

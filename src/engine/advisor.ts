@@ -115,11 +115,11 @@ export function advise(state: GameState): Advice[] {
   for (const c of CAMPUS_IDS) {
     const cs = state.campuses[c];
     const t = cs.lastTestHours;
-    if (t.avail > 0 && t.need > t.avail * 0.95 && cs.testCellBuilds.length === 0) {
+    if (t.avail > 0 && t.need > t.avail * 1.02 && cs.testCellBuilds.length === 0) {
       const action: Action = { type: 'buildTestCell', campus: c };
       out.push({
         id: `testcell-${c}`,
-        tone: t.need > t.avail ? 'urgent' : 'suggest',
+        tone: t.need > t.avail * 1.15 ? 'urgent' : 'suggest',
         text: `Acceptance testing at ${CAMPUSES[c].name} needs ${Math.round(t.need)} test-cell hours a month and has ${Math.round(t.avail)}. Finished rounds are queuing for test.`,
         action: ok(action) ? action : undefined,
         actionLabel: `Build test cell ($${testCellCost(c)}M)`,

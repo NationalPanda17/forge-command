@@ -6,6 +6,9 @@ import {
   MAX_UPGRADE,
   UPGRADE,
   buildCost,
+  campusTestHours,
+  testCellCost,
+  TEST_CELLS,
   effectiveCapacity,
   expandCost,
   expansions,
@@ -32,6 +35,7 @@ import {
 } from '../../engine';
 import { Bar, Btn, Chip, Panel, Segmented } from '../kit';
 import { money, pct, qty, toneFor } from '../format';
+import Flow from '../Flow';
 
 function limitText(state: GameState, id: LineId): { text: string; tone: string } {
   const l = state.lines[id].last.limit;
@@ -46,6 +50,10 @@ function limitText(state: GameState, id: LineId): { text: string; tone: string }
       return { text: `understaffed (${pct(state.lines[id].last.staffing)})`, tone: 'text-ops-amber' };
     case 'strike':
       return { text: 'on strike', tone: 'text-ops-red' };
+    case 'tests':
+      return { text: 'waiting on test cells', tone: 'text-ops-red' };
+    case 'stage':
+      return { text: 'held up between stages', tone: 'text-ops-amber' };
     default:
       return { text: `short of ${COMPONENTS[l].name.toLowerCase()}`, tone: 'text-ops-red' };
   }
@@ -84,8 +92,8 @@ function LineCard({ state, id, act }: { state: GameState; id: LineId; act: (a: A
           </div>
           <div className="mt-1 flex gap-0.5" title="Each block is a bay; the fill shows ramp-up">
             {line.tranches.map((t, i) => (
-              <div key={i} className="bar flex-1" style={{ flexGrow: t.capacity }}>
-                <span className={t.maturity >= 1 ? 'bg-ops-green' : 'bg-ops-cyan'} style={{ width: `${t.maturity * 100}%` }} />
+              <div key={i} className={`bar flex-1 ${t.faiMonths > 0 ? 'outline outline-1 outline-ops-violet' : ''}`} style={{ flexGrow: t.capacity }} title={t.faiMonths > 0 ? `First-article inspection: ${t.faiMonths} month(s) left` : `${Math.round(t.maturity * 100)}% ramped up`}>
+                <span className={t.faiMonths > 0 ? 'bg-ops-violet/40' : t.maturity >= 1 ? 'bg-ops-green' : 'bg-ops-cyan'} style={{ width: `${t.faiMonths > 0 ? 100 : t.maturity * 100}%` }} />
               </div>
             ))}
           </div>
@@ -106,6 +114,8 @@ function LineCard({ state, id, act }: { state: GameState; id: LineId; act: (a: A
           <div className="text-[10px] text-ops-dim">plus wages</div>
         </div>
       </div>
+
+      <Flow state={state} id={id} act={act} />
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <Segmented<RunMode>
@@ -243,6 +253,20 @@ function CampusSection({ state, campus, act }: { state: GameState; campus: Campu
             </Chip>
           ))}
           {cs.strikeMonths > 0 && <Chip tone="border-ops-red/60 text-ops-red">strike · {cs.strikeMonths} mo</Chip>}
+          <span
+            className={cs.lastTestHours.need > cs.lastTestHours.avail ? 'text-ops-red' : 'text-ops-dim'}
+            title="Acceptance testing on this campus shares these test cells. Each cell gives 200 hours a month."
+          >
+            {cs.testCells} test cell{cs.testCells === 1 ? '' : 's'} · {Math.round(cs.lastTestHours.need)}/{campusTestHours(state, campus)} h used
+          </span>
+          {cs.testCellBuilds.map((m, i) => (
+            <Chip key={`tc${i}`} tone="border-ops-cyan/60 text-ops-cyan">
+              test cell · {m} mo
+            </Chip>
+          ))}
+          <Btn why={validateAction(state, { type: 'buildTestCell', campus })} title={`Adds 200 test-cell hours a month after ${TEST_CELLS[campus].months} months.`} onClick={() => act({ type: 'buildTestCell', campus })}>
+            Test cell · {money(testCellCost(campus))}
+          </Btn>
           <Btn why={validateAction(state, { type: 'buildBays', campus })} title={`Adds ${def.buildBays} bays after construction.`} onClick={() => act({ type: 'buildBays', campus })}>
             New building +{def.buildBays} bays · {money(buildCost(campus))}
           </Btn>

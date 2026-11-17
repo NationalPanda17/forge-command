@@ -76,6 +76,27 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
     ),
   },
   {
+    id: 'floor',
+    title: 'The factory floor',
+    body: () => (
+      <>
+        <P>
+          Every line is a chain of stages. Missiles go through motor & airframe, then guidance integration, then final assembly, then acceptance test. Shells go
+          through body machining, then fill & pack, then lot acceptance. Units wait in buffers between stages.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>Bottlenecks:</b> the slowest stage sets the pace. The stage after it sits <i>waiting for work</i>. Widen a single stage by 20% (twice at most) without buying a whole bay.</Li>
+          <Li><b>Buffers</b> soak up hiccups: when a part runs short, units already in the buffers keep moving for a while. When a buffer fills, the stage before it stops.</Li>
+          <Li><b>Parts are used where they are needed:</b> motors and energetics at the first stage, seekers and electronics at guidance.</Li>
+          <Li><b>Yields:</b> every stage scraps a little. Experience on the line removes up to 40% of that scrap.</Li>
+          <Li><b>Test cells:</b> acceptance testing on each campus shares a pool of test cells, 200 hours each a month. A PAC-3 needs 30 hours, a Tamir 1.5. Surge every line and testing becomes the bottleneck. Build more cells.</Li>
+          <Li><b>First-article inspection:</b> new bays (and new plants) sit idle for {`0 to 2`} months while the first units are inspected, then ramp up from about 30%.</Li>
+          <Li><b>In-house plants</b> (in Supply chain): build your own motor works, shell forge or optics lab. They are slow and costly to build, need crew from their campus, and make parts far cheaper than the market. No one can embargo them.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: 'workforce',
     title: 'Workforce',
     body: () => (

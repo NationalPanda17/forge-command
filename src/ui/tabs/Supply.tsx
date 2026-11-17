@@ -26,6 +26,7 @@ import {
 } from '../../engine';
 import { Bar, Btn, Chip, NumberInput, Panel, Stat } from '../kit';
 import { money, qty, textToneFor } from '../format';
+import Facilities from '../Facilities';
 
 type Term = 12 | 24 | 36;
 
@@ -186,6 +187,7 @@ export default function Supply({ state, act }: { state: GameState; act: (a: Acti
       <p className="text-[11px] text-ops-dim">
         Contracts fill first, then standing spot buys from the cheapest qualified supplier with room. Qualify second sources before you need them: it takes months.
       </p>
+      <Facilities state={state} act={act} />
       {COMPONENT_IDS.map((c) => (
         <ComponentPanel key={c} state={state} c={c} act={act} />
       ))}
