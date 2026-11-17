@@ -9,6 +9,7 @@ import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { recordScore } from './scores';
 import { useMemo } from 'react';
 import { canSecondTerm } from '../sim/commitments';
+import { epilogue } from '../sim/story';
 import { monthLabel2 } from './useSim';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
@@ -28,7 +29,7 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
   );
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="term-title">
-      <div className="panel mx-auto max-w-3xl space-y-4 p-4 text-[12px]">
+      <div className="fc-zoom panel mx-auto max-w-3xl space-y-4 p-4 text-[12px]">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="label">{state.mode === 'sandbox' ? 'Sandbox · ' : ''}{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
@@ -46,6 +47,7 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           </div>
         </header>
 
+        {state.story && <p className="rounded border border-ops-amber/40 bg-ops-amber/5 p-3 leading-relaxed text-ops-text">{epilogue(state)}</p>}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stat('Average readiness', pct(r.avgReadiness))}
           {stat('Lowest readiness', pct(r.minReadiness), r.minReadiness < 0.5 ? 'text-ops-red' : 'text-white')}

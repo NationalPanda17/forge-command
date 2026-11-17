@@ -1,14 +1,23 @@
 // Operational map of the Commonwealth of Aldmere: static geography, transport network, sites, shipments.
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef } from '../../sim/world';
+import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef, type SiteKind } from '../../sim/world';
 import * as G from './geo';
 import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
 import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
 
 // ---------- Public types ----------
 
-export interface MapMarker { tone?: 'ok' | 'warn' | 'bad' | 'idle'; badge?: string; pulse?: boolean }
+export interface MapMarker {
+  tone?: 'ok' | 'warn' | 'bad' | 'idle';
+  badge?: string;
+  pulse?: boolean;
+  /** Not drawn at all. */
+  hidden?: boolean;
+  /** Overrides for sites that change (a plant founded on a plot). */
+  kind?: SiteKind;
+  name?: string;
+}
 export interface MapShipment {
   id: number;
   /** Site ids along the way. */
@@ -524,12 +533,13 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
   const k = 1 / S;
   const m = markerPx(S);
   const h = m / 2;
-  const order = SITES.slice().sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
+  const order = SITES.filter((s) => !markers[s.id]?.hidden).sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
   return (
     <g>
       {/* Leaders from where a site really is to where its marker was moved to keep it clear of its neighbours. */}
       <g pointerEvents="none">
         {SITES.map((s) => {
+          if (markers[s.id]?.hidden) return null;
           const d = spread[s.id];
           if (!d || Math.hypot(d[0], d[1]) < h * 0.6) return null;
           const [x, y] = G.SITE_POS[s.id];
@@ -558,7 +568,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
             transform={`translate(${x} ${y}) scale(${k})`}
             tabIndex={0}
             role="button"
-            aria-label={`${s.name}, ${KIND_LABEL[s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
+            aria-label={`${mk?.name ?? s.name}, ${KIND_LABEL[mk?.kind ?? s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
             aria-pressed={sel}
             onClick={(e) => onActivate(s.id, e)}
             onKeyDown={(e) => {
@@ -589,7 +599,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
               )}
               {body}
             </g>
-            <SiteIcon kind={s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
+            <SiteIcon kind={mk?.kind ?? s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
             {mk?.badge && (
               <g transform={`translate(${h - 2} ${-h - 3})`}>
                 <rect x={0} y={-6.5} width={8 + mk.badge.length * 5.6} height={13} rx={6.5} fill={col} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.2} />
@@ -604,6 +614,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
       <g pointerEvents="none">
         {Object.entries(labelIds).map(([id, p]) => {
           const s = SITE_BY_ID[id];
+          const mk = markers[id];
           const [mx, my] = markerAt(id, S, spread);
           const x = mx * k;
           const y = my * k;
@@ -621,11 +632,11 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
                 />
               )}
               <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={SITE_FONT} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
-                {s.name}
+                {mk?.name ?? s.name}
               </text>
               {hot && (
                 <text x={p.x} y={p.y + SITE_SUB_GAP} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={SITE_SUB_FONT} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
-                  {kindLine(id)}
+                  {kindLine(id, mk?.kind)}
                 </text>
               )}
             </g>
@@ -1223,12 +1234,15 @@ export default function MapView(props: MapViewProps): JSX.Element {
     if (!layers.labels) return hot;
     if (lodSettled < 1) return hot;
     const rank = (s: SiteDef) => (s.owner === 'state' ? (s.kind === 'arsenal' ? 0 : s.kind === 'depot' ? 1 : 2) : 3);
-    const rest = SITES.filter((s) => !hot.includes(s.id)).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
+    const rest = SITES.filter((s) => !hot.includes(s.id) && !markers[s.id]?.hidden).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
     return [...hot, ...rest];
-  }, [selected, focused, hovered, layers.labels, lodSettled]);
+  }, [selected, focused, hovered, layers.labels, lodSettled, markers]);
   const hotIds = useMemo(() => [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]), [selected, focused, hovered]);
   const badgeSig = SITES.map((s) => markers[s.id]?.badge ?? '').join('|');
-  const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge]))), [settledS, badgeSig]);
+  const hiddenSig = SITES.filter((s) => markers[s.id]?.hidden).map((s) => s.id).join(',');
+  const hidden = useMemo(() => new Set(hiddenSig ? hiddenSig.split(',') : []), [hiddenSig]);
+  const nameSig = SITES.map((s) => `${markers[s.id]?.name ?? ''}:${markers[s.id]?.kind ?? ''}`).join('|');
+  const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden), [settledS, badgeSig, hidden]);
   const placement = useMemo(
     () =>
       layoutMap({
@@ -1241,8 +1255,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
         selected,
         badges: Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])),
         spread,
+        hidden,
+        names: Object.fromEntries(SITES.filter((s) => markers[s.id]?.name).map((s) => [s.id, markers[s.id]!.name!])),
+        kinds: Object.fromEntries(SITES.filter((s) => markers[s.id]?.kind).map((s) => [s.id, markers[s.id]!.kind!])),
       }),
-    [settledS, lodSettled, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
+    [settledS, lodSettled, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady, hidden, nameSig],
   );
 
   const netSig = network ? `${network.built.join(',')}|${Object.entries(network.upgrades).map(([k, v]) => `${k}=${v}`).join(',')}|${network.building.join(',')}|${network.upgrading.join(',')}` : '';

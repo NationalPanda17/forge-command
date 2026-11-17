@@ -1,7 +1,7 @@
 // Collision-free layout for the map: spreads crowded markers apart and places every label so that no text or icon
 // overlaps another. All geometry here is in "zoomed" pixels: map km times the zoom S, before the pan offset.
 
-import { CITIES, REGIONS, SITES, SITE_BY_ID, type RegionId } from '../../sim/world';
+import { CITIES, REGIONS, SITES, SITE_BY_ID, type RegionId, type SiteKind } from '../../sim/world';
 import * as G from './geo';
 import { KIND_LABEL } from './icons';
 
@@ -102,12 +102,12 @@ export const badgeBox = (h: number, badge: string): Box => ({ x0: h - 2.5, y0: -
  * Screen offsets that pull crowded markers apart so no two icons touch. Cities and the off-map arrows stay put and
  * push markers off them too. Deterministic for a zoom level and set of badges.
  */
-export function spreadMarkers(S: number, badges: Record<string, string | undefined> = {}): Record<string, [number, number]> {
+export function spreadMarkers(S: number, badges: Record<string, string | undefined> = {}, hidden: ReadonlySet<string> = NO_HIDDEN): Record<string, [number, number]> {
   const m = markerPx(S);
   const u = uiScale(S);
   const e = m / 2 + 3;
   interface Body { id: string | null; x: number; y: number; ox: number; oy: number; ext: Box }
-  const bodies: Body[] = SITES.map((s) => {
+  const bodies: Body[] = SITES.filter((s) => !hidden.has(s.id)).map((s) => {
     const [x, y] = G.SITE_POS[s.id];
     const ext: Box = { x0: -e, y0: -e, x1: e, y1: e };
     const b = badges[s.id];
@@ -195,6 +195,8 @@ export function spreadMarkers(S: number, badges: Record<string, string | undefin
   return out;
 }
 
+export const NO_HIDDEN: ReadonlySet<string> = new Set();
+
 /** Where a site's marker centre is drawn, in zoomed pixels. */
 export const markerAt = (id: string, S: number, spread: Record<string, [number, number]>): [number, number] => {
   const [x, y] = G.SITE_POS[id];
@@ -240,6 +242,11 @@ export interface LayoutInput {
   /** Badge text per site, as it affects the marker's footprint. */
   badges: Record<string, string | undefined>;
   spread: Record<string, [number, number]>;
+  /** Sites not drawn at all (open plots outside build mode). */
+  hidden?: ReadonlySet<string>;
+  /** Names and kinds that differ from the defaults (founded plants). */
+  names?: Record<string, string>;
+  kinds?: Record<string, SiteKind>;
 }
 
 export function layoutMap(inp: LayoutInput): Layout {
@@ -248,11 +255,13 @@ export function layoutMap(inp: LayoutInput): Layout {
   const m = markerPx(S);
   const h = m / 2;
   const taken: Box[] = [];
+  const hidden = inp.hidden ?? NO_HIDDEN;
   const free = (b: Box) => !taken.some((t) => hit(b, t));
   const take = (b: Box) => taken.push(b);
 
   // Icons first: markers (with their badges and selection brackets), city dots and the off-map arrows.
   for (const s of SITES) {
+    if (hidden.has(s.id)) continue;
     const [x, y] = markerAt(s.id, S, spread);
     const e = s.id === inp.selected ? h + 7 : h + 2.5;
     take({ x0: x - e, y0: y - e, x1: x + e, y1: y + e });
@@ -284,11 +293,12 @@ export function layoutMap(inp: LayoutInput): Layout {
   const sites: Record<string, Placed> = {};
   const placeSite = (id: string) => {
     const s = SITE_BY_ID[id];
-    if (!s) return;
+    if (!s || hidden.has(id)) return;
+    const name = inp.names?.[id] ?? s.name;
     const [x, y] = markerAt(id, S, spread);
     const isHot = inp.hot.includes(id);
-    const w0 = textWidth(s.name, SITE_FONT, FONT_MONO, isHot ? 700 : 500);
-    const sub = isHot ? kindLine(id) : '';
+    const w0 = textWidth(name, SITE_FONT, FONT_MONO, isHot ? 700 : 500);
+    const sub = isHot ? kindLine(id, inp.kinds?.[id]) : '';
     const w = Math.max(w0, sub ? textWidth(sub, SITE_SUB_FONT, FONT_MONO, 400, 0.1) : 0);
     const extra = sub ? [{ gap: SITE_SUB_GAP, size: SITE_SUB_FONT }] : [];
     const tall = sub ? SITE_SUB_GAP : 0;
@@ -436,9 +446,9 @@ export function layoutMap(inp: LayoutInput): Layout {
 }
 
 /** The second line shown under a site you are looking at. */
-export function kindLine(id: string): string {
+export function kindLine(id: string, kind?: SiteKind): string {
   const s = SITE_BY_ID[id];
-  return s ? `${KIND_LABEL[s.kind].toUpperCase()} · ${REGIONS[s.region].name.toUpperCase()}` : '';
+  return s ? `${KIND_LABEL[kind ?? s.kind].toUpperCase()} · ${REGIONS[s.region].name.toUpperCase()}` : '';
 }
 
 function sideOf(at: G.Pt): 'n' | 's' | 'w' | 'e' {

@@ -22,7 +22,7 @@ export function watchList(s: SimState): Watch[] {
   if (s.strategy.decisions.length) out.push({ tone: 'warn', text: `${s.strategy.decisions.length} decision${s.strategy.decisions.length > 1 ? 's' : ''} waiting on the Board tab.`, panel: 'strategy' });
   if (s.crisis) out.push({ tone: s.crisis.phase === 'active' ? 'bad' : 'warn', text: `${s.crisis.name}: ${s.crisis.phase === 'warning' ? 'raise the depot target in' : 'keep feeding'} ${REGIONS[s.crisis.region].name}.`, panel: 'logistics' });
   // Your plants: what is holding them back.
-  for (const def of SITES.filter((x) => x.owner === 'state' && x.processes.length)) {
+  for (const def of SITES.filter((x) => x.owner === 'state' && s.sites[x.id].processes.length && s.sites[x.id].status !== 'closed')) {
     const site = s.sites[def.id];
     for (const p of site.processes) {
       if (p.run === 'idle' || !p.lastLimit || ['capacity', 'idle', 'demand'].includes(p.lastLimit)) continue;
@@ -55,7 +55,7 @@ export function watchList(s: SimState): Watch[] {
     if (r < 0.5) out.push({ tone: 'warn', text: `${MATERIALS[l].name} reserve at ${Math.round(r * 100)}% of the one-year goal.`, material: l });
   }
   // People in your plants.
-  for (const def of SITES.filter((x) => x.owner === 'state' && x.crew > 0 && x.processes.length)) {
+  for (const def of SITES.filter((x) => x.owner === 'state' && (x.crew > 0 || s.sites[x.id].extraCrew > 0) && s.sites[x.id].processes.length && s.sites[x.id].status !== 'closed')) {
     const site = s.sites[def.id];
     if (site.fatigue >= 50) out.push({ tone: 'warn', text: `Crews at ${def.name} are exhausted (fatigue ${Math.round(site.fatigue)}). Ease off the round-the-clock shifts before someone gets hurt.`, site: def.id });
     if (site.morale < 40) out.push({ tone: 'warn', text: `Morale is low at ${def.name} (${Math.round(site.morale)}). A safety programme or a pay deal would help.`, site: def.id });
