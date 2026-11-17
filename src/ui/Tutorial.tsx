@@ -19,6 +19,11 @@ export const STEPS: Step[] = [
     text: 'On the right: each interceptor and artillery type, against a goal of 6 months of calm-time draw. Every month, threats arrive and rounds leave the reserve. When a type runs dry, threats get through.',
   },
   {
+    tab: 'map',
+    title: 'The map',
+    text: 'Four regions, each with a depot. Rounds are fired from the local depot first, and convoys refill it every month. When intel warns of a crisis, raise that region\'s stock target so the rounds are there in time.',
+  },
+  {
     tab: 'supply',
     title: 'Supply chain',
     text: 'Seven shared components feed every line. Your starting contracts run out in 9 months and only cover 85% of what the lines need, so sign new ones here. Then look at the suppliers that are not qualified yet: qualifying a second source takes months, so start before trouble hits.',

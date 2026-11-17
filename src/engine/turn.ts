@@ -10,6 +10,7 @@ import {
   SCENARIOS,
   STAGES,
   RESEARCH,
+  THEATERS,
   UPGRADE,
   WEAR_DELTA,
   linesAt,
@@ -18,6 +19,7 @@ import { applyAction } from './actions';
 import { adaptOpponent, computeForecast, resolveDemand } from './demand';
 import { runFacilities, runFactory } from './factory';
 import { runMarkets, runSupply } from './supply';
+import { TRANSPORT_UPKEEP, dispatchConvoys, growRival, receiveConvoys } from './logistics';
 import { applyFallbacks, rollEvents } from './events';
 import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
@@ -35,8 +37,8 @@ function advanceCrisis(s: GameState, messages: Messages): void {
   if (!s.crisis) {
     if (s.month >= sc.quietMonths && rand(s) < rules.crisisChance) {
       const def = pick(s, CRISES);
-      s.crisis = { id: def.id, name: def.name, family: def.family, phase: 'warning', monthsLeft: 2, intensity: round2(randRange(s, 0.8, 1.3)), mix: { ...def.mix }, blurb: def.blurb };
-      messages.push({ tone: 'warn', text: `Intel: tension rising over the ${def.name}. Expect heavier ${def.family === 'air' ? 'interceptor' : 'land fires'} draw in about 2 months.` });
+      s.crisis = { id: def.id, name: def.name, family: def.family, theater: def.theater, phase: 'warning', monthsLeft: 2, intensity: round2(randRange(s, 0.8, 1.3) * (s.rival / 100)), mix: { ...def.mix }, blurb: def.blurb };
+      messages.push({ tone: 'warn', text: `Intel: tension rising over the ${def.name} (${THEATERS[def.theater].name}). Expect heavier ${def.family === 'air' ? 'interceptor' : 'land fires'} draw there in about 2 months: stock that depot now.` });
     }
     return;
   }
@@ -215,7 +217,10 @@ export function endTurn(state: GameState): GameState {
   const partnerPenalty = settlePartners(s, messages);
   ledger.penalties += partnerPenalty;
 
+  receiveConvoys(s);
   const demand = resolveDemand(s);
+  dispatchConvoys(s, messages);
+  growRival(s);
   messages.push(...demand.messages);
   runWorkforce(s, messages);
   endCrisisMonth(s, messages);
@@ -225,8 +230,9 @@ export function endTurn(state: GameState): GameState {
   ledger.wages = CAMPUS_IDS.reduce((a, c) => a + wageBill(s, c), 0);
   ledger.overhead = LINE_IDS.reduce((a, id) => a + lineOverhead(s, id), 0) + plants.overhead;
   ledger.storage = storageCost(s);
+  ledger.logistics = s.transport * TRANSPORT_UPKEEP + demand.airliftCost;
   ledger.appropriation = s.appropriation;
-  s.treasury += s.appropriation + prod.revenue - ledger.wages - ledger.overhead - ledger.components - ledger.storage - partnerPenalty;
+  s.treasury += s.appropriation + prod.revenue - ledger.wages - ledger.overhead - ledger.components - ledger.storage - ledger.logistics - partnerPenalty;
 
   if (s.mods.supplementalPending) {
     s.mods.supplementalPending = false;

@@ -1,6 +1,6 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
 import { debottleneckCost, establishCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, SUPPLIERS, suppliersOf } from './data';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -11,6 +11,7 @@ import {
   plannedNeed,
   supplierCap,
 } from './selectors';
+import { loanQty } from './logistics';
 import type { Action, GameState } from './types';
 
 export interface Advice {
@@ -179,6 +180,38 @@ export function advise(state: GameState): Advice[] {
     }
     if (freeBays(state, c) === 0 && !cs.construction.length) {
       out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${DIFFICULTY[state.difficulty].buildMonths} months.` });
+    }
+  }
+
+  // Logistics: stock the region a crisis is heading for, keep convoys moving, borrow in a pinch.
+  const c = state.crisis;
+  if (c && state.theaters[c.theater].targetMonths < 3) {
+    out.push({
+      id: 'depot-crisis',
+      tone: c.phase === 'warning' ? 'urgent' : 'suggest',
+      text: `The ${c.name} will hit ${THEATERS[c.theater].name}. Raise that depot's stock target so convoys move rounds there before they are needed.`,
+      action: { type: 'setDepotTarget', theater: c.theater, months: 3 },
+      actionLabel: 'Target 3 months',
+    });
+  }
+  if (!c) {
+    for (const th of THEATER_IDS) {
+      if (state.theaters[th].targetMonths > DEFAULT_DEPOT_MONTHS) {
+        out.push({ id: `depot-calm-${th}`, tone: 'info', text: `${THEATERS[th].name} is quiet again. A lower depot target frees convoys and stock for elsewhere.`, action: { type: 'setDepotTarget', theater: th, months: DEFAULT_DEPOT_MONTHS }, actionLabel: `Back to ${DEFAULT_DEPOT_MONTHS} months` });
+        break;
+      }
+    }
+  }
+  const last = state.history.at(-1);
+  if (last && last.messages.some((m) => m.text.startsWith('Convoys ran at full capacity')) && validateAction(state, { type: 'buyTransport' }) === null) {
+    out.push({ id: 'transport', tone: 'suggest', text: 'Convoys are running at full capacity. More rail wagons and trucks would keep the depots stocked.', action: { type: 'buyTransport' }, actionLabel: `+${TRANSPORT_STEP} t ($${TRANSPORT_COST}M)` });
+  }
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
+    if (coverMonths(state, id) >= 0.8) continue;
+    const p = PARTNER_IDS.find((q) => validateAction(state, { type: 'requestLoan', partner: q, line: id }) === null);
+    if (p) {
+      out.push({ id: `loan-${id}`, tone: 'urgent', text: `${LINES[id].name} is nearly gone. ${PARTNERS[p].name} could lend you ${loanQty(id).toLocaleString('en-US')} now, repaid from production later.`, action: { type: 'requestLoan', partner: p, line: id }, actionLabel: 'Ask for a loan' });
+      break;
     }
   }
 

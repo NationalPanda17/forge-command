@@ -23,11 +23,17 @@ import {
   INVEST_MONTHS,
   MAX_INVEST,
   RESEARCH,
+  PARTNERS,
   ESTABLISH_COST_SHARE,
   BASE_BAYS_PER_LINE,
+  DEPOT_TARGETS,
+  MAX_TRANSPORT,
+  TRANSPORT_COST,
+  TRANSPORT_STEP,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
+import { loanBlocker, takeLoan } from './logistics';
 import { expansions, freeBays, hasResearch, isEstablished, maxUpgrade, newTranche } from './selectors';
 import type { Action, CampusId, FacilityId, GameState, LineId, UpgradeKind } from './types';
 
@@ -165,6 +171,13 @@ export function validateAction(state: GameState, a: Action): string | null {
       if (freeBays(state, def.campus) < BASE_BAYS_PER_LINE) return `Needs ${BASE_BAYS_PER_LINE} free bays at ${CAMPUSES[def.campus].name}.`;
       return funds(state, establishCost(a.line));
     }
+    case 'setDepotTarget':
+      return (DEPOT_TARGETS as readonly number[]).includes(a.months) ? null : 'Pick one of the listed targets.';
+    case 'buyTransport':
+      if (state.transport >= MAX_TRANSPORT) return 'The rail network cannot take more.';
+      return funds(state, TRANSPORT_COST);
+    case 'requestLoan':
+      return loanBlocker(state, a.partner, a.line);
     case 'acceptTender':
     case 'declineTender':
       return state.tenders.some((t) => t.id === a.tender) ? null : 'That tender is gone.';
@@ -316,6 +329,18 @@ export function applyAction(state: GameState, a: Action): GameState {
       const line = s.lines[a.line];
       line.tranches = [{ ...newTranche(s, LINES[a.line].baseCapacity), base: true }];
       line.run = 'normal';
+      break;
+    }
+    case 'setDepotTarget':
+      s.theaters[a.theater].targetMonths = a.months;
+      break;
+    case 'buyTransport':
+      charge(s, TRANSPORT_COST);
+      s.transport += TRANSPORT_STEP;
+      break;
+    case 'requestLoan': {
+      const qty = takeLoan(s, a.partner, a.line);
+      s.inbox.push({ tone: 'good', text: `${PARTNERS[a.partner].name} lends you ${qty.toLocaleString('en-US')} ${LINES[a.line].name}, to be repaid from production over 8 months.` });
       break;
     }
     case 'acceptTender':

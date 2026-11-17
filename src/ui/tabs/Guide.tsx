@@ -116,6 +116,25 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
     ),
   },
   {
+    id: 'map',
+    title: 'Regions, depots and convoys',
+    body: () => (
+      <>
+        <P>
+          Aldmere has four regions: the Northern Ports, the Halvard Coast, the Eastern Marches and the Skerry Isles. Each has a depot. Threats and fire missions
+          arrive by region, and a crisis hits its own region hardest. Intel tells you which one, two months ahead.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>Depots first:</b> rounds are fired from the regional depot. If it runs dry, only part of the gap (60% for interceptors, 35% for land rounds) can be airlifted from the central reserve in time, at a price.</Li>
+          <Li><b>Convoys</b> leave every month and arrive the next, topping each depot up toward its stock target. Raise the target where a crisis is coming, and lower it where things are quiet.</Li>
+          <Li><b>Transport</b> is limited by tonnage. Shells are heavy and take most of it. Buy more wagons and trucks if convoys run full.</Li>
+          <Li><b>Allies</b> with goodwill of 55 or more will lend you rounds in an emergency, repaid from your production over 8 months.</Li>
+          <Li><b>The {`Vardan Directorate`}</b>, a rival power, keeps building its arms industry, so every new crisis gets a little fiercer. Keep readiness above 85% and its growth slows.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: 'workforce',
     title: 'Workforce',
     body: () => (

@@ -37,6 +37,7 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type TheaterId = 'north' | 'coast' | 'east' | 'isles';
 export type Tier2Id = 'perchlorate' | 'nitro' | 'steel' | 'wafers' | 'ore' | 'optics';
 export type FacilityId = 'motorWorks' | 'arsenalForge' | 'opticsLab';
 
@@ -226,6 +227,40 @@ export interface Shipment {
   arrive: number;
 }
 
+export interface TheaterDef {
+  id: TheaterId;
+  name: string;
+  /** Share of air threats that arrive here in calm times. */
+  threatShare: number;
+  /** Share of land fire missions fired from here. */
+  landShare: number;
+  blurb: string;
+}
+
+export interface DepotStock {
+  full: number;
+  degraded: number;
+}
+
+export interface TheaterState {
+  id: TheaterId;
+  depot: Record<LineId, DepotStock>;
+  /** Months of local draw the convoys try to keep here. */
+  targetMonths: number;
+  /** Units airlifted from the central reserve last month. */
+  lastAirlift: number;
+  lastLeaked: number;
+}
+
+export interface Convoy {
+  id: number;
+  theater: TheaterId;
+  line: LineId;
+  full: number;
+  degraded: number;
+  arrive: number;
+}
+
 export interface FacilityState {
   id: FacilityId;
   status: 'none' | 'building' | 'running';
@@ -385,12 +420,15 @@ export interface Tender {
 export interface PartnerState {
   id: PartnerId;
   goodwill: number;
+  /** Months before this partner will lend again. */
+  loanCooldown: number;
 }
 
 export interface Crisis {
   id: string;
   name: string;
   family: Family;
+  theater: TheaterId;
   phase: 'warning' | 'active';
   monthsLeft: number;
   intensity: number;
@@ -440,6 +478,8 @@ export interface Ledger {
   revenue: number;
   appropriation: number;
   penalties: number;
+  /** Transport upkeep and emergency airlifts. */
+  logistics: number;
 }
 
 export interface ThreatTally {
@@ -473,7 +513,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 5;
+  version: 6;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -490,6 +530,12 @@ export interface GameState {
   reserves: Record<LineId, ReserveState>;
   facilities: Record<FacilityId, FacilityState>;
   tier2: Record<Tier2Id, Tier2State>;
+  theaters: Record<TheaterId, TheaterState>;
+  convoys: Convoy[];
+  /** Tonnes a month the convoys can move. */
+  transport: number;
+  /** The rival power's arms industry, 100 at the start. */
+  rival: number;
   research: { done: ResearchId[]; active: { id: ResearchId; monthsLeft: number } | null };
   shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;
@@ -538,6 +584,9 @@ export type Action =
   | { type: 'qualifySupplier'; supplier: string }
   | { type: 'investSupplier'; supplier: string }
   | { type: 'startResearch'; research: ResearchId }
+  | { type: 'setDepotTarget'; theater: TheaterId; months: number }
+  | { type: 'buyTransport' }
+  | { type: 'requestLoan'; partner: PartnerId; line: LineId }
   | { type: 'establishLine'; line: LineId }
   | { type: 'acceptTender'; tender: number }
   | { type: 'declineTender'; tender: number }

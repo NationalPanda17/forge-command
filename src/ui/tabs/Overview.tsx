@@ -7,7 +7,7 @@ import {
   advise,
   coverMonths,
   reserveTarget,
-  reserveTotal,
+  nationalStock,
   type Action,
   type GameState,
 } from '../../engine';
@@ -149,7 +149,7 @@ export default function Overview({ state, act }: { state: GameState; act: (a: Ac
           <ul className="divide-y divide-ops-line/50">
             {activeLines(state).map((id) => {
               const r = state.reserves[id];
-              const total = reserveTotal(r);
+              const total = nationalStock(state, id);
               const target = reserveTarget(state, id);
               const cover = coverMonths(state, id);
               return (

@@ -315,6 +315,7 @@ describe('demand, doctrine and the cost exchange', () => {
     const empty = structuredClone(newGame({ seed: 4, difficulty: 'easy' }));
     for (const id of AIR_LINES) {
       empty.reserves[id].stock = 0;
+      for (const th of Object.values(empty.theaters)) th.depot[id] = { full: 0, degraded: 0 };
       empty.lines[id].run = 'idle';
     }
     const full = newGame({ seed: 4, difficulty: 'easy' });
@@ -326,6 +327,7 @@ describe('demand, doctrine and the cost exchange', () => {
     const s = structuredClone(newGame({ seed: 6, difficulty: 'easy' }));
     for (const id of ['stinger', 'tamir', 'irist'] as const) {
       s.reserves[id].stock = 0;
+      for (const th of Object.values(s.theaters)) th.depot[id] = { full: 0, degraded: 0 };
       s.lines[id].run = 'idle';
     }
     const loose = endTurn(s);

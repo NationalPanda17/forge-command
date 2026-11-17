@@ -10,6 +10,7 @@ const ROWS: { key: keyof LedgerT; label: string; sign: 1 | -1 }[] = [
   { key: 'components', label: 'Components', sign: -1 },
   { key: 'storage', label: 'Storage', sign: -1 },
   { key: 'projects', label: 'Projects and hiring', sign: -1 },
+  { key: 'logistics', label: 'Transport and airlifts', sign: -1 },
   { key: 'penalties', label: 'Penalties', sign: -1 },
 ];
 

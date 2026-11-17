@@ -169,8 +169,16 @@ export const RESERVE_TARGET_MONTHS = 6;
 export const reserveTarget = (state: GameState, id: LineId) => calmDraw(state, id) * RESERVE_TARGET_MONTHS;
 export const reserveTotal = (r: ReserveState) => r.stock + r.degraded;
 
+/** Every round of a type in the country: central reserve, regional depots and convoys on the road. */
+export function nationalStock(state: GameState, id: LineId): number {
+  let n = reserveTotal(state.reserves[id]);
+  for (const t of Object.values(state.theaters)) n += t.depot[id].full + t.depot[id].degraded;
+  for (const c of state.convoys) if (c.line === id) n += c.full + c.degraded;
+  return n;
+}
+
 export function readiness(state: GameState): number {
-  const parts = activeLines(state).map((id) => Math.min(1, reserveTotal(state.reserves[id]) / Math.max(1, reserveTarget(state, id))));
+  const parts = activeLines(state).map((id) => Math.min(1, nationalStock(state, id) / Math.max(1, reserveTarget(state, id))));
   return parts.reduce((a, b) => a + b, 0) / parts.length;
 }
 
@@ -178,7 +186,7 @@ export function readiness(state: GameState): number {
 export function coverMonths(state: GameState, id: LineId): number {
   const f = state.forecast.draw[id];
   const avg = f.reduce((a, b) => a + b, 0) / Math.max(1, f.length) || calmDraw(state, id);
-  return reserveTotal(state.reserves[id]) / Math.max(0.01, avg);
+  return nationalStock(state, id) / Math.max(0.01, avg);
 }
 
 export function wageBill(state: GameState, campus: CampusId): number {

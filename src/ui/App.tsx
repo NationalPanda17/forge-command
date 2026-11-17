@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DIFFICULTY, SCENARIOS, applyAction, endTurn, readiness, type Action, type GameState } from '../engine';
+import { DIFFICULTY, SCENARIOS, THEATERS, applyAction, endTurn, readiness, type Action, type GameState } from '../engine';
 import { Btn } from './kit';
 import { money, monthLabel, pct, textToneFor } from './format';
 import { DebriefModal, ReviewModal } from './Modals';
@@ -16,11 +16,13 @@ import Plants from './tabs/Plants';
 import Research from './tabs/Research';
 import Supply from './tabs/Supply';
 import Workforce from './tabs/Workforce';
+import World from './tabs/World';
 
-export type TabId = 'overview' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'intel' | 'ledger' | 'guide';
+export type TabId = 'overview' | 'map' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'intel' | 'ledger' | 'guide';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'map', label: 'Map' },
   { id: 'plants', label: 'Plants' },
   { id: 'workforce', label: 'Workforce' },
   { id: 'supply', label: 'Supply chain' },
@@ -207,12 +209,13 @@ export default function App() {
         <div role="status" className={`panel px-4 py-2 text-[12px] ${crisis.phase === 'active' ? 'border-ops-red/60 text-ops-red' : 'border-ops-amber/60 text-ops-amber'}`}>
           {crisis.phase === 'warning'
             ? `Intel warning: the ${crisis.name} may begin in about ${crisis.monthsLeft} month${crisis.monthsLeft === 1 ? '' : 's'}.`
-            : `Crisis: the ${crisis.name}. ${crisis.blurb}`}
+            : `Crisis: the ${crisis.name} (${THEATERS[crisis.theater].name}). ${crisis.blurb}`}
         </div>
       )}
 
       <main>
         {tab === 'overview' && <Overview state={state} act={act} />}
+        {tab === 'map' && <World state={state} act={act} />}
         {tab === 'plants' && <Plants state={state} act={act} />}
         {tab === 'workforce' && <Workforce state={state} act={act} />}
         {tab === 'supply' && <Supply state={state} act={act} />}

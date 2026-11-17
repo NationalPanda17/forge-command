@@ -12,3 +12,4 @@ export * from './persistence';
 export { seedFrom } from './rng';
 export * from './factory';
 export * from './supply';
+export * from './logistics';

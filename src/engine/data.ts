@@ -25,6 +25,8 @@ import type {
   Tier2Id,
   ResearchDef,
   ResearchId,
+  TheaterDef,
+  TheaterId,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -274,18 +276,19 @@ export interface CrisisDef {
   id: string;
   name: string;
   family: Family;
+  theater: TheaterId;
   mix: Partial<Record<ThreatId, number>>;
   blurb: string;
 }
 
 export const CRISES: CrisisDef[] = [
-  { id: 'halvard', name: 'Halvard Strait air campaign', family: 'air', mix: { cruise: 3, ballistic: 2, aircraft: 3, drone: 1.5 }, blurb: 'Waves of aircraft and cruise missiles across the strait.' },
-  { id: 'meric', name: 'Raids on the port of Meric', family: 'air', mix: { rocket: 3, drone: 2, ballistic: 1.5 }, blurb: 'Rockets and drones against the busiest port in the north.' },
-  { id: 'velm', name: 'Drone waves over the Velm Plateau', family: 'air', mix: { drone: 4, cruise: 1.5 }, blurb: 'Night after night of cheap drones, with the odd cruise missile hidden among them.' },
-  { id: 'skerry', name: 'Missile salvos on the Skerry Isles', family: 'air', mix: { ballistic: 3, cruise: 2 }, blurb: 'Ballistic salvos against island air bases.' },
-  { id: 'marches', name: 'Eastern Marches offensive', family: 'land', mix: {}, blurb: 'A grinding offensive along the eastern border.' },
-  { id: 'karrow', name: 'Artillery duel at Karrow Gap', family: 'land', mix: {}, blurb: 'Both sides dig in and trade shells.' },
-  { id: 'riverline', name: 'Riverline counteroffensive', family: 'land', mix: {}, blurb: 'A river crossing that needs every rocket and shell.' },
+  { id: 'halvard', name: 'Halvard Strait air campaign', family: 'air', theater: 'coast', mix: { cruise: 3, ballistic: 2, aircraft: 3, drone: 1.5 }, blurb: 'Waves of aircraft and cruise missiles across the strait.' },
+  { id: 'meric', name: 'Raids on the port of Meric', family: 'air', theater: 'north', mix: { rocket: 3, drone: 2, ballistic: 1.5 }, blurb: 'Rockets and drones against the busiest port in the north.' },
+  { id: 'velm', name: 'Drone waves over the Velm Plateau', family: 'air', theater: 'east', mix: { drone: 4, cruise: 1.5 }, blurb: 'Night after night of cheap drones, with the odd cruise missile hidden among them.' },
+  { id: 'skerry', name: 'Missile salvos on the Skerry Isles', family: 'air', theater: 'isles', mix: { ballistic: 3, cruise: 2 }, blurb: 'Ballistic salvos against island air bases.' },
+  { id: 'marches', name: 'Eastern Marches offensive', family: 'land', theater: 'east', mix: {}, blurb: 'A grinding offensive along the eastern border.' },
+  { id: 'karrow', name: 'Artillery duel at Karrow Gap', family: 'land', theater: 'east', mix: {}, blurb: 'Both sides dig in and trade shells.' },
+  { id: 'riverline', name: 'Riverline counteroffensive', family: 'land', theater: 'north', mix: {}, blurb: 'A river crossing that needs every rocket and shell.' },
 ];
 
 export type AdvisorLevel = 'full' | 'hints' | 'none';
@@ -493,6 +496,33 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
 export const RESEARCH_IDS = Object.keys(RESEARCH) as ResearchId[];
 /** Bays and money needed to set up a new line once its research is done. */
 export const ESTABLISH_COST_SHARE = 3;
+
+// ---------- World and logistics ----------
+
+export const THEATERS: Record<TheaterId, TheaterDef> = {
+  north: { id: 'north', name: 'Northern Ports', threatShare: 0.25, landShare: 0.4, blurb: 'Meric and the northern harbours, the Riverline beyond.' },
+  coast: { id: 'coast', name: 'Halvard Coast', threatShare: 0.3, landShare: 0, blurb: 'Cities and air bases facing the Halvard Strait.' },
+  east: { id: 'east', name: 'Eastern Marches', threatShare: 0.3, landShare: 0.6, blurb: 'The long land border, the Velm Plateau and Karrow Gap.' },
+  isles: { id: 'isles', name: 'Skerry Isles', threatShare: 0.15, landShare: 0, blurb: 'Island air bases far out at sea. Everything arrives by ship.' },
+};
+export const THEATER_IDS = Object.keys(THEATERS) as TheaterId[];
+/** Tonnes per round, for convoy planning. */
+export const WEIGHT: Record<LineId, number> = {
+  pac3: 0.9, sm6: 1.5, tamir: 0.09, irist: 0.09, stinger: 0.016, gmlrs: 0.3, shell155: 0.045, apkws: 0.015, coyote: 0.06, javelin: 0.022,
+};
+export const START_TRANSPORT = 1300;
+export const TRANSPORT_STEP = 300;
+export const TRANSPORT_COST = 35;
+export const MAX_TRANSPORT = START_TRANSPORT + TRANSPORT_STEP * 5;
+/** Share of a depot's shortfall that can be airlifted from the central reserve in time. */
+export const AIRLIFT_SHARE = { air: 0.6, land: 0.35 } as const;
+/** Airlift cost as a share of the round's value. */
+export const AIRLIFT_COST = 0.03;
+export const DEPOT_TARGETS = [0, 1, 1.5, 2, 3] as const;
+export const DEFAULT_DEPOT_MONTHS = 1.5;
+export const RIVAL_NAME = 'Vardan Directorate';
+export const LOAN_GOODWILL = 55;
+export const LOAN_COOLDOWN = 12;
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */

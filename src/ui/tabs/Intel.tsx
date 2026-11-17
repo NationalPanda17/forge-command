@@ -7,7 +7,7 @@ import {
   coverMonths,
   threatPlural,
   effectiveCapacity,
-  reserveTotal,
+  nationalStock,
   type Action,
   type GameState,
 } from '../../engine';
@@ -81,7 +81,7 @@ export default function Intel({ state, act }: { state: GameState; act: (a: Actio
                         </td>
                       ))}
                       <td className="text-right text-ops-dim">{qty(cap)}</td>
-                      <td className="text-right">{qty(reserveTotal(state.reserves[id]))}</td>
+                      <td className="text-right">{qty(nationalStock(state, id))}</td>
                       <td className={`text-right ${textToneFor(Math.min(1, cover / 4))}`}>{cover.toFixed(1)} mo</td>
                     </tr>
                   );

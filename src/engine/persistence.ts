@@ -1,8 +1,9 @@
 import { CAMPUS_IDS, COMPONENT_IDS, FACILITY_IDS, LINE_IDS, STAGES, SUPPLIER_IDS, TEST_CELLS, TIER2_IDS } from './data';
 import { emptyFacility, seedPipeline } from './setup';
+import { CRISES, DEFAULT_DEPOT_MONTHS, PARTNER_IDS, START_TRANSPORT, THEATER_IDS } from './data';
 import type { GameState } from './types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -71,6 +72,19 @@ export function migrate(raw: any): GameState | null {
     }
     raw.research ??= { done: [], active: null };
     raw.version = 5;
+  }
+  if (raw.version === 5) {
+    raw.theaters ??= Object.fromEntries(
+      THEATER_IDS.map((th) => [th, { id: th, depot: Object.fromEntries(LINE_IDS.map((id) => [id, { full: 0, degraded: 0 }])), targetMonths: DEFAULT_DEPOT_MONTHS, lastAirlift: 0, lastLeaked: 0 }]),
+    );
+    raw.convoys ??= [];
+    raw.transport ??= START_TRANSPORT;
+    raw.rival ??= 100;
+    for (const p of PARTNER_IDS) if (raw.partners?.[p]) raw.partners[p].loanCooldown ??= 0;
+    if (raw.crisis && !raw.crisis.theater) raw.crisis.theater = CRISES.find((c) => c.id === raw.crisis.id)?.theater ?? 'east';
+    for (const h of raw.history ?? []) h.ledger.logistics ??= 0;
+    raw.pending.logistics ??= 0;
+    raw.version = 6;
   }
   return raw.version === SAVE_VERSION ? (raw as GameState) : null;
 }

@@ -6,6 +6,9 @@ import {
   TEST_CELLS,
   TIER2_IDS,
   LEAD_TIME,
+  THEATER_IDS,
+  DEFAULT_DEPOT_MONTHS,
+  START_TRANSPORT,
   START_STOCK_MONTHS,
   CAMPUSES,
   CAMPUS_IDS,
@@ -23,6 +26,7 @@ import {
   suppliersOf,
 } from './data';
 import { computeForecast } from './demand';
+import { seedDepots } from './logistics';
 import { spawnTender } from './partners';
 import { randRange } from './rng';
 import { calmDraw, crewNeed } from './selectors';
@@ -36,6 +40,9 @@ import type {
   FacilityState,
   Tier2Id,
   Tier2State,
+  DepotStock,
+  TheaterId,
+  TheaterState,
   GameState,
   Ledger,
   LineId,
@@ -63,6 +70,7 @@ export const emptyLedger = (): Ledger => ({
   revenue: 0,
   appropriation: 0,
   penalties: 0,
+  logistics: 0,
 });
 
 /** Components the original floors need per month at a normal pace. */
@@ -120,7 +128,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 5,
+    version: 6,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
@@ -138,6 +146,15 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     tier2: Object.fromEntries(TIER2_IDS.map((t) => [t, { id: t, availability: 1, priceIndex: 1, disruptionMonths: 0 }])) as Record<Tier2Id, Tier2State>,
     shipments: [],
     research: { done: [], active: null },
+    theaters: Object.fromEntries(
+      THEATER_IDS.map((th) => [
+        th,
+        { id: th, depot: Object.fromEntries(LINE_IDS.map((id) => [id, { full: 0, degraded: 0 }])) as Record<LineId, DepotStock>, targetMonths: DEFAULT_DEPOT_MONTHS, lastAirlift: 0, lastLeaked: 0 },
+      ]),
+    ) as Record<TheaterId, TheaterState>,
+    convoys: [],
+    transport: START_TRANSPORT,
+    rival: 100,
     facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
@@ -232,11 +249,11 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   for (const id of LINE_IDS) {
     reserves[id] = { id, stock: Math.round(calmDraw(state, id) * sc.reserveMonths), degraded: 0, made: 0, used: 0, unmet: 0, valueStopped: 0, engaged: {} };
   }
-  for (const p of PARTNER_IDS) partners[p] = { id: p, goodwill: 50 };
+  for (const p of PARTNER_IDS) partners[p] = { id: p, goodwill: 50, loanCooldown: 0 };
 
   if (sc.openingCrisis) {
     const def = CRISES.find((c) => c.id === sc.openingCrisis)!;
-    state.crisis = { id: def.id, name: def.name, family: def.family, phase: 'active', monthsLeft: 8, intensity: 1, mix: def.mix, blurb: def.blurb };
+    state.crisis = { id: def.id, name: def.name, family: def.family, theater: def.theater, phase: 'active', monthsLeft: 8, intensity: 1, mix: def.mix, blurb: def.blurb };
   }
   if (sc.embargo) suppliers[sc.embargo.supplier].embargoMonths = sc.embargo.months;
   if (sc.shock) {
@@ -245,6 +262,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   }
 
   seedPipeline(state);
+  seedDepots(state);
   spawnTender(state);
   state.forecast = computeForecast(state);
   return state;
