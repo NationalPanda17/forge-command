@@ -1,74 +1,49 @@
 # Forge Command
 
-A strategy game about the factories, supply chains and hard choices behind national defense. You run the Munitions
-Production Board of the Commonwealth of Aldmere, a fictional nation, one month at a time.
-
-Your job is to keep the regional depots stocked through fictional crises while doing four other things:
-- keeping the factories flowing;
-- keeping the suppliers alive;
-- keeping the books balanced;
-- keeping the Defence Committee on side.
+A real-time management game about a nation's munitions industry, from the mine to the launcher to the
+demilitarization pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional
+country.
 
 **Play:** https://nationalpanda17.github.io/forge-command/ It works offline once loaded, and can be installed as an app.
 
-## What you manage
+## Cradle to grave
 
-- **Factory floor:** three campuses and ten production lines:
-  - PAC-3 MSE, SM-6, Tamir, IRIS-T, Stinger;
-  - GMLRS, 155mm shells;
-  - APKWS, Coyote Block 2 and Javelin, which you unlock through research.
+Every round you build is the end of a long chain, and the game simulates all of it, day by day, across 65 fictional
+sites on a detailed map:
 
-  Each line is a chain of stages with partly-finished units waiting between them. Stages have yields, and you can widen
-  the bottleneck. Acceptance testing shares each campus's test cells, and new capacity is inspected before it ramps up.
-- **Expansion:** add bays, put up new buildings, retool, and install automation and quality upgrades. Lines get better
-  with experience.
-- **Workforce:** a limited hiring pool, months of training, morale, quits and strikes.
-- **Supply chain:** seven shared components from fictional suppliers.
-  - Each supplier depends on feedstock markets of its own.
-  - Suppliers have financial health, shocks, export bans, shipping lead times, losses at sea and bankruptcy.
-  - You can qualify second sources and fund a supplier's expansion.
-  - Take-or-pay contracts lock today's price; spot buys pay the market.
-  - Substitutes keep starved lines running, and old stock ages out.
-  - You can build your own motor works, shell forge and optics lab.
-- **Research:** 14 projects, covering new products, designs that need less of the scarce parts, faster processes, and a
-  high-power microwave defense.
-- **The map:** four regions, each with a depot. Rounds are fired from the local depot first. Convoys are limited by
-  tonnage, and emergency airlifts cover only part of a shortfall. Allies lend in a pinch, and a rival power keeps arming.
-- **Demand without a battle map:** five fictional threat classes arrive every month and are met by doctrine, with
-  fallbacks and leakers. The **cost exchange** shows interceptor dollars fired against threat dollars stopped.
-- **People and politics:**
-  - five key staff posts with fictional candidates;
-  - five Committee factions;
-  - public support;
-  - a budget request at the end of each year;
-  - export policy;
-  - partner tenders, airlifts and arms sales;
-  - decision cards.
-- **Story and replay:**
-  - four scenarios, each with a briefing, chapter beats and objectives;
-  - challenge modifiers: ironman, austerity, embargo world and endless;
-  - a daily challenge;
-  - a sandbox with custom rules;
-  - 17 achievements;
-  - a news ticker.
+1. **Extraction:** iron pits, collieries, bauxite and zinc mines, copper, rare-earth sands, quartz, brine wells,
+   offshore gas and pulp.
+2. **Processing:** steelworks and smelters (with gallium and germanium as by-products), refineries, and chemical plants
+   making ammonia, nitric acid, perchlorate, binder, nitrocellulose and high explosive.
+3. **Intermediates:** propellant, wafers, silicon and GaN chips, magnets and infrared optics.
+4. **Components:** rocket motors, warheads, radar and IR seekers, guidance, actuators, airframes, fuzes, shell bodies
+   and charges.
+5. **Your arsenals:** integration and acceptance of PAC-3 MSE, SM-6, Tamir, IRIS-T, Stinger, GMLRS and 155mm shells.
+   Research adds APKWS, Coyote and Javelin.
+6. **Storage and issue:** central and regional depots, then air-defense sectors, air bases and artillery formations.
+7. **Service life:** rounds age. Surveillance firings recertify old lots. Retired rounds are refurbished, or shipped to
+   Karrow and burned or recycled.
 
-## Difficulty
+Everything moves on a rail, road, sea and air network where each route carries only so many tonnes a day.
+- Private suppliers sell to whoever pays. Contract with them, qualify new ones, fund their growth, or bail them out.
+- Foreign suppliers are a sea voyage and an export ban away.
+- Fires, failures, floods and strikes ripple down the chain.
+- Fictional crises hit one region at a time, with two months' warning.
 
-| | Easy | Normal | Hard |
-|---|---|---|---|
-| Component shortages | off | on | tighter |
-| Ramp-up, training, construction, inspection | fast | normal | slow |
-| Events | rare | normal | frequent, plus sabotage |
-| Advisor | one-click suggestions | hints | none |
-| Opponent | static | static | adaptive, imperfect intel |
+## Real time
 
-A guided tutorial runs on your first campaign, and the in-game Guide explains every system. Keyboard: **E** ends the
-month, **1–0** switch tabs, **?** opens settings.
+The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
+happens. Use **Space** to pause and **1** to **4** to set the speed.
 
-## Play on your computer
-
-Double-click **Start Forge Command (Mac).command** or **Start Forge Command (Windows).bat**. You need
-[Node.js](https://nodejs.org) 20 or newer.
+## Panels
+- **Watch:** what needs you, most urgent first.
+- **Site:** the inspector for any site, with your controls on your own plants.
+- **Materials:** any material traced from finished round down to the mine.
+- **Stockpile:** age profiles, surveillance and demilitarization.
+- **Logistics:** depot targets, traffic and busy routes.
+- **Fight:** threats, leakers, doctrine.
+- **Board:** research, staff, the Committee, decisions and objectives.
+- **Money**, **Feed** and **Guide.**
 
 ## Develop
 
@@ -77,20 +52,17 @@ npm install
 npm run dev       # http://localhost:5174
 npm test          # engine tests (vitest)
 npm run build     # typecheck + production build
-npm run balance   # play scripted campaigns on every difficulty and scenario, print the grades
+npm run balance   # play hands-off campaigns on every difficulty
 ```
 
-- `src/engine`: pure TypeScript with a seeded RNG, so the same seed and the same actions always replay the same
-  campaign. [docs/DESIGN.md](docs/DESIGN.md) describes the systems, and [CHANGELOG.md](CHANGELOG.md) the releases.
-- `src/ui`: the React interface.
-- Saves live in the browser (an autosave, three slots, and file export and import). Older saves upgrade automatically.
+- `src/sim`: the engine. It is pure TypeScript and deterministic for a seed. See [docs/DESIGN.md](docs/DESIGN.md).
+- `src/ui/map`: the map and icons.
+- `src/game`: the game screens.
 
 ## About the data
 
-All data comes from public company or government statements, or is made up for the game:
-- Weapon designations and manufacturers are real. Production rates are scaled from publicly stated figures where they
-  exist; where they don't, they are best guesses.
-- Threat costs are rough public estimates.
-- Aldmere, its campuses, suppliers, partners, the rival power, crises, people and events are fictional.
+Designations and makers of the finished rounds are real. Weights and production rates follow public reference figures
+where they exist, and are best guesses elsewhere. Every site, company, nation, person and event is fictional. Nothing
+uses classified or leaked information.
 
 No accounts, no tracking, no analytics.
