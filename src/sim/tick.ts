@@ -29,6 +29,12 @@ const PRIVATE_BUFFER_DAYS = 8;
 const MAX_OUTPUT_DAYS = 20;
 const DEMIL_SITE = 'karrowDemil';
 const DEMIL_TPD = 40;
+/** How hard the world pushes back, by difficulty. */
+export const DIFF = {
+  easy: { events: 0.5, crisis: 0.7, ramp: 1.5 },
+  normal: { events: 1, crisis: 1, ramp: 1 },
+  hard: { events: 1.6, crisis: 1.35, ramp: 0.7 },
+} as const;
 /** Minimum ready rounds a base keeps of each type it can fire. */
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
@@ -409,15 +415,17 @@ function lifecycle(s: SimState): void {
       const lots = site.lots[line]!;
       for (const lot of lots) {
         // Surveillance: sample lots nearing the end of their certified life.
-        if (s.policy.surveillance && testsLeft > 0 && lot.until - s.day < 120 && lot.until > s.day && lot.qty >= 3) {
+        if (s.policy.surveillance && testsLeft > 0 && (lot.ext ?? 0) < 2 && lot.until - s.day < 120 && lot.until > s.day && lot.qty >= 3) {
           testsLeft--;
           const sample = Math.max(1, Math.round(lot.qty * 0.01));
           lot.qty -= sample;
-          s.month.spend.operations += sample * MATERIALS[line].price * 0.05;
-          s.treasury -= sample * MATERIALS[line].price * 0.05;
-          if (rand(s) < 0.88) {
-            lot.until += 730;
-            if (lot.qty > 20) feed(s, 'good', `Surveillance firings pass: ${Math.round(lot.qty)} ${MATERIALS[line].name} at ${SITE_BY_ID[site.id].name} certified for two more years.`, site.id);
+          s.month.spend.operations += sample * MATERIALS[line].price * 0.08;
+          s.treasury -= sample * MATERIALS[line].price * 0.08;
+          // Older lots fail more often; a lot can be extended twice at most.
+          if (rand(s) < 0.9 - 0.15 * (lot.ext ?? 0)) {
+            lot.until += 365;
+            lot.ext = (lot.ext ?? 0) + 1;
+            if (lot.qty > 20) feed(s, 'good', `Surveillance firings pass: ${Math.round(lot.qty)} ${MATERIALS[line].name} at ${SITE_BY_ID[site.id].name} certified for another year.`, site.id);
           } else {
             lot.until = s.day;
             feed(s, 'warn', `Surveillance firings fail: a lot of ${Math.round(lot.qty)} ${MATERIALS[line].name} at ${SITE_BY_ID[site.id].name} is condemned.`, site.id, lot.qty > 50);
@@ -464,7 +472,7 @@ function lifecycle(s: SimState): void {
 function world(s: SimState): void {
   // Crises.
   if (!s.crisis) {
-    if (s.day > 90 && rand(s) < 0.08 / DAYS_PER_MONTH) {
+    if (s.day > 90 && rand(s) < (0.08 * DIFF[s.difficulty].crisis) / DAYS_PER_MONTH) {
       const c = pick(s, CRISES);
       s.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'warning', days: 60, intensity: Math.round(randRange(s, 0.8, 1.3) * 100) / 100, mix: { ...c.mix } };
       feed(s, 'warn', `Intel: tension rising over the ${c.name} (${REGIONS[c.region].name}). Expect heavy fighting there in about two months. Stock the depot now.`, REGIONS[c.region].depot, true);
@@ -504,7 +512,7 @@ function world(s: SimState): void {
         feed(s, 'good', `${def.name} is qualified to supply your arsenals.`, site.id, true);
       }
     }
-    for (const p of site.processes) if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + 0.08 / DAYS_PER_MONTH);
+    for (const p of site.processes) if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + (0.08 * DIFF[s.difficulty].ramp) / DAYS_PER_MONTH);
     if (site.trainees.length) {
       for (const t of site.trainees) t.days -= 1 / (1 - 0.15 * skillOf(s, 'labor'));
       const done = site.trainees.filter((t) => t.days <= 0).reduce((a, t) => a + t.count, 0);
@@ -515,13 +523,13 @@ function world(s: SimState): void {
       }
     }
     if (s.day < 60 || !site.processes.length) continue;
-    if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < 0.025 / DAYS_PER_MONTH) {
+    if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < (0.025 * DIFF[s.difficulty].events) / DAYS_PER_MONTH) {
       site.disruptionDays = randInt(s, 20, 90);
       site.disruptionFactor = Math.round(randRange(s, 0.2, 0.6) * 100) / 100;
       const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike', 'A cyber attack on the plant network'];
       feed(s, 'bad', `${pick(s, kinds)} at ${def.name}: output down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.round(site.disruptionDays / 7)} weeks.`, site.id, true);
     }
-    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < 0.015 / DAYS_PER_MONTH) {
+    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * DIFF[s.difficulty].events) / DAYS_PER_MONTH) {
       site.embargoDays = randInt(s, 90, 300);
       feed(s, 'bad', `Export ban: the ${def.nation} halts shipments from ${def.name}.`, site.id, true);
     }
@@ -544,8 +552,9 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   const ready = readiness(s);
   expireDecisions(s, feed);
   strategyMonth(s, feed, { readiness: ready, excessLeaks: Math.max(0, fightTotals.leakSeverity - 2.5), burned: s.policy.demilMethod === 'burn' ? s.month.demilled : 0 });
-  let dc = (ready - 0.5) * 6 + 0.3;
-  dc -= Math.min(10, Math.max(0, fightTotals.leakSeverity - 2.5) * 0.4);
+  // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
+  let dc = (ready - 0.75) * 8;
+  dc -= Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5);
   dc -= fightTotals.landShort * 0.15;
   if (s.treasury < 0) dc -= 1 + -s.treasury / 400;
   s.confidence = clamp(s.confidence + dc);

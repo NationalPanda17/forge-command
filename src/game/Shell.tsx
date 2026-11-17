@@ -9,15 +9,17 @@ import { money, pct, textToneFor } from '../ui/format';
 import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
 import SitePanel from './SitePanel';
+import StrategyPanel from './StrategyPanel';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'site' | 'material' | 'stockpile' | 'logistics' | 'fight' | 'money' | 'feed';
+type PanelId = 'site' | 'material' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'site', label: 'Site' },
   { id: 'material', label: 'Materials' },
   { id: 'stockpile', label: 'Stockpile' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'fight', label: 'Fight' },
+  { id: 'strategy', label: 'Board' },
   { id: 'money', label: 'Money' },
   { id: 'feed', label: 'Feed' },
 ];
@@ -148,6 +150,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
                 onClick={() => setPanel(p.id)}
               >
                 {p.label}
+                {p.id === 'strategy' && state.strategy.decisions.length > 0 && <span className="ml-1 text-ops-amber">●</span>}
               </button>
             ))}
           </nav>
@@ -157,6 +160,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'stockpile' && <StockpilePanel state={state} act={act} onMaterial={showMaterial} />}
             {panel === 'logistics' && <LogisticsPanel state={state} act={act} onSite={select} />}
             {panel === 'fight' && <FightPanel state={state} act={act} />}
+            {panel === 'strategy' && <StrategyPanel state={state} act={act} />}
             {panel === 'money' && <MoneyPanel state={state} />}
             {panel === 'feed' && <Feed state={state} onSite={select} />}
           </div>

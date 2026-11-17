@@ -13,6 +13,8 @@ export interface Lot {
   made: number;
   /** Serviceable until this day; surveillance testing can extend it. */
   until: number;
+  /** Times surveillance has extended this lot (at most twice). */
+  ext?: number;
 }
 
 export interface ProcessState {

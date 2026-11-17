@@ -39,17 +39,18 @@ export const emptyMonth = (month: number): MonthReport => ({
 });
 
 /** Legacy stock: lots made between 1 and 9 years ago. */
-function legacyLots(s: { rng: number }, line: LineId, qty: number): Lot[] {
+function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false): Lot[] {
   if (qty <= 0) return [];
   const shelf = MATERIALS[line].shelfDays;
   const lots: Lot[] = [];
-  const n = 4;
+  const n = old ? 8 : 4;
   let left = Math.round(qty);
   for (let i = 0; i < n; i++) {
     const q = i === n - 1 ? left : Math.round(qty / n);
     if (q <= 0) continue;
     left -= q;
-    const made = -randInt(s, 360, Math.min(shelf - 60, 3300));
+    // The war reserve is old: most of it was made in the last decade's buying spree.
+    const made = old && i < n * 0.6 ? -randInt(s, shelf - 700, shelf - 20) : -randInt(s, 360, shelf - 20);
     lots.push({ qty: q, made, until: made + shelf });
   }
   return lots.sort((a, b) => a.made - b.made);
@@ -146,7 +147,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   // Legacy rounds: the central depot, regional depots and bases.
   for (const line of START_LINES) {
     const daily = nationalDailyDraw(state, line);
-    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * 45);
+    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * (['gmlrs', 'shell155'].includes(line) ? 300 : 240), true);
     for (const region of FIGHTING_REGIONS) {
       const depot = REGIONS[region].depot;
       const rd = regionDailyDraw(state, region as RegionId, line);

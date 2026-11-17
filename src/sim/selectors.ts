@@ -84,7 +84,7 @@ export function nationalStock(s: SimState, line: LineId): number {
   return n;
 }
 
-export const RESERVE_DAYS = 180;
+export const RESERVE_DAYS = 365;
 export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * RESERVE_DAYS;
 
 export function readiness(s: SimState): number {
