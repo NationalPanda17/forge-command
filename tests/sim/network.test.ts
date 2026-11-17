@@ -9,8 +9,8 @@ import { BASELINE, MATERIAL_IDS, ROUTES, ROUTE_KEY, SITES, SITE_BY_ID, START_LIN
 const start = (seed = 1) => openCampaign(newSim({ seed }));
 
 describe('world', () => {
-  it('every site can be reached from every other by surface or air', () => {
-    for (const a of SITES) expect(pathBetween('depotCentral', a.id) ?? pathBetween('depotCentral', a.id, true)).not.toBeNull();
+  it('every site can be reached from every other by surface or air (open plots get a spur when founded)', () => {
+    for (const a of SITES.filter((x) => x.kind !== 'plot')) expect(pathBetween('depotCentral', a.id) ?? pathBetween('depotCentral', a.id, true)).not.toBeNull();
   });
 
   it('every input of every starting line can be produced somewhere', () => {

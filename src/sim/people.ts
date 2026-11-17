@@ -29,10 +29,11 @@ export function moraleTarget(s: SimState, site: SiteState): number {
   return clamp(62 + 6 * (site.safety ?? 0) - 0.35 * (site.fatigue ?? 0) - Math.max(0, s.priceIndex - 1) * 60 + (site.apprentices > 0 ? 3 : 0));
 }
 
-const ownPlants = () => SITES.filter((d) => d.owner === 'state' && d.crew > 0 && d.processes.length > 0);
+/** Your plants with people in them, founded plants included. */
+const ownPlants = (s: SimState) => SITES.filter((d) => d.owner === 'state' && (d.crew > 0 || s.sites[d.id].extraCrew > 0) && s.sites[d.id].processes.length > 0 && s.sites[d.id].status !== 'closed');
 
 export function peopleDay(s: SimState, feed: Feed, eventScale: number): void {
-  for (const def of ownPlants()) {
+  for (const def of ownPlants(s)) {
     const site = s.sites[def.id];
     const runs = site.processes.map((p) => p.run);
     const surge = runs.includes('surge');
@@ -61,7 +62,7 @@ export function peopleDay(s: SimState, feed: Feed, eventScale: number): void {
 
 export function peopleMonth(s: SimState, feed: Feed): void {
   let cost = 0;
-  for (const def of ownPlants()) {
+  for (const def of ownPlants(s)) {
     const site = s.sites[def.id];
     if (site.apprentices > 0) {
       site.trainees.push({ count: site.apprentices, days: 135, apprentice: true });
@@ -84,7 +85,7 @@ export function absorbHires(site: SiteState, count: number, apprentices: number)
 
 /** The lowest-morale arsenal, for disputes to start at. */
 export function unhappiest(s: SimState): string | null {
-  const plants = ownPlants().filter((d) => d.kind === 'arsenal');
+  const plants = ownPlants(s).filter((d) => d.kind === 'arsenal');
   if (!plants.length) return null;
   return plants.reduce((a, b) => (s.sites[b.id].morale < s.sites[a.id].morale ? b : a)).id;
 }

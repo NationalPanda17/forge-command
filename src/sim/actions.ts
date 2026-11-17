@@ -9,6 +9,7 @@ import { buildBlock, projectName, startProject } from './build';
 import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
 import type { Project, Settings } from './types';
+import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
 import { MAX_POLICIES, POLICIES, REVOKE_COST, canSecondTerm, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
 import type { RegionId } from './world';
@@ -39,7 +40,10 @@ export type SimAction =
   | { type: 'programme'; line: LineId; years: 3 | 5 }
   | { type: 'adoptPolicy'; policy: PolicyId }
   | { type: 'revokePolicy'; policy: PolicyId }
-  | { type: 'secondTerm' };
+  | { type: 'secondTerm' }
+  | { type: 'found'; plot: string; recipe: string }
+  | { type: 'inhouse'; site: string; recipe: string }
+  | { type: 'design'; line: LineId; variant: VariantId };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -168,6 +172,12 @@ export function validate(s: SimState, a: SimAction): string | null {
       return s.policies.length >= MAX_POLICIES ? `At most ${MAX_POLICIES} policies at once. Revoke one first.` : null;
     case 'revokePolicy':
       return s.policies.includes(a.policy) ? null : 'Not in force.';
+    case 'found':
+      return foundBlock(s, a.plot, a.recipe);
+    case 'inhouse':
+      return inhouseBlock(s, a.site, a.recipe);
+    case 'design':
+      return designBlock(s, a.line, a.variant);
     case 'sandbox': {
       if (s.mode !== 'sandbox') return 'Only in a sandbox game.';
       const op = a.op;
@@ -325,6 +335,18 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     case 'secondTerm':
       startSecondTerm(s, feed);
+      break;
+    case 'found':
+      foundPlant(s, a.plot, a.recipe, feed);
+      break;
+    case 'inhouse':
+      addInhouseLine(s, a.site, a.recipe, feed);
+      break;
+    case 'design':
+      s.treasury -= designCost(s);
+      s.month.spend.projects += designCost(s);
+      s.design = { line: a.line, variant: a.variant, days: DESIGN_DAYS };
+      feed(s, 'info', `Design work begins on a new ${MATERIALS[a.line].name} variant: about four months.`);
       break;
     case 'sandbox': {
       const op = a.op;

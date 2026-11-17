@@ -27,6 +27,7 @@ import { writeEdition } from './news';
 import { absorbHires, peopleDay, peopleMonth, skillScrap } from './people';
 import { rivalArrivals, rivalDay, rivalLand, rivalPk, rivalShots } from './rival';
 import { hasPolicy, policyMonth, programmeMonth } from './commitments';
+import { industryDay, variantOf } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -141,7 +142,7 @@ function produce(s: SimState): void {
       p.lastOutput = round3(whole);
       p.lastLimit = limit;
       if (whole <= 0) continue;
-      if (isLine(rec.output)) addLots(site, rec.output, [{ qty: whole, made: s.day, until: s.day + MATERIALS[rec.output].shelfDays }]);
+      if (isLine(rec.output)) addLots(site, rec.output, [{ qty: whole, made: s.day, until: s.day + Math.round(MATERIALS[rec.output].shelfDays * variantOf(s, rec.output).shelf) }]);
       else site.stock[rec.output] = (site.stock[rec.output] ?? 0) + whole;
       for (const [m, q] of Object.entries(rec.extra ?? {}) as [MaterialId, number][]) site.stock[m] = (site.stock[m] ?? 0) + gross * frac * q;
       s.month.made[rec.output] = (s.month.made[rec.output] ?? 0) + whole;
@@ -222,7 +223,7 @@ function sources(s: SimState, req: Request): string[] {
   const out: string[] = [];
   for (const def of SITES) {
     if (def.id === req.to) continue;
-    const makes = def.processes.some((p) => RECIPES[p.recipe].output === req.material || RECIPES[p.recipe].extra?.[req.material]);
+    const makes = s.sites[def.id].processes.some((p) => RECIPES[p.recipe].output === req.material || RECIPES[p.recipe].extra?.[req.material]);
     if (!makes) continue;
     const st = s.sites[def.id];
     if (def.owner === 'foreign' && st.embargoDays > 0) continue;
@@ -398,7 +399,7 @@ function fight(s: SimState): DayFight {
         const shots = lots.reduce((a, l) => a + l.qty, 0);
         if (shots <= 0) return;
         remaining -= shots;
-        const pk = Math.min(0.97, (th.assign.find((a) => a.line === line)?.pk ?? 0.5) * rivalPk(s, t, line));
+        const pk = Math.min(0.97, (th.assign.find((a) => a.line === line)?.pk ?? 0.5) * rivalPk(s, t, line) * variantOf(s, line).pk);
         const killed = Math.min(shots / perThreat, (shots / perThreat) * pk * randRange(s, 0.92, 1.06));
         stopped += killed;
         s.month.fired[line] = (s.month.fired[line] ?? 0) + shots;
@@ -587,7 +588,7 @@ function payDaily(s: SimState): void {
   let ops = 0;
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
-    if (def.owner !== 'state') continue;
+    if (def.owner !== 'state' || site.status === 'closed') continue;
     ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
     ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? 0.3 : p.run === 'surge' ? 1.35 : 1), 0);
   }
@@ -657,6 +658,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   livingDay(s, feed);
   buildDay(s, feed);
   rivalDay(s, feed);
+  industryDay(s, feed);
   peopleDay(s, feed, eventScale(s));
   produce(s);
   logistics(s);

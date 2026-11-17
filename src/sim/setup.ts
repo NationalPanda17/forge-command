@@ -58,6 +58,13 @@ export function migrate(s: SimState): SimState {
   s.programmes ??= [];
   s.policies ??= [];
   s.term ??= 1;
+  s.inhouse ??= [];
+  s.variants ??= {};
+  s.design ??= null;
+  for (const def of SITES) {
+    // Saves from before plots existed: add the new open plots, closed until founded.
+    if (!s.sites[def.id]) s.sites[def.id] = blankSite(def.id);
+  }
   delete (s as { challenge?: unknown }).challenge;
   for (const site of Object.values(s.sites)) {
     site.skill ??= PEOPLE_START.skill;
@@ -113,6 +120,11 @@ function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false):
   return lots.sort((a, b) => a.made - b.made);
 }
 
+/** A site with nothing on it: used for open plots in older saves. */
+function blankSite(id: string): SiteState {
+  return { id, status: 'closed', condition: 100, repairDays: 0, processes: [], stock: {}, lots: {}, unserviceable: {}, workers: 0, trainees: [], extraCrew: 0, health: 100, qualified: true, qualifyingDays: null, embargoDays: 0, disruptionDays: 0, disruptionFactor: 1, ...PEOPLE_START };
+}
+
 export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign' }: SimOptions): SimState {
   const rules: Settings = { ...(mode === 'sandbox' ? SANDBOX_SETTINGS : DEFAULT_SETTINGS), ...(settings ?? {}) };
   if (scenario === 'tutorial') {
@@ -166,6 +178,9 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     programmes: [],
     policies: [],
     term: 1,
+    inhouse: [],
+    variants: {},
+    design: null,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -182,7 +197,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   for (const def of SITES) {
     const site: SiteState = {
       id: def.id,
-      status: 'active',
+      status: def.kind === 'plot' ? 'closed' : 'active',
       condition: def.owner === 'state' ? 85 : Math.round(70 + rand(state) * 25),
       repairDays: 0,
       processes: def.processes.map((p) => ({

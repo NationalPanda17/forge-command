@@ -26,6 +26,7 @@ export const KIND_LABEL: Record<SiteKind, string> = {
   airfield: 'Airlift hub',
   demil: 'Demilitarization',
   foreign: 'Foreign supplier',
+  plot: 'Open plot',
 };
 
 export const SITE_KINDS = Object.keys(KIND_LABEL) as SiteKind[];
@@ -175,6 +176,12 @@ const GLYPHS: Record<SiteKind, ReactNode> = {
       <F d="M9 21V10C9 6.4 10.4 3.8 12 2.6C13.6 3.8 15 6.4 15 10V21Z" />
       <S d="M9 16H15" />
       <S d="M3.5 20.5L20.5 3.5" />
+    </>
+  ),
+  plot: (
+    <>
+      <S d="M4 4H8M16 4H20V8M20 16V20H16M8 20H4V16M4 8V4" />
+      <S d="M12 8V16M8 12H16" />
     </>
   ),
   foreign: (
