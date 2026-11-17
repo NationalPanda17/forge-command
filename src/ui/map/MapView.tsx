@@ -168,6 +168,14 @@ const Defs = memo(function Defs({ uid }: { uid: string }) {
         <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="#fff" />
         <path d={geo.land} fill="#000" />
       </mask>
+      <linearGradient id={`${uid}-northgrad`} x1="0" y1={G.FRAME.y0} x2="0" y2={290} gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#fff" stopOpacity={1} />
+        <stop offset="55%" stopColor="#fff" stopOpacity={0.55} />
+        <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+      </linearGradient>
+      <mask id={`${uid}-northfade`}>
+        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={`url(#${uid}-northgrad)`} />
+      </mask>
       <radialGradient id={`${uid}-lights`}>
         <stop offset="0%" stopColor="#ffd38a" stopOpacity={0.75} />
         <stop offset="35%" stopColor="#ffb347" stopOpacity={0.3} />
@@ -749,7 +757,7 @@ const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock, pause
         return (
           <g key={sh.id}>
             {wake && <path d={G.linePath(wake)} fill="none" stroke="rgba(220, 236, 250, 0.35)" strokeWidth={2 * k} strokeLinecap="round" />}
-            <g className="fcm-vehicle" transform={`translate(${p[0]} ${p[1]}) rotate(${deg}) scale(${k})`}>
+            <g className="fcm-vehicle" transform={`translate(${p[0]} ${p[1]}) rotate(${deg}) scale(${k * 1.3})`}>
               <path d={VEHICLE[head.mode] ?? VEHICLE.road} fill={color} stroke="rgba(6, 11, 20, 0.95)" strokeWidth={1} strokeLinejoin="round" />
               {head.mode === 'sea' && <path d={BRIDGE} fill="rgba(6, 11, 20, 0.85)" />}
             </g>
@@ -766,13 +774,13 @@ export type MapWeather = 'snow' | 'flood' | 'heat' | null;
 
 const WeatherLayer = memo(function WeatherLayer({ uid, weather }: { uid: string; weather: MapWeather }) {
   if (!weather) return null;
-  const north = G.ringPath(G.REGION_RINGS.north);
   if (weather === 'snow')
     return (
       <g pointerEvents="none">
-        <g clipPath={`url(#${uid}-land)`}>
-          <path d={north} fill="rgba(235, 244, 255, 0.12)" />
-          <path d={north} fill={`url(#${uid}-snow)`} />
+        {/* Snow lies thickest in the far north and thins out southwards. */}
+        <g clipPath={`url(#${uid}-land)`} mask={`url(#${uid}-northfade)`}>
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill="rgba(235, 244, 255, 0.16)" />
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill={`url(#${uid}-snow)`} />
         </g>
         {/* Sea ice along the northern coast. */}
         <g mask={`url(#${uid}-sea)`}>
@@ -839,8 +847,9 @@ function Minimap({ view, size, onCenter }: { view: View; size: Size; onCenter: (
         onClick={(e) => e.stopPropagation()}
       >
         <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={SEA} />
-        <path d={G.geography().land} fill={LAND} stroke={COAST} strokeWidth={3} />
-        <rect x={vx} y={vy} width={vw} height={vh} fill="rgb(var(--ops-cyan) / 0.12)" stroke="rgb(var(--ops-cyan))" strokeWidth={6} vectorEffect="non-scaling-stroke" />
+        <path d={G.geography().land} fill="#2b4654" stroke={COAST} strokeWidth={4} />
+        <path d={G.ringPath(G.VARDAN_RING)} fill="rgba(242, 84, 91, 0.12)" />
+        <rect x={vx} y={vy} width={vw} height={vh} fill="rgb(var(--ops-cyan) / 0.1)" stroke="rgb(var(--ops-cyan))" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
   );

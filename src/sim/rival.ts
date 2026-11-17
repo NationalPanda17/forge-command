@@ -107,6 +107,11 @@ export function newRival(s: { rng: number }): RivalState {
   return { order, known: [], next: randInt(s as SimState, 120, 180) };
 }
 
+/** How hard the rival's weapons bite: half strength on Easy. (On Hard it moves faster instead.) */
+const STRENGTH = { easy: 0.5, normal: 1, hard: 1 } as const;
+/** Scales a multiplier's distance from 1 by the difficulty. */
+const tune = (s: SimState, m: number) => 1 + (m - 1) * STRENGTH[s.difficulty];
+
 const fielded = (s: SimState) => (s.rival?.known ?? []).filter((k) => k.fielded <= s.day).map((k) => DEVELOPMENTS[k.id]);
 const hasCounter = (s: SimState, d: DevDef) => s.strategy.research.done.includes(d.counter);
 
@@ -114,8 +119,8 @@ const hasCounter = (s: SimState, d: DevDef) => s.strategy.research.done.includes
 export function rivalArrivals(s: SimState, t: ThreatId): number {
   let m = 1;
   for (const d of fielded(s)) {
-    m *= d.arrivals?.[t] ?? 1;
-    if (hasCounter(s, d)) m *= d.countered.arrivals?.[t] ?? 1;
+    m *= tune(s, d.arrivals?.[t] ?? 1);
+    if (hasCounter(s, d)) m *= tune(s, d.countered.arrivals?.[t] ?? 1);
   }
   return m;
 }
@@ -124,8 +129,8 @@ export function rivalArrivals(s: SimState, t: ThreatId): number {
 export function rivalShots(s: SimState, t: ThreatId): number {
   let m = 1;
   for (const d of fielded(s)) {
-    m *= d.shots?.[t] ?? 1;
-    if (hasCounter(s, d)) m *= d.countered.shots?.[t] ?? 1;
+    m *= tune(s, d.shots?.[t] ?? 1);
+    if (hasCounter(s, d)) m *= tune(s, d.countered.shots?.[t] ?? 1);
   }
   return m;
 }
@@ -134,8 +139,8 @@ export function rivalShots(s: SimState, t: ThreatId): number {
 export function rivalPk(s: SimState, t: ThreatId, line: LineId): number {
   let m = 1;
   for (const d of fielded(s)) {
-    for (const p of d.pk ?? []) if (p.threat === t && p.lines.includes(line)) m *= p.mult;
-    if (hasCounter(s, d)) for (const p of d.countered.pk ?? []) if (p.threat === t && p.lines.includes(line)) m *= p.mult;
+    for (const p of d.pk ?? []) if (p.threat === t && p.lines.includes(line)) m *= tune(s, p.mult);
+    if (hasCounter(s, d)) for (const p of d.countered.pk ?? []) if (p.threat === t && p.lines.includes(line)) m *= tune(s, p.mult);
   }
   return m;
 }
@@ -144,8 +149,8 @@ export function rivalPk(s: SimState, t: ThreatId, line: LineId): number {
 export function rivalLand(s: SimState, line: LineId): number {
   let m = 1;
   for (const d of fielded(s)) {
-    m *= d.land?.[line] ?? 1;
-    if (hasCounter(s, d)) m *= d.countered.land?.[line] ?? 1;
+    m *= tune(s, d.land?.[line] ?? 1);
+    if (hasCounter(s, d)) m *= tune(s, d.countered.land?.[line] ?? 1);
   }
   return m;
 }

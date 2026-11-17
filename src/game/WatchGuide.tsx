@@ -214,6 +214,29 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: 'rival',
+    title: 'The rival',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>The Vardan Directorate</b> fields six new weapons through your term, in an order that changes from game to game. Intel warns you about three months ahead.</Li>
+        <Li>Each one changes your needs: more drones, cruise missiles that dodge short-range interceptors, warheads that take more PAC-3s, decoys, rocket barrages, armour.</Li>
+        <Li>Every weapon has a <b>counter</b> to research. The Intel tab shows what is coming and what counters it.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'commit',
+    title: 'Programmes, policies and terms',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Programmes:</b> promise a monthly output of one round for three or five years; the Committee pays every month you deliver. Three misses and it is cancelled.</Li>
+        <Li><b>Policies:</b> up to three standing policies, each with a gain and a cost. Revoking one costs confidence.</Li>
+        <Li><b>A second term:</b> finish a term and you may carry on with everything you built.</Li>
+        <Li><b>The advisor</b> on the Watch tab suggests the next best moves. Warnings there jump to their fix, and numbers with a dotted underline explain themselves.</Li>
+      </ul>
+    ),
+  },
+  {
     id: 'build',
     title: 'Building',
     body: (

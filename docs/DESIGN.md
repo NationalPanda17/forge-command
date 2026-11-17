@@ -1,4 +1,4 @@
-# Forge Command 4.0: design
+# Forge Command 5.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -122,6 +122,51 @@ Physical figures follow public reference data where it exists, and are best gues
   - Pay deals add 7 to 15; refusals take away 10.
 - **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
 - **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
+
+## The rival (`rival.ts`)
+- **Order:** six developments are drawn into a seed-dependent order at the start. Intel reports one every 180–270
+  days, from day 120–180 (sooner on Hard, later on Easy). Each is fielded 90 days after it is announced.
+- **Effects:** each development multiplies some of:
+  - threat arrivals;
+  - interceptors per threat;
+  - kill odds for named lines;
+  - land fires.
+- **Counters:** a research counter applies its own multipliers on top.
+- **Strength:** multipliers are scaled by difficulty: 0.5× on Easy, 1× on Normal and Hard.
+- **Draw:** `regionDailyDraw` includes the rival, so forecasts, depot targets and reserve targets all move with it.
+
+## Commitments (`commitments.ts`)
+- **Programmes:**
+  - Rounds promised a month: 70% (3 years) or 80% (5 years) of arsenal capacity.
+  - Funding a month: that many rounds × price × 0.6 (3 years) or 0.75 (5 years).
+  - Paid each month at least 90% is made. Three misses cancel it (−6 confidence); completing it earns +3 and
+    industry +4.
+- **Policies:** at most 3; revoking costs 4 confidence.
+  - Buy Aldmeran: no foreign sources for your sites.
+  - Stockpile law: 450-day target, +10% budget.
+  - Open books: treasury +1 a month, hawks −0.4.
+  - Warm base: ramp ×1.5, running costs +6%.
+  - Clean disposal pledge: recycling only, regions +0.8.
+  - Export drive: export offers ×2 at +10%, hawks −0.5.
+- **Second term:** a completed campaign can continue for another 48 months, with confidence reset to
+  45 + 0.4 × (score − 50), between 30 and 75.
+
+## The advisor (`advisor.ts`)
+- **Candidates:** decisions, counters to known weapons, rounds heading below half of target, overstock, lapsing
+  contracts, waiting bids, crew shortfalls, fatigue, morale, crisis depot targets, idle research, and congested
+  routes when money allows.
+- **The fix for a round heading below half of target:**
+  - fund the private supplier behind the tightest link;
+  - or put the line back on two shifts;
+  - or expand it.
+- **Ranking:** suggestions are ranked by priority. Every suggested action passes `validate`.
+
+## Map performance
+- **Flow view:** shipments draw as per-route flow lines when the map is under 640 px wide and zoomed out, or when
+  the zoom is under 0.9.
+- **Labels while zooming:** label layout uses a settled zoom, updated 140 ms after zooming stops. While zooming,
+  labels and grid numbers rest.
+- **Dragging:** the shipment animation pauses while you drag.
 
 ## Modes
 - **Campaign:** scored, with achievements; the Committee can dismiss you.
