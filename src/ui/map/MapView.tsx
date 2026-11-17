@@ -22,7 +22,7 @@ export interface MapShipment {
   mode: string;
   color?: string;
 }
-export interface MapLayers { terrain: boolean; labels: boolean; rail: boolean; road: boolean; sea: boolean; air: boolean; flows: boolean; regions: boolean }
+export interface MapLayers { terrain: boolean; labels: boolean; rail: boolean; road: boolean; sea: boolean; air: boolean; flows: boolean; regions: boolean; weather: boolean; night: boolean }
 /** What the player has built or is building, for drawing. */
 export interface MapNetwork {
   built: string[];
@@ -52,9 +52,11 @@ export interface MapViewProps {
   ripples?: MapRipple[];
   /** Continuous simulated time in days, for smooth movement between days. */
   clock?: () => number;
+  /** Weather to draw. */
+  weather?: MapWeather;
 }
 
-export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false };
+export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false, weather: true, night: false };
 
 // ---------- Palette ----------
 
@@ -123,8 +125,10 @@ const LOD_CSS = `
 .fcm-build{animation:fcm-build 1.2s linear infinite}
 @keyframes fcm-ripple{from{transform:scale(0.6);opacity:.9}to{transform:scale(3.2);opacity:0}}
 .fcm-ripple{transform-box:fill-box;transform-origin:center;animation:fcm-ripple 1.8s ease-out 2 forwards}
+@keyframes fcm-flow{to{stroke-dashoffset:-18}}
+.fcm-flow{animation:fcm-flow 1.4s linear infinite}
 .fcm-marker:hover .fcm-mbody{stroke-width:2.2}
-@media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis,.fcm-build{animation:none}.fcm-ripple{display:none}}
+@media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis,.fcm-build,.fcm-flow{animation:none}.fcm-ripple{display:none}}
 `;
 
 // ---------- Static layers ----------
@@ -153,6 +157,22 @@ const Defs = memo(function Defs({ uid }: { uid: string }) {
       <pattern id={`${uid}-danger`} width={3} height={3} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
         <line x1={0} y1={0} x2={0} y2={3} stroke="rgba(242, 84, 91, 0.22)" strokeWidth={0.35} />
       </pattern>
+      <pattern id={`${uid}-snow`} width={7} height={7} patternUnits="userSpaceOnUse">
+        <circle cx={1.5} cy={1.5} r={0.55} fill="rgba(245, 250, 255, 0.55)" />
+        <circle cx={5} cy={4.5} r={0.4} fill="rgba(245, 250, 255, 0.45)" />
+      </pattern>
+      <pattern id={`${uid}-ice`} width={14} height={14} patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
+        <path d="M0 3L6 4L9 0M3 14L7 9L14 10" stroke="rgba(245, 250, 255, 0.35)" strokeWidth={0.5} fill="none" />
+      </pattern>
+      <mask id={`${uid}-sea`}>
+        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="#fff" />
+        <path d={geo.land} fill="#000" />
+      </mask>
+      <radialGradient id={`${uid}-lights`}>
+        <stop offset="0%" stopColor="#ffd38a" stopOpacity={0.75} />
+        <stop offset="35%" stopColor="#ffb347" stopOpacity={0.3} />
+        <stop offset="100%" stopColor="#ffb347" stopOpacity={0} />
+      </radialGradient>
       <radialGradient id={`${uid}-vignette`} cx="50%" cy="45%" r="70%">
         <stop offset="60%" stopColor="#000" stopOpacity={0} />
         <stop offset="100%" stopColor="#000" stopOpacity={0.45} />
@@ -657,12 +677,25 @@ function shipPoint(legs: Leg[], s: number): { p: G.Pt; mode: string } | null {
   return { p: last.pts[last.pts.length - 1], mode: last.mode };
 }
 
-const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock }: { S: number; shipments: MapShipment[]; clock?: () => number }) {
+/** Vehicle outlines in screen pixels, pointing along +x. */
+const VEHICLE: Record<string, string> = {
+  // Locomotive and two wagons.
+  rail: 'M6 -2.4H-1V2.4H6L7.5 1V-1ZM-2.5 -2.2H-8.5V2.2H-2.5ZM-10 -2.2H-16V2.2H-10Z',
+  // A cargo ship: pointed bow, bridge aft.
+  sea: 'M9 0L4 -3.4H-7L-8 -1.6V1.6L-7 3.4H4Z',
+  // A truck: cab ahead of a box body.
+  road: 'M6 -2.2H2.5V2.2H6L7 1V-1ZM1.5 -2.6H-7V2.6H1.5Z',
+  // A transport aircraft.
+  air: 'M8 0L5 -1H1L-3 -7H-5L-2.5 -1H-6L-8 -3H-9L-8 0L-9 3H-8L-6 1H-2.5L-5 7H-3L1 1H5Z',
+};
+const BRIDGE = 'M-5 -2H-2V2H-5Z';
+
+const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock, paused, aggregate }: { S: number; shipments: MapShipment[]; clock?: () => number; paused?: boolean; aggregate?: boolean }) {
   const k = 1 / S;
   // Redraw every frame while time is moving, so shipments glide instead of hopping a day at a time.
   const [now, setNow] = useState(() => clock?.() ?? 0);
   useEffect(() => {
-    if (!clock) return;
+    if (!clock || paused || aggregate) return;
     let raf = 0;
     let prev = -1;
     const loop = () => {
@@ -675,7 +708,30 @@ const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock }: { S
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [clock]);
+  }, [clock, paused, aggregate]);
+
+  if (aggregate) {
+    // Zoomed out or on a small screen: one moving flow line per busy route instead of every vehicle.
+    const count = new Map<string, { n: number; mode: string; d: string }>();
+    for (const sh of shipments) {
+      for (let i = 0; i < sh.path.length - 1; i++) {
+        const gs = G.GEOMS_BY_KEY.get(ROUTE_KEY(sh.path[i], sh.path[i + 1]));
+        const g = gs?.[0];
+        if (!g) continue;
+        const c = count.get(g.key) ?? { n: 0, mode: g.mode, d: g.d };
+        c.n++;
+        count.set(g.key, c);
+      }
+    }
+    return (
+      <g pointerEvents="none" fill="none" strokeLinecap="round">
+        {[...count.entries()].map(([key, c]) => (
+          <path key={key} className="fcm-flow" d={c.d} stroke={MODE_COLOR[c.mode] ?? ops('text')} strokeOpacity={0.85} strokeWidth={1.2 + Math.log2(1 + c.n) * 1.1} strokeDasharray="2 7" style={nss} />
+        ))}
+      </g>
+    );
+  }
+
   return (
     <g pointerEvents="none">
       {shipments.map((sh) => {
@@ -685,18 +741,110 @@ const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock }: { S
         const head = shipPoint(legs, at);
         if (!head) return null;
         const color = sh.color ?? MODE_COLOR[head.mode] ?? ops('text');
-        const trail = [at - 14 * k * 2, at - 7 * k * 2, at].map((s) => G.clampToFrame(shipPoint(legs, s)!.p));
         const p = G.clampToFrame(head.p);
+        const back = shipPoint(legs, Math.max(0, at - 3 * k))!.p;
+        const ahead = at < total - 1e-6 ? shipPoint(legs, Math.min(total, at + 3 * k))!.p : p;
+        const deg = (Math.atan2(ahead[1] - back[1], ahead[0] - back[0]) * 180) / Math.PI;
+        const wake = head.mode === 'sea' ? [at - 22 * k, at - 10 * k, at].map((v) => G.clampToFrame(shipPoint(legs, v)!.p)) : null;
         return (
           <g key={sh.id}>
-            <path d={G.linePath(trail)} fill="none" stroke={color} strokeOpacity={0.45} strokeWidth={2.5 * k} strokeLinecap="round" />
-            <circle cx={p[0]} cy={p[1]} r={3.6 * k} fill={color} stroke="rgba(6, 11, 20, 0.95)" strokeWidth={1.3 * k} />
+            {wake && <path d={G.linePath(wake)} fill="none" stroke="rgba(220, 236, 250, 0.35)" strokeWidth={2 * k} strokeLinecap="round" />}
+            <g className="fcm-vehicle" transform={`translate(${p[0]} ${p[1]}) rotate(${deg}) scale(${k})`}>
+              <path d={VEHICLE[head.mode] ?? VEHICLE.road} fill={color} stroke="rgba(6, 11, 20, 0.95)" strokeWidth={1} strokeLinejoin="round" />
+              {head.mode === 'sea' && <path d={BRIDGE} fill="rgba(6, 11, 20, 0.85)" />}
+            </g>
           </g>
         );
       })}
     </g>
   );
 });
+
+// ---------- Weather, night and the minimap ----------
+
+export type MapWeather = 'snow' | 'flood' | 'heat' | null;
+
+const WeatherLayer = memo(function WeatherLayer({ uid, weather }: { uid: string; weather: MapWeather }) {
+  if (!weather) return null;
+  const north = G.ringPath(G.REGION_RINGS.north);
+  if (weather === 'snow')
+    return (
+      <g pointerEvents="none">
+        <g clipPath={`url(#${uid}-land)`}>
+          <path d={north} fill="rgba(235, 244, 255, 0.12)" />
+          <path d={north} fill={`url(#${uid}-snow)`} />
+        </g>
+        {/* Sea ice along the northern coast. */}
+        <g mask={`url(#${uid}-sea)`}>
+          <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill="rgba(220, 236, 250, 0.2)" />
+          <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill={`url(#${uid}-ice)`} />
+        </g>
+      </g>
+    );
+  if (weather === 'flood')
+    return (
+      <g pointerEvents="none" clipPath={`url(#${uid}-land)`} fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {G.RIVERS.map((r, i) => (
+          <path key={i} d={r.d} stroke="rgba(70, 160, 230, 0.3)" strokeWidth={r.order === 1 ? 9 : r.order === 2 ? 6 : 4} />
+        ))}
+        {G.LAKES.map((l, i) => (
+          <path key={`l${i}`} d={l.d} fill="rgba(70, 160, 230, 0.25)" stroke="rgba(70, 160, 230, 0.3)" strokeWidth={4} />
+        ))}
+      </g>
+    );
+  return <path pointerEvents="none" d={G.geography().land} fill="rgba(255, 150, 70, 0.07)" />;
+});
+
+/** City lights for the night look. */
+const NightLayer = memo(function NightLayer({ uid }: { uid: string }) {
+  return (
+    <g pointerEvents="none">
+      {CITIES.map((c) => (
+        <circle key={c.name} cx={c.x} cy={c.y} r={5 + Math.sqrt(c.pop) * 0.55} fill={`url(#${uid}-lights)`} />
+      ))}
+    </g>
+  );
+});
+
+function Minimap({ view, size, onCenter }: { view: View; size: Size; onCenter: (x: number, y: number) => void }) {
+  const w = size.w < 640 ? 96 : 144;
+  const h = (w * G.FRAME_H) / G.FRAME_W;
+  const vx = -view.tx / view.S;
+  const vy = -view.ty / view.S;
+  const vw = size.w / view.S;
+  const vh = size.h / view.S;
+  const drag = useRef(false);
+  const at = (e: ReactPointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    onCenter(G.FRAME.x0 + ((e.clientX - r.left) / r.width) * G.FRAME_W, G.FRAME.y0 + ((e.clientY - r.top) / r.height) * G.FRAME_H);
+  };
+  return (
+    <div data-hud="" className="absolute bottom-8 right-3 rounded border border-ops-line/80 bg-ops-bg p-1">
+      <svg
+        width={w}
+        height={h}
+        viewBox={`${G.FRAME.x0} ${G.FRAME.y0} ${G.FRAME_W} ${G.FRAME_H}`}
+        role="img"
+        aria-label="Overview map. Click or drag to move the view."
+        className="block cursor-pointer"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          drag.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          at(e);
+        }}
+        onPointerMove={(e) => drag.current && at(e)}
+        onPointerUp={() => (drag.current = false)}
+        onPointerCancel={() => (drag.current = false)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={SEA} />
+        <path d={G.geography().land} fill={LAND} stroke={COAST} strokeWidth={3} />
+        <rect x={vx} y={vy} width={vw} height={vh} fill="rgb(var(--ops-cyan) / 0.12)" stroke="rgb(var(--ops-cyan))" strokeWidth={6} vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+  );
+}
 
 // ---------- Screen furniture ----------
 
@@ -705,17 +853,17 @@ function niceKm(target: number): number {
   return 500;
 }
 
-const Furniture = memo(function Furniture({ view, size, boxes }: { view: View; size: Size; boxes: Box[] }) {
+const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: View; size: Size; boxes: Box[]; quiet?: boolean }) {
   const { S, tx, ty } = view;
   const ticks: { x?: number; y?: number; v: number }[] = [];
   const step = S < 0.6 ? 200 : S < 3 ? 100 : S < 6 ? 50 : 25;
   for (let v = 0; v <= G.FRAME.x1; v += step) {
     const x = v * S + tx;
-    if (x > 34 && x < size.w - 60 && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
+    if (!quiet && x > 34 && x < size.w - 60 && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
   }
   for (let v = 0; v <= G.FRAME.y1; v += step) {
     const y = v * S + ty;
-    if (y > 64 && y < size.h - 70 && !clashes(smallTextBox(String(v), 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
+    if (!quiet && y > 64 && y < size.h - 70 && !clashes(smallTextBox(String(v), 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
   }
   const km = niceKm(90 / S);
   const bar = km * S;
@@ -765,10 +913,13 @@ const Furniture = memo(function Furniture({ view, size, boxes }: { view: View; s
   );
 });
 
+const NO_LABELS: Record<string, Placed> = {};
+const NO_CITY_LABELS: (Placed | null)[] = CITIES.map(() => null);
+
 // ---------- The map ----------
 
 export default function MapView(props: MapViewProps): JSX.Element {
-  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560, network, showPlans = false, highlight = null, ripples = [], clock } = props;
+  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560, network, showPlans = false, highlight = null, ripples = [], clock, weather = null } = props;
   const uid = `fcm${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1033,6 +1184,15 @@ export default function MapView(props: MapViewProps): JSX.Element {
 
   const lod = lodOf(view.S);
   const S = view.S;
+  // Labels are laid out for a settled zoom: while the view is zooming they rest, then reappear, collision-free.
+  const [settledS, setSettledS] = useState(S);
+  useEffect(() => {
+    if (S === settledS) return;
+    const t = setTimeout(() => setSettledS(S), 140);
+    return () => clearTimeout(t);
+  }, [S, settledS]);
+  const zooming = Math.abs(S / settledS - 1) > 1e-6;
+  const lodSettled = lodOf(settledS);
 
   // Web fonts change text widths: lay out again once they have loaded.
   const [fontsReady, setFontsReady] = useState(0);
@@ -1052,19 +1212,19 @@ export default function MapView(props: MapViewProps): JSX.Element {
   const labelOrder = useMemo(() => {
     const hot = [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]);
     if (!layers.labels) return hot;
-    if (lod < 1) return hot;
+    if (lodSettled < 1) return hot;
     const rank = (s: SiteDef) => (s.owner === 'state' ? (s.kind === 'arsenal' ? 0 : s.kind === 'depot' ? 1 : 2) : 3);
     const rest = SITES.filter((s) => !hot.includes(s.id)).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
     return [...hot, ...rest];
-  }, [selected, focused, hovered, layers.labels, lod]);
+  }, [selected, focused, hovered, layers.labels, lodSettled]);
   const hotIds = useMemo(() => [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]), [selected, focused, hovered]);
   const badgeSig = SITES.map((s) => markers[s.id]?.badge ?? '').join('|');
-  const spread = useMemo(() => spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge]))), [S, badgeSig]);
+  const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge]))), [settledS, badgeSig]);
   const placement = useMemo(
     () =>
       layoutMap({
-        S,
-        lod,
+        S: settledS,
+        lod: lodSettled,
         labels: layers.labels,
         regions: layers.regions,
         order: labelOrder,
@@ -1073,7 +1233,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
         badges: Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])),
         spread,
       }),
-    [S, lod, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
+    [settledS, lodSettled, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
   );
 
   const netSig = network ? `${network.built.join(',')}|${Object.entries(network.upgrades).map(([k, v]) => `${k}=${v}`).join(',')}|${network.building.join(',')}|${network.upgrading.join(',')}` : '';
@@ -1111,25 +1271,29 @@ export default function MapView(props: MapViewProps): JSX.Element {
           <Defs uid={uid} />
           <g transform={`translate(${view.tx} ${view.ty}) scale(${S})`}>
             <g clipPath={`url(#${uid}-frame)`}>
-              <StaticGeo uid={uid} terrain={layers.terrain} relief={relief} />
+              <g style={layers.night ? { filter: 'brightness(0.5) saturate(0.75)' } : undefined}>
+                <StaticGeo uid={uid} terrain={layers.terrain} relief={relief} />
+              </g>
+              {layers.weather && <WeatherLayer uid={uid} weather={weather} />}
+              {layers.night && <NightLayer uid={uid} />}
               <RegionLayer uid={uid} show={layers.regions} crisis={crisisRegion} />
               <RoutesLayer layers={layers} use={routeUse} sig={useSig} network={network} showPlans={showPlans} highlight={highlight} />
             </g>
             <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
             <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
-            {layers.flows && <ShipmentsLayer S={S} shipments={shipments} clock={clock} />}
-            <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />
-            <CitiesLayer S={S} placed={placement.cities} />
-            <g pointerEvents="none">
+            {layers.flows && <ShipmentsLayer S={S} shipments={shipments} clock={clock} paused={dragging || zooming} aggregate={size.w < 640 ? lod <= 1 : S < 0.9} />}
+            {!zooming && <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />}
+            <CitiesLayer S={S} placed={zooming ? NO_CITY_LABELS : placement.cities} />
+            <g pointerEvents="none" style={dragging || zooming ? { display: 'none' } : undefined}>
               {ripples.map((r) => {
                 if (!G.SITE_POS[r.site]) return null;
                 const [x, y] = markerAt(r.site, S, spread);
                 return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
               })}
             </g>
-            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
           </g>
-          <Furniture view={view} size={size} boxes={placement.boxes} />
+          <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>
       )}
       <div data-hud="" className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5">
@@ -1147,6 +1311,16 @@ export default function MapView(props: MapViewProps): JSX.Element {
           ⟲
         </button>
       </div>
+      {size.w >= 420 && size.w > 0 && (
+        <Minimap
+          view={view}
+          size={size}
+          onCenter={(x, y) => {
+            const v = viewRef.current;
+            apply(clampView({ S: v.S, tx: size.w / 2 - x * v.S, ty: size.h / 2 - y * v.S }, sizeRef.current));
+          }}
+        />
+      )}
       <div data-hud="" className="pointer-events-none absolute bottom-2 right-3 rounded border border-ops-line/80 bg-ops-bg px-1.5 py-0.5 text-[9.5px] tracking-wider text-ops-dim">
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim/70">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
@@ -1166,6 +1340,8 @@ const LAYER_LABEL: [keyof MapLayers, string, string | null][] = [
   ['air', 'Air', ops('violet')],
   ['flows', 'Flows', ops('amber')],
   ['regions', 'Regions', ops('blue')],
+  ['weather', 'Weather', null],
+  ['night', 'Night', null],
 ];
 
 export function MapLayerToggles({ layers, onChange, className = '' }: { layers: MapLayers; onChange: (next: MapLayers) => void; className?: string }) {

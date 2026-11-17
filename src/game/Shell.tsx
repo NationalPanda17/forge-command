@@ -1,6 +1,6 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
 import { useMemo, useRef, useState } from 'react';
-import { seasonOf } from '../sim/living';
+import { monthOfYear, seasonOf } from '../sim/living';
 import MarketsPanel from './MarketsPanel';
 import BuildPanel from './BuildPanel';
 import NewsPanel from './NewsPanel';
@@ -308,6 +308,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             highlight={highlight}
             ripples={ripples}
             clock={clock}
+            weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
           <div className="border-t border-ops-line/60 px-2 py-1">
             <MapLegend />
