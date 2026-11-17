@@ -6,6 +6,8 @@ import { baseDailyDraw, crewNeed, inbound, inputRates, lotQty, processRate } fro
 import type { RunLevel, SimState } from '../sim/types';
 import { MATERIALS, RECIPES, REGIONS, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 import { Bar, Btn, Chip, NumberInput, Segmented } from '../ui/kit';
+import { hardenCost } from '../sim/build';
+import PlantView from './PlantView';
 import { money, qty } from '../ui/format';
 
 const OWNER = { state: 'Yours', private: 'Private company', foreign: 'Foreign supplier' } as const;
@@ -118,8 +120,9 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
                         onChange={(run) => act({ type: 'setRun', site: siteId, process: i, run })}
                         options={[
                           { id: 'idle', label: 'Idle' },
-                          { id: 'normal', label: 'Normal' },
-                          { id: 'surge', label: 'Surge' },
+                          { id: 'single', label: '1 shift' },
+                          { id: 'normal', label: '2 shifts' },
+                          { id: 'surge', label: '24 h' },
                         ]}
                         tones={{ surge: 'border-ops-amber bg-ops-amber/20 text-white' }}
                       />
@@ -152,6 +155,22 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
           <Btn why={why({ type: 'repair', site: siteId })} onClick={() => act({ type: 'repair', site: siteId })}>
             Overhaul · {money(repairCost(state, siteId))}
           </Btn>
+        </div>
+      )}
+      {mine && def.crew > 0 && site.processes.length > 0 && <PlantView state={state} siteId={siteId} act={act} />}
+      {def.owner === 'private' && site.processes.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-ops-dim">
+            {state.network.hardened.includes(siteId) ? 'Resilience works done: disruptions are rarer and milder here.' : 'A resilience grant pays for spares, fire walls and backup power.'}
+          </span>
+          {!state.network.hardened.includes(siteId) &&
+            (state.network.projects.some((p) => p.kind === 'harden' && p.target === siteId) ? (
+              <span className="text-ops-amber">Works under way</span>
+            ) : (
+              <Btn why={why({ type: 'build', kind: 'harden', target: siteId })} onClick={() => act({ type: 'build', kind: 'harden', target: siteId })}>
+                Resilience grant · {money(hardenCost(state, siteId))}
+              </Btn>
+            ))}
         </div>
       )}
       {!mine && def.owner === 'private' && !site.qualified && site.qualifyingDays === null && (

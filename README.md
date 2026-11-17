@@ -39,6 +39,14 @@ Everything moves on a rail, road, sea and air network where each route carries o
 - **Scenarios:** Peacetime, War footing, Sanctions and Rebuild, plus a guided tutorial. Achievements and an
   end-of-term report.
 
+## Build and staff it
+
+- **Build:** new rail and road links, route upgrades, an icebreaker for the northern winter, and resilience grants
+  for key suppliers.
+- **Your plants:** a live floor plan. Choose shifts, watch skill, morale and fatigue, and invest in safety,
+  apprentices and automation.
+- **Replay:** a monthly newspaper, generated music, sandbox rules, and a weekly challenge with local best scores.
+
 ## Real time
 
 The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
@@ -50,6 +58,8 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Plan:** forecasts and the weakest links in the chain.
 - **Materials:** any material traced from finished round down to the mine.
 - **Markets:** prices, tenders and bids, contracts, exports, allies and developing situations.
+- **Build:** links, upgrades, the icebreaker and resilience grants.
+- **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.
 - **Fight:** threats, leakers, doctrine.

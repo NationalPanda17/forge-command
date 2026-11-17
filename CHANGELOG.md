@@ -1,5 +1,41 @@
 # Changelog
 
+## 4.0.0: build, crew and replay
+
+### Build the network
+- **Build tab:** six new rail and road links to build, shown on the map as amber plans. Construction moves on the
+  map, and finished links join the network and change routing.
+- **Route upgrades:** the busiest routes can carry half as much again, twice over. Sea upgrades are port works.
+- **An icebreaker** keeps the northern sea lanes at 90% through the winter.
+- **Resilience grants** make disruptions at a supplier rarer, shorter and milder. Sole sources are listed first.
+- Hover a project to pick it out on the map.
+
+### Plants and people
+- **Plant view:** every line in your arsenals, with input days on hand, a moving belt, shift and output.
+- **Shifts:** idle, one shift, two shifts or round the clock.
+- **Crew:**
+  - **Skill** grows with work; new hires dilute it.
+  - **Morale** follows safety, fatigue and whether wages keep up with prices.
+  - **Fatigue** builds on round-the-clock shifts.
+  - **Accidents** at your own plants grow likelier with fatigue, wear and weak safety.
+  - Disputes start where morale is lowest.
+- **Safety programmes**, **apprenticeships** and **automation** (30% less crew, 20% less scrap).
+
+### Presentation and replay
+- **The Aldmere Courier:** a short edition every month, with its lead story under the header.
+- **Generated music** that turns tense in a crisis, and sound effects. Both can be switched on and off by the clock.
+- **Ripples on the map** where things just happened.
+- **Sandbox rules:** switch inflation, seasons and crises off, change how often things go wrong, add money, or play
+  with no end date.
+- **Weekly challenge:** the same two-year campaign for everyone that week, with local best scores and a scoreboard.
+
+### Balance
+- **Land shortfalls** are averaged across a region's lines and capped at 8 confidence a month, so adding a line
+  never multiplies the penalty.
+- **The test player** now hires with trainees counted and runs safety and apprenticeships. It funds the supplier
+  behind a starved round's bottleneck and upgrades congested routes. It finishes every Easy, Normal and Hard
+  campaign; hands-off play still loses most Hard runs.
+
 ## 3.0.0: depth
 
 ### Planning and analytics

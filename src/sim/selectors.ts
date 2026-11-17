@@ -2,9 +2,10 @@
 import { BASE_LINES, CHEAP, LAND_DRAW, LAND_LINES, PREMIUM, THREATS, THREAT_IDS } from './fight';
 import type { Lot, ProcessState, SimState, SiteState } from './types';
 import { hasResearch, recipeInputs, recipeScrap } from './strategy';
+import { peopleFactor } from './people';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
-export const RUN_FACTOR = { idle: 0, normal: 1, surge: 1.3 } as const;
+export const RUN_FACTOR = { idle: 0, single: 0.6, normal: 1, surge: 1.3 } as const;
 export const DAYS_PER_MONTH = 30;
 export const monthOf = (day: number) => Math.floor(day / DAYS_PER_MONTH);
 
@@ -16,7 +17,7 @@ export const unlocked = (s: SimState, l: LineId) => s.lines[l].unlocked;
 export function processRate(_s: SimState, site: SiteState, p: ProcessState): number {
   if (site.status !== 'active') return 0;
   const def = SITE_BY_ID[site.id];
-  const staff = def.owner === 'state' && def.crew > 0 ? Math.min(1, site.workers / Math.max(1, crewNeed(site))) : 1;
+  const staff = def.owner === 'state' && def.crew > 0 ? Math.min(1, site.workers / Math.max(1, crewNeed(site))) * peopleFactor(site) : 1;
   const disruption = site.disruptionDays > 0 ? site.disruptionFactor : 1;
   const cond = 0.6 + 0.4 * (site.condition / 100);
   const ramping = (p.ramp ?? []).reduce((a, r) => a + r.cap * r.maturity, 0);
@@ -26,7 +27,7 @@ export function processRate(_s: SimState, site: SiteState, p: ProcessState): num
 export function crewNeed(site: SiteState): number {
   const def = SITE_BY_ID[site.id];
   if (!site.processes.length) return def.crew;
-  const share = site.processes.reduce((a, p) => a + (1 + 0.25 * p.expansions) * (p.run === 'idle' ? 0.15 : p.run === 'surge' ? 1.15 : 1), 0) / site.processes.length;
+  const share = site.processes.reduce((a, p) => a + (1 + 0.25 * p.expansions) * (p.run === 'idle' ? 0.15 : p.run === 'single' ? 0.6 : p.run === 'surge' ? 1.15 : 1) * (p.automated ? 0.7 : 1), 0) / site.processes.length;
   return def.crew * share + site.extraCrew;
 }
 

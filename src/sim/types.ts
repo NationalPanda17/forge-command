@@ -4,7 +4,8 @@ import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strat
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial';
 export type AllyId = 'merrow' | 'calder';
-export type RunLevel = 'idle' | 'normal' | 'surge';
+/** idle, one shift, two shifts (normal), or round the clock (surge). */
+export type RunLevel = 'idle' | 'single' | 'normal' | 'surge';
 export type ThreatId = 'drone' | 'rocket' | 'cruise' | 'ballistic' | 'aircraft';
 
 /** A batch of finished rounds made on one day. Ages, gets certified, eventually retires. */
@@ -32,6 +33,8 @@ export interface ProcessState {
   expansions: number;
   /** New capacity still ramping up: it never drags down what is already running. */
   ramp?: { cap: number; maturity: number }[];
+  /** Automated: less crew, less scrap. */
+  automated?: boolean;
 }
 
 export interface SiteState {
@@ -48,7 +51,7 @@ export interface SiteState {
   unserviceable: Partial<Record<LineId, number>>;
   workers: number;
   /** New hires still in training. */
-  trainees: { count: number; days: number }[];
+  trainees: { count: number; days: number; apprentice?: boolean }[];
   /** Extra crew needed for lines added later (new products). */
   extraCrew: number;
   /** Private and foreign companies: 0..100 financial health. */
@@ -59,6 +62,49 @@ export interface SiteState {
   embargoDays: number;
   disruptionDays: number;
   disruptionFactor: number;
+  /** Your sites: crew experience, 0..100. */
+  skill: number;
+  /** Your sites: 0..100. Low morale slows work and invites disputes. */
+  morale: number;
+  /** Your sites: builds up on round-the-clock shifts, 0..100. */
+  fatigue: number;
+  /** Your sites: safety programme level, 0..3. */
+  safety: number;
+  /** Your sites: apprentices taken on each month. */
+  apprentices: number;
+}
+
+/** Something the player is building. */
+export interface Project {
+  id: number;
+  kind: 'link' | 'upgrade' | 'icebreaker' | 'harden' | 'automate';
+  /** Candidate link id, route key, site id, or 'meric' for the icebreaker. */
+  target: string;
+  process?: number;
+  days: number;
+  total: number;
+  cost: number;
+}
+
+/** Sandbox rules. The standard game has them all on, at normal strength. */
+export interface Settings {
+  inflation: boolean;
+  seasons: boolean;
+  crises: boolean;
+  /** Multiplies how often disruptions and world events happen: 0, 0.5, 1 or 2. */
+  events: number;
+  /** No end date. */
+  endless: boolean;
+}
+
+export interface Headline {
+  title: string;
+  body: string;
+  tone: 'good' | 'bad' | 'warn' | 'info';
+}
+export interface NewsEdition {
+  month: number;
+  headlines: Headline[];
 }
 
 export interface Shipment {
@@ -229,6 +275,12 @@ export interface SimState {
   tutorial: { step: number } | null;
   /** Crises that already asked for supplementary money. */
   supplemented: string[];
+  network: { built: string[]; upgrades: Record<string, number>; projects: Project[]; icebreaker: boolean; hardened: string[] };
+  settings: Settings;
+  /** The Courier: one edition a month, newest last. */
+  news: NewsEdition[];
+  /** Set for weekly challenge runs. */
+  challenge: { week: string } | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

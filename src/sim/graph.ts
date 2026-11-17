@@ -1,5 +1,5 @@
 // Routing: fastest paths over the transport network, precomputed once for every pair of sites.
-import { MODES, ROUTES, ROUTE_KEY, SITES, routeKm, type Mode } from './world';
+import { CANDIDATE_ROUTES, MODES, ROUTES, ROUTE_KEY, SITES, routeKm, type Mode, type RouteDef } from './world';
 
 export interface Leg {
   to: string;
@@ -11,17 +11,35 @@ export interface Leg {
 }
 
 const ADJ = new Map<string, Leg[]>();
-for (const rt of ROUTES) {
-  const km = routeKm(rt);
-  const days = km / MODES[rt.mode].speed;
-  const key = ROUTE_KEY(rt.a, rt.b);
-  const push = (from: string, to: string) => {
-    if (!ADJ.has(from)) ADJ.set(from, []);
-    ADJ.get(from)!.push({ to, mode: rt.mode, key, km, days, cap: rt.cap });
-  };
-  push(rt.a, rt.b);
-  push(rt.b, rt.a);
+const CACHE = new Map<string, Path | null>();
+let signature = '\u0000';
+
+/** Extra daily tonnage per upgrade level. */
+export const UPGRADE_STEP = 0.5;
+
+/** The network as built so far: the original routes, any links the player finished, and route upgrades. */
+export function setNetwork(built: readonly string[] = [], upgrades: Readonly<Record<string, number>> = {}): void {
+  const sig = `${[...built].sort().join(',')}|${Object.entries(upgrades).filter(([, v]) => v > 0).sort().map(([k, v]) => `${k}=${v}`).join(',')}`;
+  if (sig === signature) return;
+  signature = sig;
+  ADJ.clear();
+  CACHE.clear();
+  const routes: RouteDef[] = [...ROUTES, ...CANDIDATE_ROUTES.filter((c) => built.includes(c.id))];
+  for (const rt of routes) {
+    const km = routeKm(rt);
+    const days = km / MODES[rt.mode].speed;
+    const key = ROUTE_KEY(rt.a, rt.b);
+    const cap = rt.cap * (1 + UPGRADE_STEP * (upgrades[key] ?? 0));
+    const push = (from: string, to: string) => {
+      if (!ADJ.has(from)) ADJ.set(from, []);
+      ADJ.get(from)!.push({ to, mode: rt.mode, key, km, days, cap });
+    };
+    push(rt.a, rt.b);
+    push(rt.b, rt.a);
+  }
 }
+setNetwork();
+
 export const neighbours = (id: string) => ADJ.get(id) ?? [];
 
 export interface Path {
@@ -61,8 +79,6 @@ function shortest(from: string, allowAir: boolean): Map<string, { time: number; 
   }
   return best;
 }
-
-const CACHE = new Map<string, Path | null>();
 
 /** Fastest surface path (sea, rail, road); air only if the destination cannot be reached otherwise. */
 export function pathBetween(from: string, to: string, allowAir = false): Path | null {

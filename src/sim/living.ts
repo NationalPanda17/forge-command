@@ -1,5 +1,6 @@
 // The world around the industry: seasons, allies, export customers and events that unfold in stages.
-import { DIFF, takeLots } from './tick';
+import { eventScale, takeLots } from './tick';
+import { unhappiest } from './people';
 import { pathBetween } from './graph';
 import { clamp, pick, rand, randInt } from './rng';
 import { registerResolver } from './strategy';
@@ -30,11 +31,12 @@ const NORTH_SEA = new Set(SITES.filter((d) => d.region === 'north').map((d) => d
 
 /** How much of a route's daily tonnage the weather allows. */
 export function legCapFactor(s: SimState, from: string, to: string, mode: string): number {
+  if (s.settings && !s.settings.seasons) return 1;
   const season = seasonOf(s.day);
   const m = monthOfYear(s.day);
   const north = NORTH_SEA.has(from) || NORTH_SEA.has(to);
   if (season === 'winter') {
-    if (mode === 'sea' && north) return 0.6;
+    if (mode === 'sea' && north) return s.network?.icebreaker ? 0.9 : 0.6;
     if (mode === 'road') return north ? 0.8 : 0.9;
     if (mode === 'rail' && north) return 0.92;
   }
@@ -47,7 +49,7 @@ export function legCapFactor(s: SimState, from: string, to: string, mode: string
 
 const HEAT_SENSITIVE = new Set(['propellantMix', 'heSynth', 'nitration', 'apElectrolysis', 'chargeMaking']);
 /** Output factor for a recipe in today's weather. */
-export const plantSeasonFactor = (s: SimState, recipe: string) => (HEAT_SENSITIVE.has(recipe) && [6, 7].includes(monthOfYear(s.day)) ? 0.95 : 1);
+export const plantSeasonFactor = (s: SimState, recipe: string) => (s.settings?.seasons !== false && HEAT_SENSITIVE.has(recipe) && [6, 7].includes(monthOfYear(s.day)) ? 0.95 : 1);
 
 // ---------- Allies and customers ----------
 
@@ -119,7 +121,7 @@ export function livingDay(s: SimState, feed: Feed): void {
 // ---------- Monthly ----------
 
 export function livingMonth(s: SimState, feed: Feed): void {
-  const ev = DIFF[s.difficulty].events;
+  const ev = eventScale(s);
   const calm = s.scenario === 'tutorial' && s.day < 360;
   for (const a of ALLY_IDS) s.allies[a] = clamp(s.allies[a] + (55 - s.allies[a]) * 0.02);
   const open = (k: string) => s.strategy.decisions.some((d) => d.kind === k);
@@ -193,7 +195,10 @@ export function livingMonth(s: SimState, feed: Feed): void {
     feed(s, 'info', `${customer[0].toUpperCase() + customer.slice(1)} wants to buy ${MATERIALS[line].name}.`);
   }
   // Event chains start.
-  if (!calm && s.day > 120 && rand(s) < 0.05 * ev) startChain(s, 'labour', feed);
+  // Disputes are likelier where morale is low.
+  const low = unhappiest(s);
+  const moraleBoost = low ? Math.max(0.5, 1 + (55 - s.sites[low].morale) / 25) : 1;
+  if (!calm && s.day > 120 && rand(s) < 0.05 * ev * moraleBoost) startChain(s, 'labour', feed);
   if (!calm && s.day > 120 && rand(s) < 0.04 * ev) startChain(s, 'quality', feed);
   if (!calm && s.day > 120 && rand(s) < 0.03 * ev) startChain(s, 'safety', feed);
 }
@@ -203,7 +208,8 @@ export function livingMonth(s: SimState, feed: Feed): void {
 function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
   if (s.chains.some((c) => c.kind === kind)) return;
   if (kind === 'labour') {
-    const def = pick(s, SITES.filter((d) => d.owner === 'state' && d.kind === 'arsenal'));
+    const low = unhappiest(s);
+    const def = low && rand(s) < 0.7 ? SITE_BY_ID[low] : pick(s, SITES.filter((d) => d.owner === 'state' && d.kind === 'arsenal'));
     const cost = Math.round(def.crew * 0.0095 * 6 * s.priceIndex);
     const c: Chain = { id: s.nextId++, kind, site: def.id, stage: 0, due: s.day + 30 };
     s.chains.push(c);
@@ -354,21 +360,26 @@ export function resolveLiving(s: SimState, d: Dec, opt: string, feed: Feed): boo
     }
     case 'labour': {
       if (!chain) return true;
-      const settle = () => {
+      const site = s.sites[chain.site];
+      const settle = (morale: number) => {
         s.chains = s.chains.filter((c) => c.id !== chain.id);
         s.strategy.factions.regions = clamp(s.strategy.factions.regions + 2);
+        site.morale = clamp(site.morale + morale);
       };
       if (opt === 'pay') {
         pay(d.value ?? 0);
-        settle();
+        settle(15);
         feed(s, 'good', `Pay deal agreed at ${SITE_BY_ID[chain.site].name}.`, chain.site);
       } else if (opt === 'talk') {
         pay(Math.round((d.value ?? 0) / 2));
         if (rand(s) < 0.5) {
-          settle();
+          settle(7);
           feed(s, 'good', `The union at ${SITE_BY_ID[chain.site].name} accepts half.`, chain.site);
         } else feed(s, 'warn', `The union at ${SITE_BY_ID[chain.site].name} rejects the offer. A strike is coming.`, chain.site);
-      } else feed(s, 'warn', `You refuse the claim at ${SITE_BY_ID[chain.site].name}. A strike is coming.`, chain.site);
+      } else {
+        site.morale = clamp(site.morale - 10);
+        feed(s, 'warn', `You refuse the claim at ${SITE_BY_ID[chain.site].name}. A strike is coming.`, chain.site);
+      }
       return true;
     }
     case 'recall': {

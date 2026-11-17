@@ -70,6 +70,7 @@ export function economyMonth(s: SimState, feed: Feed): void {
   let r = BASE_INFLATION + (rand(s) - 0.5) * 0.002;
   if (s.crisis?.phase === 'active') r += 0.004;
   if (s.scenario === 'sanctions' && s.day < 360) r += 0.002;
+  if (s.settings?.inflation === false) r = 0;
   s.priceIndex = Math.round(s.priceIndex * (1 + r) * 10000) / 10000;
 
   for (const def of SITES) {
