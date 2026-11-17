@@ -1,5 +1,6 @@
 import type { LineId, MaterialId, RegionId, SiteKind } from './world';
 import type { VariantId } from './industry';
+import type { StoryState } from './story';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 import type { RivalState } from './rival';
 import type { PolicyId, Programme } from './commitments';
@@ -113,6 +114,8 @@ export interface Headline {
 export interface NewsEdition {
   month: number;
   headlines: Headline[];
+  /** A special edition's title. */
+  special?: string;
 }
 
 export interface Shipment {
@@ -305,6 +308,8 @@ export interface SimState {
   variants: Partial<Record<LineId, VariantId>>;
   /** A variant being designed. */
   design: { line: LineId; variant: VariantId; days: number } | null;
+  /** The story campaign, when playing it. */
+  story: StoryState | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

@@ -28,6 +28,7 @@ import { absorbHires, peopleDay, peopleMonth, skillScrap } from './people';
 import { rivalArrivals, rivalDay, rivalLand, rivalPk, rivalShots } from './rival';
 import { hasPolicy, policyMonth, programmeMonth } from './commitments';
 import { industryDay, variantOf } from './industry';
+import { storyDay } from './story';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -672,6 +673,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
     acc.leakSeverity = 0;
     acc.landShort = 0;
   }
+  storyDay(s, feed);
   if (!s.over && !s.settings.endless && s.day >= s.days) {
     s.over = true;
     s.outcome = 'complete';

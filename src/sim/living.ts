@@ -206,7 +206,7 @@ export function livingMonth(s: SimState, feed: Feed): void {
 
 // ---------- Event chains ----------
 
-function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
+export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
   if (s.chains.some((c) => c.kind === kind)) return;
   if (kind === 'labour') {
     const low = unhappiest(s);

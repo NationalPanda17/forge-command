@@ -43,7 +43,8 @@ export type SimAction =
   | { type: 'secondTerm' }
   | { type: 'found'; plot: string; recipe: string }
   | { type: 'inhouse'; site: string; recipe: string }
-  | { type: 'design'; line: LineId; variant: VariantId };
+  | { type: 'design'; line: LineId; variant: VariantId }
+  | { type: 'storyBriefed' };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -172,6 +173,8 @@ export function validate(s: SimState, a: SimAction): string | null {
       return s.policies.length >= MAX_POLICIES ? `At most ${MAX_POLICIES} policies at once. Revoke one first.` : null;
     case 'revokePolicy':
       return s.policies.includes(a.policy) ? null : 'Not in force.';
+    case 'storyBriefed':
+      return s.story?.briefing !== null && s.story !== null ? null : 'No briefing waiting.';
     case 'found':
       return foundBlock(s, a.plot, a.recipe);
     case 'inhouse':
@@ -335,6 +338,9 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     case 'secondTerm':
       startSecondTerm(s, feed);
+      break;
+    case 'storyBriefed':
+      s.story!.briefing = null;
       break;
     case 'found':
       foundPlant(s, a.plot, a.recipe, feed);
