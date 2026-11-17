@@ -123,11 +123,21 @@ Physical figures follow public reference data where it exists, and are best gues
 - **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
 - **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
 
-## Sandbox and challenges
-- **Settings:** inflation, seasons and crises on or off; an events multiplier (0, 0.5, 1 or 2) that scales
-  disruptions, bans, chains and accidents; and an endless mode.
-- **Weekly challenge:** the seed comes from the ISO week; the scenario and difficulty rotate. Scores are kept in
-  local storage.
+## Modes
+- **Campaign:** scored, with achievements; the Committee can dismiss you.
+- **Sandbox** (`mode: 'sandbox'`):
+  - Starts with no end date and no dismissal, and is never scored.
+  - **Settings:** inflation, seasons and crises on or off; an events multiplier (0, 0.5, 1 or 2) that scales
+    disruptions, bans, chains and accidents; endless; dismissal.
+  - The `sandbox` action changes them in play, and also adds money, starts or ends a crisis, disrupts a site, lifts
+    every disruption and ban, and finishes research.
+- **Tutorial:** a scenario on Easy with a coach card.
+
+## Smooth time
+- The UI clock (`useSim`) advances continuous time with `requestAnimationFrame` at the chosen speed. Whenever it
+  passes a whole day, it asks the engine for that day.
+- Drawing uses `min(time, last drawn day + 0.999)`, so motion never runs backwards while the engine catches up.
+- Shipments are placed from their depart and arrive days at that fractional time.
 
 ## News (`news.ts`)
 - Each month's edition is written from the month report, the previous one and the month's feed:

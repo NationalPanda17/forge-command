@@ -30,7 +30,7 @@ export default function TermReport({ state, onClose, onMenu }: { state: SimState
       <div className="panel mx-auto max-w-3xl space-y-4 p-4 text-[12px]">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="label">{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
+            <div className="label">{state.mode === 'sandbox' ? 'Sandbox · ' : ''}{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
             <h2 id="term-title" className="font-sans text-2xl font-bold tracking-[0.12em] text-white">
               {state.outcome === 'dismissed' ? 'Dismissed' : 'Term complete'}
             </h2>
@@ -41,7 +41,7 @@ export default function TermReport({ state, onClose, onMenu }: { state: SimState
             <div className={`font-sans text-5xl font-bold leading-tight ${GRADE_TONE[r.grade]}`}>{r.grade}</div>
             <div className="text-ops-dim">score {r.score}</div>
             {rank > 0 && <div className="text-[10px] text-ops-dim">#{rank} of your campaigns</div>}
-            {state.challenge && <div className="text-[10px] text-ops-cyan">challenge {state.challenge.week}</div>}
+            {state.mode === 'sandbox' && <div className="text-[10px] text-ops-amber">sandbox · not scored</div>}
           </div>
         </header>
 

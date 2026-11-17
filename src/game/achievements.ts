@@ -41,6 +41,8 @@ export function loadAchievements(): Record<string, string> {
 
 /** Records any newly earned achievements and returns them. */
 export function checkAchievements(s: SimState): AchievementDef[] {
+  // Achievements are earned in campaigns, not in the sandbox.
+  if (s.mode === 'sandbox') return [];
   const have = loadAchievements();
   const fresh = ACHIEVEMENTS.filter((a) => !have[a.id] && a.check(s));
   if (!fresh.length) return [];

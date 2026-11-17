@@ -18,11 +18,13 @@ export interface SimOptions {
   settings?: Partial<Settings>;
   /** Extra starting money and monthly budget, for the sandbox ($M). */
   money?: { treasury?: number; appropriation?: number };
-  /** The ISO week of a weekly challenge run. */
-  challenge?: string;
+  /** Campaign (scored) or sandbox (free play). */
+  mode?: 'campaign' | 'sandbox';
 }
 
-export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false };
+export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false, dismissal: true };
+/** A sandbox starts with no end date and no dismissal; everything else as normal. */
+export const SANDBOX_SETTINGS: Settings = { ...DEFAULT_SETTINGS, endless: true, dismissal: false };
 /** Endless campaigns still need a number: a century. */
 const ENDLESS_DAYS = 100 * 360;
 
@@ -50,7 +52,8 @@ export function migrate(s: SimState): SimState {
   s.network ??= { built: [], upgrades: {}, projects: [], icebreaker: false, hardened: [] };
   s.settings = { ...DEFAULT_SETTINGS, ...(s.settings ?? {}) };
   s.news ??= [];
-  s.challenge ??= null;
+  s.mode ??= 'campaign';
+  delete (s as { challenge?: unknown }).challenge;
   for (const site of Object.values(s.sites)) {
     site.skill ??= PEOPLE_START.skill;
     site.morale ??= PEOPLE_START.morale;
@@ -105,8 +108,8 @@ function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false):
   return lots.sort((a, b) => a.made - b.made);
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, challenge }: SimOptions): SimState {
-  const rules: Settings = { ...DEFAULT_SETTINGS, ...(settings ?? {}) };
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign' }: SimOptions): SimState {
+  const rules: Settings = { ...(mode === 'sandbox' ? SANDBOX_SETTINGS : DEFAULT_SETTINGS), ...(settings ?? {}) };
   if (scenario === 'tutorial') {
     difficulty = 'easy';
     months = Math.min(months, 24);
@@ -153,7 +156,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     network: { built: [], upgrades: {}, projects: [], icebreaker: false, hardened: [] },
     settings: rules,
     news: [],
-    challenge: challenge ? { week: challenge } : null,
+    mode,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },

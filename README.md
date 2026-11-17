@@ -45,7 +45,8 @@ Everything moves on a rail, road, sea and air network where each route carries o
   for key suppliers.
 - **Your plants:** a live floor plan. Choose shifts, watch skill, morale and fatigue, and invest in safety,
   apprentices and automation.
-- **Replay:** a monthly newspaper, generated music, sandbox rules, and a weekly challenge with local best scores.
+- **Modes:** a scored campaign, a free-play sandbox whose rules you can change as you go, and a guided tutorial.
+- **Replay:** a monthly newspaper, generated music, achievements and your best campaigns.
 
 ## Real time
 
