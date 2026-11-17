@@ -5,6 +5,8 @@ import { inGrace, nationalStock, reserveTarget } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { FINISHED, MATERIALS, type LineId, type MaterialId } from '../sim/world';
 import { Bar, COLORS, LineChart } from '../ui/kit';
+import { Explain } from '../ui/Explain';
+import { flowWhy, stockWhy } from './explain';
 import { pct, qty } from '../ui/format';
 import { monthLabel2 } from './useSim';
 
@@ -63,7 +65,11 @@ export default function PlanPanel({ state, onMaterial, onSite }: { state: SimSta
           ]}
         />
         <p className="mt-2 text-ops-text">
-          Now at <span className={ratioText(level)}>{pct(level)}</span> of target.
+          Now at{' '}
+          <Explain title={`${MATERIALS[line].name} stock`} lines={() => stockWhy(state, line)}>
+            <span className={ratioText(level)}>{pct(level)}</span>
+          </Explain>{' '}
+          of target.
           {inGrace(state, line) ? ' A new line: the Committee will judge it after its first year.' : ''}
           {half !== null ? (
             <span className="text-ops-red"> At this rate it falls below half of target in {half} month{half > 1 ? 's' : ''}.</span>
@@ -74,7 +80,7 @@ export default function PlanPanel({ state, onMaterial, onSite }: { state: SimSta
           )}
         </p>
         <p className="mt-1 text-ops-dim">
-          Each month: about {qty(end.made)} made, {qty(end.used)} expected to be fired{state.crisis ? ' (crisis included)' : ''}, and {qty(f.reduce((a, p) => a + p.retired, 0) / 12)} reaching the end of their life.
+          <Explain title="Each month" lines={() => flowWhy(state, line)}>Each month</Explain>: about {qty(end.made)} made, {qty(end.used)} expected to be fired{state.crisis ? ' (crisis included)' : ''}, and {qty(f.reduce((a, p) => a + p.retired, 0) / 12)} reaching the end of their life.
         </p>
       </section>
 

@@ -1,5 +1,51 @@
 # Changelog
 
+## 5.0.0: the rival, lasting choices and a clearer map
+
+### The rival
+- **A rival that evolves:** the Vardan Directorate fields six new weapons over the term, in an order that changes
+  with the seed:
+  - drone swarms;
+  - supersonic cruise missiles;
+  - manoeuvring ballistic warheads;
+  - decoys and jammers;
+  - heavier rocket barrages;
+  - new armoured divisions.
+- **Effects:** each one changes how many threats arrive, how many interceptors each takes, which rounds hit, or how
+  much land fighting needs, so your production mix has to change too.
+- **Warning and counters:** intel warns about three months ahead, and each weapon has a counter-research project.
+- **Intel tab:** what has been fielded, what is coming, the counters, and the threat load now against the start of
+  your term.
+- **By difficulty:** the rival is half as strong on Easy, and moves faster on Hard.
+
+### Choices that last
+- **Multi-year programmes:** promise a monthly output of one round for three or five years. The Committee adds money
+  every month you deliver; three misses cancel the programme, and keeping it to the end earns a bonus.
+- **Standing policies:** three at a time, from six (Buy Aldmeran, a strategic stockpile law, open books, a warm
+  industrial base, a clean disposal pledge, an export drive). Each has a gain and a cost, and revoking one costs
+  confidence.
+- **A second term:** after a completed term, carry on with every plant, link and round you built.
+
+### Guidance
+- **The advisor** on the Watch tab ranks the next best moves from the forecast, the bottleneck tracer, the rival,
+  contracts, crews and crises, with a "Do it" button for most.
+- **Watch warnings** jump straight to the tab where the fix lives.
+- **Explain this number:** readiness, confidence, the treasury, the season and prices, stock and flows on the
+  Plan tab, each line's daily rate, the price index and threat loads open a short breakdown on hover, focus or tap.
+  Confidence shows where last month's change came from.
+
+### The map
+- **Weather:** snow in the north and sea ice along its coast in winter, flooded rivers in March and April, and a
+  heat tint in July and August.
+- **Vehicles:** trains, ships (with wakes), trucks and aircraft, each facing the way it travels.
+- **A minimap** for jumping around the map.
+- **A night look** with lit cities.
+
+### Performance
+- **Flow view:** on small screens, or zoomed out, shipments become moving flow lines per route, sized by traffic.
+- **Lighter movement:** labels rest while you zoom and reappear, collision-free, once it settles. Moving vehicles
+  pause while you drag the map.
+
 ## 4.1.0: smooth, and a real sandbox
 
 - **Fluid movement:**

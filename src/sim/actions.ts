@@ -10,6 +10,7 @@ import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
 import type { Project, Settings } from './types';
 import { CRISES } from './fight';
+import { MAX_POLICIES, POLICIES, REVOKE_COST, canSecondTerm, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
 import type { RegionId } from './world';
 export { CONTRACT_DISCOUNT };
 
@@ -34,7 +35,11 @@ export type SimAction =
   | { type: 'build'; kind: Project['kind']; target: string; process?: number }
   | { type: 'safety'; site: string }
   | { type: 'apprentices'; site: string; perMonth: number }
-  | { type: 'sandbox'; op: SandboxOp };
+  | { type: 'sandbox'; op: SandboxOp }
+  | { type: 'programme'; line: LineId; years: 3 | 5 }
+  | { type: 'adoptPolicy'; policy: PolicyId }
+  | { type: 'revokePolicy'; policy: PolicyId }
+  | { type: 'secondTerm' };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -65,6 +70,7 @@ export const refurbishCost = (line: LineId, qty: number) => qty * MATERIALS[line
 const funds = (s: SimState, cost: number) => (s.treasury >= cost ? null : `Not enough money (needs $${Math.round(cost)}M).`);
 
 export function validate(s: SimState, a: SimAction): string | null {
+  if (a.type === 'secondTerm') return canSecondTerm(s);
   if (s.over) return 'The campaign is over.';
   const site = 'site' in a ? s.sites[a.site] : null;
   if ('site' in a && !site) return 'Unknown site.';
@@ -111,7 +117,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, refurbishCost(a.line, q));
     }
     case 'setPolicy':
-      return null;
+      return a.policy.demilMethod === 'burn' && s.policies.includes('greenDemil') ? 'Your clean disposal pledge bans open burning.' : null;
     case 'research': {
       const r = RESEARCH[a.research];
       if (hasResearch(s, a.research)) return 'Already done.';
@@ -152,6 +158,16 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'apprentices':
       if (def!.owner !== 'state' || !def!.crew) return 'Only your own plants.';
       return a.perMonth >= 0 && a.perMonth <= 60 ? null : 'Between 0 and 60 a month.';
+    case 'programme':
+      if (!s.lines[a.line].unlocked) return 'That line is not in production.';
+      if (s.programmes.some((p) => p.line === a.line)) return 'A programme for that round is already running.';
+      if (s.programmes.length >= 3) return 'The Committee will fund three programmes at most.';
+      return monthlyCapacity(s, a.line) >= 1 ? null : 'Your arsenals cannot make that yet.';
+    case 'adoptPolicy':
+      if (s.policies.includes(a.policy)) return 'Already in force.';
+      return s.policies.length >= MAX_POLICIES ? `At most ${MAX_POLICIES} policies at once. Revoke one first.` : null;
+    case 'revokePolicy':
+      return s.policies.includes(a.policy) ? null : 'Not in force.';
     case 'sandbox': {
       if (s.mode !== 'sandbox') return 'Only in a sandbox game.';
       const op = a.op;
@@ -281,6 +297,34 @@ export function apply(state: SimState, a: SimAction): SimState {
     }
     case 'apprentices':
       s.sites[a.site].apprentices = Math.round(a.perMonth);
+      break;
+    case 'programme': {
+      const t = programmeTerms(s, a.line, a.years);
+      s.programmes.push({ id: s.nextId++, line: a.line, perMonth: t.perMonth, funding: t.funding, start: s.day, endDay: s.day + a.years * 360, misses: 0 });
+      s.strategy.factions.hawks = Math.min(100, s.strategy.factions.hawks + 3);
+      feed(s, 'good', `A ${a.years}-year ${MATERIALS[a.line].name} programme is signed: ${t.perMonth} rounds a month, for $${t.funding}M a month while you deliver.`, undefined, true);
+      break;
+    }
+    case 'adoptPolicy':
+      s.policies.push(a.policy);
+      if (a.policy === 'stockpileLaw') {
+        s.appropriation = Math.round(s.appropriation * 1.1);
+        s.strategy.baseBudget = Math.round(s.strategy.baseBudget * 1.1);
+      }
+      if (a.policy === 'greenDemil') s.policy.demilMethod = 'recycle';
+      feed(s, 'info', `Policy adopted: ${POLICIES[a.policy].name}.`);
+      break;
+    case 'revokePolicy':
+      s.policies = s.policies.filter((p) => p !== a.policy);
+      if (a.policy === 'stockpileLaw') {
+        s.appropriation = Math.round(s.appropriation / 1.1);
+        s.strategy.baseBudget = Math.round(s.strategy.baseBudget / 1.1);
+      }
+      s.confidence = Math.max(0, s.confidence - REVOKE_COST);
+      feed(s, 'warn', `Policy revoked: ${POLICIES[a.policy].name}. The Committee notes the broken promise.`);
+      break;
+    case 'secondTerm':
+      startSecondTerm(s, feed);
       break;
     case 'sandbox': {
       const op = a.op;

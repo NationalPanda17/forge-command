@@ -9,6 +9,8 @@ import { FINISHED, MATERIALS, SITES, SITE_BY_ID, type MaterialId } from '../sim/
 import { Bar, Btn, COLORS, LineChart, NumberInput, Segmented } from '../ui/kit';
 import { pct, qty } from '../ui/format';
 import { dateLabel, monthLabel2 } from './useSim';
+import { Explain } from '../ui/Explain';
+import { seasonWhy } from './explain';
 
 const CHAIN_LABEL = { labour: 'Pay dispute', quality: 'Suspect parts', safety: 'Mine safety' } as const;
 
@@ -38,7 +40,11 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
       <section>
         <h3 className="label mb-1">Prices</h3>
         <p className="mb-2 text-ops-text">
-          Costs are up <span className={state.priceIndex > 1.08 ? 'text-ops-amber' : 'text-white'}>{pct(state.priceIndex - 1)}</span> since you took office. Spot buying costs 30% over list; contracts lock today's price.
+          Costs are up{' '}
+          <Explain title="Prices" lines={() => seasonWhy(state)}>
+            <span className={state.priceIndex > 1.08 ? 'text-ops-amber' : 'text-white'}>{pct(state.priceIndex - 1)}</span>
+          </Explain>{' '}
+          since you took office. Spot buying costs 30% over list; contracts lock today's price.
         </p>
         {hist.length >= 2 && (
           <LineChart height={70} min={1} max={Math.max(1.05, ...hist.map((h) => h.priceIndex ?? 1)) + 0.01} xLabels={[monthLabel2(hist[0].month), monthLabel2(hist.at(-1)!.month)]} format={(v) => v.toFixed(3)} series={[{ label: 'Price index', values: hist.map((h) => h.priceIndex ?? 1), color: COLORS.amber }]} />

@@ -1,6 +1,7 @@
 // The world around the industry: seasons, allies, export customers and events that unfold in stages.
 import { eventScale, takeLots } from './tick';
 import { unhappiest } from './people';
+import { hasPolicy } from './commitments';
 import { pathBetween } from './graph';
 import { clamp, pick, rand, randInt } from './rng';
 import { registerResolver } from './strategy';
@@ -174,11 +175,11 @@ export function livingMonth(s: SimState, feed: Feed): void {
     }
   }
   // Export customers.
-  if (!calm && !open('export') && s.exports.length < 2 && rand(s) < 0.06) {
+  if (!calm && !open('export') && s.exports.length < 2 && rand(s) < 0.06 * (hasPolicy(s, 'exportDrive') ? 2 : 1)) {
     const line = pick(s, FINISHED.filter((l) => s.lines[l as LineId].unlocked) as LineId[]);
     const months = pick(s, [6, 9, 12]);
     const qty = Math.max(20, Math.round(nationalDailyDraw(s, line) * DAYS_PER_MONTH * months * 0.25));
-    const price = Math.round(MATERIALS[line].price * s.priceIndex * 1.25 * 1e4) / 1e4;
+    const price = Math.round(MATERIALS[line].price * s.priceIndex * 1.25 * (hasPolicy(s, 'exportDrive') ? 1.1 : 1) * 1e4) / 1e4;
     const customer = pick(s, CUSTOMERS);
     s.strategy.decisions.push({
       id: s.nextId++,

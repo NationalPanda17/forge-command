@@ -3,6 +3,7 @@ import { BASE_LINES, CHEAP, LAND_DRAW, LAND_LINES, PREMIUM, THREATS, THREAT_IDS 
 import type { Lot, ProcessState, SimState, SiteState } from './types';
 import { hasResearch, recipeInputs, recipeScrap } from './strategy';
 import { peopleFactor } from './people';
+import { rivalArrivals, rivalLand, rivalShots } from './rival';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 export const RUN_FACTOR = { idle: 0, single: 0.6, normal: 1, surge: 1.3 } as const;
@@ -52,14 +53,14 @@ export function regionBases(region: RegionId, kind: 'air' | 'land'): string[] {
 export function regionDailyDraw(s: SimState, region: RegionId, line: LineId, crisisMult = 1): number {
   if (!unlocked(s, line)) return 0;
   const reg = REGIONS[region];
-  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * crisisMult * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1);
+  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * crisisMult * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * rivalLand(s, line);
   let shots = 0;
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
     const live = th.assign.filter((a) => a.weight > 0 && unlocked(s, a.line) && !(s.policy.conserve && CHEAP.includes(t) && PREMIUM.includes(a.line)));
     const w = live.reduce((a, x) => a + x.weight, 0);
     const passive = t === 'drone' && hasResearch(s, 'hpm') ? 0.8 : 1;
-    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * reg.threatShare * passive * th.shots * (a.weight / w);
+    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * reg.threatShare * passive * th.shots * (a.weight / w) * rivalArrivals(s, t) * rivalShots(s, t);
   }
   return shots * crisisMult;
 }
@@ -87,7 +88,8 @@ export function nationalStock(s: SimState, line: LineId): number {
 }
 
 export const RESERVE_DAYS = 365;
-export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * RESERVE_DAYS;
+/** The stockpile law raises the target to fifteen months. */
+export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * ((s.policies ?? []).includes('stockpileLaw') ? 450 : RESERVE_DAYS);
 
 /** New lines are judged only after a year in production. */
 export const inGrace = (s: SimState, l: LineId) => s.lines[l].since !== undefined && s.day - s.lines[l].since! < 360;

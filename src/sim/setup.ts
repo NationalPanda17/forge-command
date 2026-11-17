@@ -7,6 +7,7 @@ import { DAYS_PER_MONTH, baseDailyDraw, inputRates, nationalDailyDraw, regionDai
 import type { Difficulty, Lot, MonthReport, ScenarioId, Settings, SimState, SiteState } from './types';
 import { PEOPLE_START } from './people';
 import { setNetwork } from './graph';
+import { newRival } from './rival';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -53,6 +54,10 @@ export function migrate(s: SimState): SimState {
   s.settings = { ...DEFAULT_SETTINGS, ...(s.settings ?? {}) };
   s.news ??= [];
   s.mode ??= 'campaign';
+  s.rival ??= newRival(s);
+  s.programmes ??= [];
+  s.policies ??= [];
+  s.term ??= 1;
   delete (s as { challenge?: unknown }).challenge;
   for (const site of Object.values(s.sites)) {
     site.skill ??= PEOPLE_START.skill;
@@ -157,6 +162,10 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     settings: rules,
     news: [],
     mode,
+    rival: { order: [], known: [], next: 0 },
+    programmes: [],
+    policies: [],
+    term: 1,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -255,6 +264,9 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     state.strategy.baseBudget = state.appropriation;
   }
   if (!rules.crises && state.crisis) state.crisis = null;
+  state.rival = newRival(state);
+  // The tutorial keeps the rival quiet for its first year.
+  if (scenario === 'tutorial') state.rival.next = 420;
   setNetwork([], {});
   void SITE_BY_ID;
   state.strategy.candidates = makeCandidates(state);

@@ -48,6 +48,13 @@ Everything moves on a rail, road, sea and air network where each route carries o
 - **Modes:** a scored campaign, a free-play sandbox whose rules you can change as you go, and a guided tutorial.
 - **Replay:** a monthly newspaper, generated music, achievements and your best campaigns.
 
+## A rival that keeps moving
+
+The Vardan Directorate fields new weapons through your term: drone swarms, supersonic cruise missiles,
+manoeuvring warheads, decoys, heavier barrages and armour. Intel warns you, and every one has a counter to
+research. Multi-year programmes, standing policies and a second term make choices last. An advisor suggests the next
+best move, and most numbers explain themselves.
+
 ## Real time
 
 The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
@@ -60,6 +67,8 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Materials:** any material traced from finished round down to the mine.
 - **Markets:** prices, tenders and bids, contracts, exports, allies and developing situations.
 - **Build:** links, upgrades, the icebreaker and resilience grants.
+- **Intel:** the rival's weapons, warnings and counters.
+- **Policy:** multi-year programmes and standing policies.
 - **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.
