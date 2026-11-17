@@ -136,3 +136,39 @@ are scaled from public figures where they exist, and best guesses where they don
 - Tabs: Overview, Plants, Workforce, Supply chain, Partners, Intel, Ledger, Guide.
 - Decision cards, fiscal-year reviews and a final debrief with grades.
 - A guided tutorial, save slots with export and import, and offline play.
+
+## Version 1.0 additions
+
+Each stage below arrived in its own commit. The code is the source of truth for the numbers.
+
+- **Factory floor** (`factory.ts`):
+  - **Stages:** missiles go through motor & airframe, then guidance integration, then final assembly, then acceptance
+    test. Shells go through machining, then fill & pack, then lot acceptance.
+  - **Buffers:** hold up to 1.5 months of capacity. A stage starves when the buffer before it is empty and stops when
+    the buffer after it is full.
+  - **Yields:** learning removes up to 40% of scrap, and research removes another 30%.
+  - **Test cells:** 200 hours each a month, shared per campus.
+  - **First-article inspection:** 0, 1 or 2 months by difficulty.
+  - **In-house plants:** feed the shared component stock and need crew from their campus.
+- **Deep supply chain** (`supply.ts`):
+  - **Feedstock markets:** each component's suppliers depend on one market, whose availability scales their capacity.
+  - **Price index:** moves with that market. Contracts lock the index on the day they are signed; spot buys pay today's.
+  - **Lead times:** Corvane 1 month, Ostrel and Karsk 2. Losses at sea are rare, and more common during strait
+    campaigns.
+  - **Shelf life:** motors and energetics beyond 6 months of need lose 4% a month.
+- **Research** (`selectors.ts` `bomOf`, `actions.ts`):
+  - One project runs at a time.
+  - New lines need their research and 4 free bays.
+  - Doctrine fires the cheap counter-drone rounds at drones first.
+- **World** (`demand.ts`, `logistics.ts`):
+  - Threats arrive by region. A crisis multiplies its own region strongly and its neighbours weakly.
+  - Depots fire first. Airlift from the central reserve covers 60% of an interceptor shortfall and 35% of a land
+    shortfall, at a price.
+  - Convoys arrive the next month and are limited by tonnage.
+  - The rival index scales the intensity of new crises.
+- **Politics** (`politics.ts`):
+  - Five factions with weights. Their weighted average minus 55 nudges confidence each month.
+  - Staff skills scale procurement prices, faults, transport, research speed and morale.
+- **Story** (`story.ts`):
+  - Every scenario has objectives with deadlines; rewards are paid once.
+  - Challenge modifiers and sandbox rules flow through `rules.ts`.

@@ -52,7 +52,9 @@ export function Btn({
   className = '',
   title,
   pressed,
+  id,
 }: {
+  id?: string;
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
@@ -66,6 +68,7 @@ export function Btn({
   const k = kind === 'primary' ? 'btn-primary' : kind === 'danger' ? 'btn-danger' : kind === 'warn' ? 'border-ops-amber/60 bg-ops-amber/10 text-ops-amber hover:bg-ops-amber/20' : '';
   return (
     <button
+      id={id}
       type="button"
       className={`btn ${k} ${pressed ? 'btn-active' : ''} ${className}`}
       onClick={onClick}

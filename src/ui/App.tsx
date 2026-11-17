@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { DIFFICULTY, SCENARIOS, THEATERS, applyAction, endTurn, readiness, type Action, type GameState } from '../engine';
 import { Btn } from './kit';
 import { money, monthLabel, pct, textToneFor } from './format';
-import { DebriefModal, ReviewModal } from './Modals';
+import { AboutModal, DebriefModal, ReviewModal, SettingsModal } from './Modals';
 import Title from './Title';
 import News from './News';
 import { checkAchievements, type Achievement } from './achievements';
@@ -10,6 +10,9 @@ import { applyUpdate, onUpdateReady, updateReady } from './pwa';
 import Tutorial, { STEPS } from './Tutorial';
 import { SLOTS, autosave, describeSave, exportSave, loadPrefs, loadSlot, saveSlot, savePrefs, type Prefs } from './saves';
 import Guide from './tabs/Guide';
+import Analytics from './tabs/Analytics';
+import { setSoundEnabled, sfx } from './sound';
+import { version } from '../../package.json';
 import Intel from './tabs/Intel';
 import Ledger from './tabs/Ledger';
 import Overview from './tabs/Overview';
@@ -21,7 +24,7 @@ import Supply from './tabs/Supply';
 import Workforce from './tabs/Workforce';
 import World from './tabs/World';
 
-export type TabId = 'overview' | 'map' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'politics' | 'intel' | 'ledger' | 'guide';
+export type TabId = 'overview' | 'map' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'politics' | 'intel' | 'ledger' | 'analytics' | 'guide';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -34,6 +37,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'politics', label: 'Politics' },
   { id: 'intel', label: 'Intel' },
   { id: 'ledger', label: 'Ledger' },
+  { id: 'analytics', label: 'Analytics' },
   { id: 'guide', label: 'Guide' },
 ];
 
@@ -87,14 +91,40 @@ export default function App() {
   const [debriefOpen, setDebriefOpen] = useState(true);
   const [update, setUpdate] = useState(updateReady);
   const [unlocked, setUnlocked] = useState<Achievement[]>([]);
+  const [modal, setModal] = useState<'settings' | 'about' | null>(null);
 
   useEffect(() => onUpdateReady(() => setUpdate(true)), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        setModal(null);
+        setSavesOpen(false);
+        return;
+      }
+      if (title || !state) return;
+      if (e.key === '?') setModal('settings');
+      else if (e.key === 'e' || e.key === 'E') document.getElementById('end-month')?.click();
+      else if (/^[0-9]$/.test(e.key)) {
+        const i = e.key === '0' ? 9 : Number(e.key) - 1;
+        if (TABS[i]) setTab(TABS[i].id);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [title, state]);
 
   useEffect(() => {
     if (!state) return;
     autosave(state);
     const fresh = checkAchievements(state);
-    if (fresh.length) setUnlocked((u) => [...u, ...fresh]);
+    if (fresh.length) {
+      setUnlocked((u) => [...u, ...fresh]);
+      sfx.fanfare();
+    }
   }, [state]);
   useEffect(() => {
     if (!unlocked.length) return;
@@ -103,7 +133,11 @@ export default function App() {
   }, [unlocked]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('hc', prefs.highContrast);
+    const root = document.documentElement;
+    root.classList.toggle('hc', prefs.highContrast);
+    root.classList.toggle('rm', prefs.reduceMotion);
+    (document.body.style as CSSStyleDeclaration & { zoom: string }).zoom = prefs.textSize === 'large' ? '1.15' : prefs.textSize === 'small' ? '0.92' : '1';
+    setSoundEnabled(prefs.sound);
     savePrefs(prefs);
   }, [prefs]);
 
@@ -126,8 +160,12 @@ export default function App() {
 
   const endMonth = () => {
     if (!state || state.over) return;
-    setState(endTurn(state));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const next = endTurn(state);
+    setState(next);
+    const last = next.history.at(-1);
+    if (last && last.messages.some((m) => m.tone === 'bad')) sfx.alert();
+    else sfx.month();
+    window.scrollTo({ top: 0, behavior: prefs.reduceMotion ? 'auto' : 'smooth' });
   };
 
   if (title || !state) return <Title onStart={start} onCancel={state ? () => setTitle(false) : undefined} />;
@@ -170,8 +208,8 @@ export default function App() {
             <div className="text-ops-dim">{DIFFICULTY[state.difficulty].label}</div>
           </div>
           <div className="relative ml-auto flex flex-wrap gap-2">
-            <Btn onClick={() => setPrefs((p) => ({ ...p, highContrast: !p.highContrast }))} pressed={prefs.highContrast} title="High-contrast theme">
-              Contrast
+            <Btn onClick={() => setModal('settings')} title="Settings and keyboard shortcuts (?)">
+              Settings
             </Btn>
             <Btn why={state.modifiers.includes('ironman') ? 'Ironman: one autosave, no slots.' : null} onClick={() => setSavesOpen((o) => !o)}>
               Saves
@@ -186,7 +224,7 @@ export default function App() {
                 }}
               />
             )}
-            <Btn kind="primary" className="px-4 py-1.5 text-[12px]" why={state.over ? 'The campaign is over.' : null} onClick={endMonth}>
+            <Btn id="end-month" kind="primary" className="px-4 py-1.5 text-[12px]" why={state.over ? 'The campaign is over.' : null} onClick={endMonth} title="End the month (E)">
               End month →{state.decisions.length > 0 && <span className="ml-1 rounded bg-ops-amber px-1 text-[10px] text-ops-bg">{state.decisions.length}</span>}
             </Btn>
           </div>
@@ -253,6 +291,7 @@ export default function App() {
         {tab === 'politics' && <Politics state={state} act={act} />}
         {tab === 'intel' && <Intel state={state} act={act} />}
         {tab === 'ledger' && <Ledger state={state} act={act} />}
+        {tab === 'analytics' && <Analytics state={state} />}
         {tab === 'guide' && <Guide />}
       </main>
 
@@ -262,6 +301,11 @@ export default function App() {
         <button type="button" className="underline hover:text-ops-text" onClick={() => setTutorial(0)}>
           Replay tutorial
         </button>
+        {' · '}
+        <button type="button" className="underline hover:text-ops-text" onClick={() => setModal('about')}>
+          About
+        </button>
+        {' · '}v{version}
       </footer>
 
       {tutorial !== null && (
@@ -274,6 +318,23 @@ export default function App() {
           onDone={finishTutorial}
         />
       )}
+      {modal === 'settings' && (
+        <SettingsModal
+          prefs={prefs}
+          setPrefs={setPrefs}
+          onClose={() => setModal(null)}
+          onReset={() => {
+            if (!window.confirm('Erase every save, achievement and setting in this browser? This cannot be undone.')) return;
+            try {
+              for (const k of Object.keys(localStorage)) if (k.startsWith('forge-command')) localStorage.removeItem(k);
+            } catch {
+              /* ignore */
+            }
+            location.reload();
+          }}
+        />
+      )}
+      {modal === 'about' && <AboutModal onClose={() => setModal(null)} />}
       {review && <ReviewModal review={review} onClose={() => setSeenReviews(state.reviews.length)} />}
       {!review && state.over && debriefOpen && <DebriefModal state={state} onClose={() => setDebriefOpen(false)} onNew={() => setTitle(true)} />}
     </div>

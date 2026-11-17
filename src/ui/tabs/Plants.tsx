@@ -39,6 +39,7 @@ import {
 import { Bar, Btn, Chip, Panel, Segmented } from '../kit';
 import { money, pct, qty, toneFor } from '../format';
 import Flow from '../Flow';
+import CampusFloor from '../CampusFloor';
 
 function limitText(state: GameState, id: LineId): { text: string; tone: string } {
   const l = state.lines[id].last.limit;
@@ -296,6 +297,9 @@ function CampusSection({ state, campus, act }: { state: GameState; campus: Campu
             New building +{def.buildBays} bays · {money(buildCost(campus))}
           </Btn>
         </span>
+      </div>
+      <div className="border-b border-ops-line/50 px-3 py-2">
+        <CampusFloor state={state} campus={campus} />
       </div>
       <div className="grid gap-3 p-3 2xl:grid-cols-2">
         {linesAt(campus).map((id) =>

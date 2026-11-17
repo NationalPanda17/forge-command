@@ -56,7 +56,7 @@ export const STEPS: Step[] = [
   {
     tab: 'overview',
     title: 'Your move',
-    text: 'The advisor panel suggests moves (one click on Easy, hints on Normal, silence on Hard). Decision cards appear here too. When you are ready, press End month. The Guide tab explains everything in detail.',
+    text: 'There is more: Research licenses new products and better designs, Politics is where you hire key staff and keep the Committee factions on side, and Analytics charts everything. The advisor panel suggests moves (one click on Easy, hints on Normal, silence on Hard). Press End month (or E) when you are ready. The Guide tab explains everything in detail.',
   },
 ];
 

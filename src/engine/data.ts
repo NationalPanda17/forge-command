@@ -334,8 +334,8 @@ export const DIFFICULTY: Record<Difficulty, DifficultyRules> = {
   },
   hard: {
     label: 'Hard', blurb: 'Tighter supply, slow ramp-up, frequent events and sabotage, no advisor, and an adaptive opponent with unreliable intel.',
-    shortages: true, rampPerMonth: 0.05, capMult: 0.92, shockChance: 0.035, eventRate: 1.5, crisisChance: 0.11,
-    appropriation: 146, startTreasury: 450, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
+    shortages: true, rampPerMonth: 0.05, capMult: 0.94, shockChance: 0.03, eventRate: 1.4, crisisChance: 0.1,
+    appropriation: 150, startTreasury: 500, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
     advisor: 'none', adaptive: true, intelError: 0.3, sabotage: true,
   },
 };

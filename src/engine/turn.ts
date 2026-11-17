@@ -6,6 +6,7 @@ import {
   CRISES,
   EXPAND_STEP,
   LINES,
+  COMPONENT_IDS,
   LINE_IDS,
   SCENARIOS,
   STAGES,
@@ -26,7 +27,7 @@ import { runStory } from './story';
 import { applyFallbacks, rollEvents } from './events';
 import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import { lineOverhead, newTranche, readiness, storageCost, wageBill } from './selectors';
+import { activeLines, lineOverhead, nationalStock, newTranche, readiness, storageCost, wageBill } from './selectors';
 import { emptyLedger } from './setup';
 import type { Action, GameState, MonthReport, YearReview } from './types';
 
@@ -280,6 +281,8 @@ export function endTurn(state: GameState): GameState {
     threats: demand.threats,
     interceptorSpend: round2(demand.interceptorSpend),
     threatValueStopped: round2(demand.threatValueStopped),
+    stocks: Object.fromEntries(COMPONENT_IDS.map((c) => [c, round2(s.components[c].stock)])),
+    national: Object.fromEntries(activeLines(s).map((id) => [id, Math.round(nationalStock(s, id))])),
     messages,
   });
   s.pending = emptyLedger();

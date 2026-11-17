@@ -60,12 +60,16 @@ const PREFS = 'forge-command-prefs-v1';
 export interface Prefs {
   tutorialDone: boolean;
   highContrast: boolean;
+  sound: boolean;
+  textSize: 'small' | 'normal' | 'large';
+  reduceMotion: boolean;
 }
+const DEFAULT_PREFS: Prefs = { tutorialDone: false, highContrast: false, sound: true, textSize: 'normal', reduceMotion: false };
 export function loadPrefs(): Prefs {
   try {
-    return { tutorialDone: false, highContrast: false, ...JSON.parse(localStorage.getItem(PREFS) ?? '{}') };
+    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS) ?? '{}') };
   } catch {
-    return { tutorialDone: false, highContrast: false };
+    return { ...DEFAULT_PREFS };
   }
 }
 export function savePrefs(p: Prefs): void {

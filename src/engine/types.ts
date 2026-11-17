@@ -534,6 +534,10 @@ export interface MonthReport {
   threats: Record<ThreatId, ThreatTally>;
   interceptorSpend: number;
   threatValueStopped: number;
+  /** Component stock at month end (optional in older saves). */
+  stocks?: Partial<Record<ComponentId, number>>;
+  /** National stock per line at month end. */
+  national?: Partial<Record<LineId, number>>;
   messages: { tone: 'good' | 'bad' | 'warn' | 'info'; text: string }[];
 }
 

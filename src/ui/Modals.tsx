@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { debrief, type GameState, type YearReview } from '../engine';
 import { Btn } from './kit';
 import { money } from './format';
+import type { Prefs } from './saves';
+import { version } from '../../package.json';
 
 function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose?: () => void; wide?: boolean }) {
   return (
@@ -96,6 +98,93 @@ export function DebriefModal({ state, onNew, onClose }: { state: GameState; onNe
           <Btn onClick={onClose}>Look around</Btn>
           <Btn kind="primary" onClick={onNew}>
             New campaign
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export const SHORTCUTS: [string, string][] = [
+  ['E', 'End the month'],
+  ['1 to 9, 0', 'Switch tabs'],
+  ['?', 'Settings and shortcuts'],
+  ['Esc', 'Close this window'],
+];
+
+export function SettingsModal({ prefs, setPrefs, onClose, onReset }: { prefs: Prefs; setPrefs: (p: Prefs) => void; onClose: () => void; onReset: () => void }) {
+  const row = 'flex items-center justify-between gap-3 py-1.5';
+  return (
+    <Modal title="Settings" onClose={onClose}>
+      <div className="space-y-3 p-4 text-[12px]">
+        <label className={row}>
+          <span>Sound effects</span>
+          <input type="checkbox" checked={prefs.sound} onChange={(e) => setPrefs({ ...prefs, sound: e.target.checked })} />
+        </label>
+        <label className={row}>
+          <span>High-contrast colours</span>
+          <input type="checkbox" checked={prefs.highContrast} onChange={(e) => setPrefs({ ...prefs, highContrast: e.target.checked })} />
+        </label>
+        <label className={row}>
+          <span>Reduce motion</span>
+          <input type="checkbox" checked={prefs.reduceMotion} onChange={(e) => setPrefs({ ...prefs, reduceMotion: e.target.checked })} />
+        </label>
+        <div className={row}>
+          <span>Text size</span>
+          <span className="flex gap-1">
+            {(['small', 'normal', 'large'] as const).map((s) => (
+              <Btn key={s} pressed={prefs.textSize === s} onClick={() => setPrefs({ ...prefs, textSize: s })}>
+                {s}
+              </Btn>
+            ))}
+          </span>
+        </div>
+        <div>
+          <div className="label mb-1">Keyboard shortcuts</div>
+          <ul className="space-y-0.5 text-[11px]">
+            {SHORTCUTS.map(([k, v]) => (
+              <li key={k} className="flex justify-between">
+                <kbd className="rounded border border-ops-line px-1.5 text-ops-text">{k}</kbd>
+                <span className="text-ops-dim">{v}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex justify-between gap-2 border-t border-ops-line/50 pt-3">
+          <Btn kind="danger" onClick={onReset} title="Removes the autosave, save slots, achievements and settings from this browser.">
+            Erase all local data
+          </Btn>
+          <Btn kind="primary" onClick={onClose}>
+            Done
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export function AboutModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="About Forge Command" onClose={onClose} wide>
+      <div className="space-y-3 p-4 text-[12px] leading-relaxed">
+        <p className="text-ops-text">
+          Forge Command is a strategy game about the factories, supply chains and hard choices behind national defense. It is a game, not a model of any real
+          country's industry.
+        </p>
+        <p className="text-ops-text">
+          <b>About the data.</b> Weapon designations and manufacturers are real. Production rates are scaled from public statements by companies and governments, or
+          are best guesses where none exist. Threat costs are rough public estimates. Nothing uses classified or leaked information.
+        </p>
+        <p className="text-ops-text">
+          <b>The world is fictional.</b> Aldmere, its campuses and suppliers, partner nations, the rival power, crises, people and events are all made up.
+        </p>
+        <p className="text-ops-text">
+          <b>Privacy.</b> No accounts, no tracking, no analytics. Your saves, achievements and settings stay in this browser.
+        </p>
+        <p className="text-[11px] text-ops-dim">Version {version}. Plays offline once loaded, and can be installed as an app from your browser menu.</p>
+        <div className="flex justify-end">
+          <Btn kind="primary" onClick={onClose}>
+            Close
           </Btn>
         </div>
       </div>
