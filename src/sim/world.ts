@@ -398,6 +398,22 @@ export const ROUTES: RouteDef[] = [
   air('corranAirHub', 'skerryBase', 30), air('corranAirHub', 'halvardAirBase'), air('corranAirHub', 'marchesSector'), air('corranAirHub', 'mericSector'),
 ];
 
+/** Links the player can build. Each is a new route once finished. */
+export interface CandidateRoute extends RouteDef {
+  id: string;
+  name: string;
+  blurb: string;
+}
+export const CANDIDATE_ROUTES: CandidateRoute[] = [
+  { ...rail('corranWorks', 'depotCoast', 1200), id: 'westline', name: 'Westline', blurb: 'A direct line from Corran to Halvard, bypassing the Halden valley.' },
+  { ...rail('depotCentral', 'redmarlSmelter', 1200), id: 'southMain', name: 'Southern main line', blurb: 'Corran to Redmarl and on to Lowmouth: a second way south.' },
+  { ...rail('depotEast', 'greystone', 1000), id: 'marchesLink', name: 'Marches link', blurb: 'Ties the eastern depot to the northern forges without going through Ashford.' },
+  { ...rail('kestrel', 'tarnSmelter', 900), id: 'tarnCutoff', name: 'Tarn cut-off', blurb: 'A short line from the motor works to the Tarn smelter.' },
+  { ...road('depotNorth', 'riverlineBrigade', 500), id: 'riverRoad', name: 'Riverline military road', blurb: 'An all-weather road from Meric Depot to the Riverline guns.' },
+  { ...rail('lindellFuze', 'ashfordComplex', 1200), id: 'ashfordDirect', name: 'Corran–Ashford direct', blurb: 'Doubles the busiest corridor in the country.' },
+];
+export const CANDIDATE_BY_ID: Record<string, CandidateRoute> = Object.fromEntries(CANDIDATE_ROUTES.map((c) => [c.id, c]));
+
 export const ROUTE_KEY = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 export function routeKm(rt: RouteDef): number {
   const A = SITE_BY_ID[rt.a];

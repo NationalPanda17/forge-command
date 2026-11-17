@@ -11,6 +11,18 @@ import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRS
 export interface MapMarker { tone?: 'ok' | 'warn' | 'bad' | 'idle'; badge?: string; pulse?: boolean }
 export interface MapShipment { id: number; path: string[]; /* site ids */ progress: number; /* 0..1 along the whole path */ mode: string; /* first-leg mode */ color?: string }
 export interface MapLayers { terrain: boolean; labels: boolean; rail: boolean; road: boolean; sea: boolean; air: boolean; flows: boolean; regions: boolean }
+/** What the player has built or is building, for drawing. */
+export interface MapNetwork {
+  built: string[];
+  upgrades: Record<string, number>;
+  /** Candidate links under construction. */
+  building: string[];
+  /** Route keys being upgraded. */
+  upgrading: string[];
+}
+/** A brief ring at a site when something happens there. */
+export interface MapRipple { key: string; site: string; tone: 'good' | 'bad' | 'warn' | 'info' }
+
 export interface MapViewProps {
   markers: Record<string, MapMarker>;
   shipments: MapShipment[];
@@ -20,6 +32,12 @@ export interface MapViewProps {
   onSelect: (siteId: string | null) => void;
   layers: MapLayers;
   height?: number | string;
+  network?: MapNetwork;
+  /** Draw links that could be built. */
+  showPlans?: boolean;
+  /** A route key or candidate link id to pick out. */
+  highlight?: string | null;
+  ripples?: MapRipple[];
 }
 
 export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false };
@@ -87,8 +105,12 @@ const LOD_CSS = `
 @keyframes fcm-crisis{0%,100%{opacity:.5}50%{opacity:1}}
 .fcm-crisis{animation:fcm-crisis 2.4s ease-in-out infinite}
 .fcm-marker{cursor:pointer;outline:none}
+@keyframes fcm-build{to{stroke-dashoffset:-20}}
+.fcm-build{animation:fcm-build 1.2s linear infinite}
+@keyframes fcm-ripple{from{transform:scale(0.6);opacity:.9}to{transform:scale(3.2);opacity:0}}
+.fcm-ripple{transform-box:fill-box;transform-origin:center;animation:fcm-ripple 1.8s ease-out 2 forwards}
 .fcm-marker:hover .fcm-mbody{stroke-width:2.2}
-@media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis{animation:none}}
+@media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis,.fcm-build{animation:none}.fcm-ripple{display:none}}
 `;
 
 // ---------- Static layers ----------
@@ -262,10 +284,31 @@ function busyColor(u: number | undefined, base: string): string {
 }
 
 const RoutesLayer = memo(
-  function RoutesLayer({ layers, use }: { layers: MapLayers; use: Record<string, number> | undefined; sig: string }) {
-    const by = (m: string) => G.ROUTE_GEOMS.filter((g) => g.mode === m);
+  function RoutesLayer({ layers, use, network, showPlans, highlight }: { layers: MapLayers; use: Record<string, number> | undefined; sig: string; network?: MapNetwork; showPlans?: boolean; highlight?: string | null }) {
+    const built = G.CANDIDATE_GEOMS.filter((g) => network?.built.includes(g.id));
+    const live = [...G.ROUTE_GEOMS, ...built];
+    const by = (m: string) => live.filter((g) => g.mode === m);
+    const plans = G.CANDIDATE_GEOMS.filter((g) => !network?.built.includes(g.id) && (showPlans || network?.building.includes(g.id) || highlight === g.id));
+    const upgraded = live.filter((g) => (network?.upgrades[g.key] ?? 0) > 0 || network?.upgrading.includes(g.key));
+    const lit = highlight ? [...live, ...G.CANDIDATE_GEOMS].filter((g) => g.key === highlight || (g as { id?: string }).id === highlight) : [];
     return (
       <g fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none">
+        {lit.map((g) => (
+          <path key={`h-${g.key}-${g.mode}`} d={g.d} stroke={ops('cyan', 0.35)} strokeWidth={12} style={nss} />
+        ))}
+        {upgraded.map((g) => {
+          const lvl = network?.upgrades[g.key] ?? 0;
+          return (
+            <g key={`u-${g.key}-${g.mode}`}>
+              {lvl > 0 && <path d={g.d} stroke={ops('text', 0.18)} strokeWidth={5 + lvl * 2.5} style={nss} />}
+              {network?.upgrading.includes(g.key) && <path className="fcm-build" d={g.d} stroke={ops('amber', 0.8)} strokeWidth={6 + lvl * 2.5} strokeDasharray="2 6" style={nss} />}
+            </g>
+          );
+        })}
+        {plans.map((g) => {
+          const going = network?.building.includes(g.id);
+          return <path key={`p-${g.id}`} className={going ? 'fcm-build' : undefined} d={g.d} stroke={ops('amber', going ? 0.95 : 0.55)} strokeWidth={going ? 2.2 : 1.5} strokeDasharray={going ? '6 4' : '3 5'} style={nss} />;
+        })}
         {layers.sea &&
           by('sea').map((g) => {
             const u = use?.[g.key];
@@ -693,7 +736,7 @@ const Furniture = memo(function Furniture({ view, size, boxes }: { view: View; s
 // ---------- The map ----------
 
 export default function MapView(props: MapViewProps): JSX.Element {
-  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560 } = props;
+  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560, network, showPlans = false, highlight = null, ripples = [] } = props;
   const uid = `fcm${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -983,7 +1026,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
     [S, lod, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
   );
 
-  const useSig = routeUse ? Object.entries(routeUse).map(([k, v]) => `${k}:${v >= 0.85 ? 2 : v >= 0.6 ? 1 : 0}`).join(',') : '';
+  const netSig = network ? `${network.built.join(',')}|${Object.entries(network.upgrades).map(([k, v]) => `${k}=${v}`).join(',')}|${network.building.join(',')}|${network.upgrading.join(',')}` : '';
+  const useSig = `${routeUse ? Object.entries(routeUse).map(([k, v]) => `${k}:${v >= 0.85 ? 2 : v >= 0.6 ? 1 : 0}`).join(',') : ''}#${netSig}#${showPlans ? 1 : 0}#${highlight ?? ''}`;
 
   return (
     <div
@@ -1019,13 +1063,20 @@ export default function MapView(props: MapViewProps): JSX.Element {
             <g clipPath={`url(#${uid}-frame)`}>
               <StaticGeo uid={uid} terrain={layers.terrain} relief={relief} />
               <RegionLayer uid={uid} show={layers.regions} crisis={crisisRegion} />
-              <RoutesLayer layers={layers} use={routeUse} sig={useSig} />
+              <RoutesLayer layers={layers} use={routeUse} sig={useSig} network={network} showPlans={showPlans} highlight={highlight} />
             </g>
             <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
             <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
             {layers.flows && <ShipmentsLayer S={S} shipments={shipments} />}
             <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />
             <CitiesLayer S={S} placed={placement.cities} />
+            <g pointerEvents="none">
+              {ripples.map((r) => {
+                if (!G.SITE_POS[r.site]) return null;
+                const [x, y] = markerAt(r.site, S, spread);
+                return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
+              })}
+            </g>
             <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
           </g>
           <Furniture view={view} size={size} boxes={placement.boxes} />

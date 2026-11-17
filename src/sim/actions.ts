@@ -5,6 +5,10 @@ import { MATERIALS, RECIPES, SITE_BY_ID, type LineId, type MaterialId } from './
 import { RESEARCH, hasResearch, resolveDecision, startResearch, type ResearchId, type StaffRole } from './strategy';
 import { feed } from './tick';
 import { CONTRACT_DISCOUNT, TENDER_COST, bidders, makeTender, priceNow } from './economy';
+import { buildBlock, projectName, startProject } from './build';
+import { MAX_SAFETY, safetyCost } from './people';
+import { setNetwork } from './graph';
+import type { Project } from './types';
 export { CONTRACT_DISCOUNT };
 
 export type SimAction =
@@ -24,7 +28,10 @@ export type SimAction =
   | { type: 'decide'; decision: number; option: string }
   | { type: 'openTender'; material: MaterialId; perDay: number; months: 12 | 24 | 36 }
   | { type: 'awardTender'; tender: number; site: string }
-  | { type: 'tutorial'; step: number };
+  | { type: 'tutorial'; step: number }
+  | { type: 'build'; kind: Project['kind']; target: string; process?: number }
+  | { type: 'safety'; site: string }
+  | { type: 'apprentices'; site: string; perMonth: number };
 
 const HIRE_COST = 0.015;
 export const TRAINING_DAYS = 90;
@@ -123,6 +130,15 @@ export function validate(s: SimState, a: SimAction): string | null {
     }
     case 'tutorial':
       return s.tutorial ? null : 'Not in the tutorial.';
+    case 'build':
+      return buildBlock(s, a.kind, a.target, a.process);
+    case 'safety':
+      if (def!.owner !== 'state' || !def!.crew) return 'Only your own plants.';
+      if (site!.safety >= MAX_SAFETY) return 'The safety programme is already complete.';
+      return funds(s, safetyCost(s, a.site));
+    case 'apprentices':
+      if (def!.owner !== 'state' || !def!.crew) return 'Only your own plants.';
+      return a.perMonth >= 0 && a.perMonth <= 60 ? null : 'Between 0 and 60 a month.';
   }
 }
 
@@ -134,6 +150,7 @@ function charge(s: SimState, cost: number): void {
 export function apply(state: SimState, a: SimAction): SimState {
   if (validate(state, a)) return state;
   const s = structuredClone(state);
+  setNetwork(s.network.built, s.network.upgrades);
   switch (a.type) {
     case 'setRun':
       s.sites[a.site].processes[a.process].run = a.run;
@@ -227,6 +244,21 @@ export function apply(state: SimState, a: SimAction): SimState {
     }
     case 'tutorial':
       s.tutorial = { step: a.step };
+      break;
+    case 'build':
+      startProject(s, a.kind, a.target, a.process);
+      feed(s, 'info', `Work begins: ${projectName(s, a)}.`);
+      break;
+    case 'safety': {
+      charge(s, safetyCost(s, a.site));
+      const site = s.sites[a.site];
+      site.safety += 1;
+      site.morale = Math.min(100, site.morale + 5);
+      feed(s, 'good', `Safety programme stage ${site.safety} at ${SITE_BY_ID[a.site].name}.`, a.site);
+      break;
+    }
+    case 'apprentices':
+      s.sites[a.site].apprentices = Math.round(a.perMonth);
       break;
     case 'setPolicy':
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };

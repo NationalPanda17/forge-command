@@ -21,6 +21,10 @@ import {
 import { emptyMonth } from './setup';
 import { economyMonth, priceNow } from './economy';
 import { legCapFactor, livingDay, livingMonth, plantSeasonFactor } from './living';
+import { buildDay } from './build';
+import { setNetwork } from './graph';
+import { writeEdition } from './news';
+import { absorbHires, peopleDay, peopleMonth, skillScrap } from './people';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -41,6 +45,9 @@ export const DIFF = {
   hard: { events: 1.6, crisis: 1.35, ramp: 0.7 },
 } as const;
 /** Minimum ready rounds a base keeps of each type it can fire. */
+/** How often things go wrong: difficulty times the sandbox setting. */
+export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
+
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
 export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert = false): void {
@@ -110,7 +117,7 @@ function produce(s: SimState): void {
         want = 0;
         limit = 'demand';
       }
-      const scrap = recipeScrap(s, p.recipe, def.owner) * (def.owner === 'state' ? 1 - 0.1 * skillOf(s, 'quality') : 1);
+      const scrap = recipeScrap(s, p.recipe, def.owner) * (def.owner === 'state' ? (1 - 0.1 * skillOf(s, 'quality')) * skillScrap(site) * (p.automated ? 0.8 : 1) : 1);
       const inputs = recipeInputs(s, p.recipe);
       const gross = want / (1 - scrap);
       let frac = 1;
@@ -137,7 +144,7 @@ function produce(s: SimState): void {
       for (const [m, q] of Object.entries(rec.extra ?? {}) as [MaterialId, number][]) site.stock[m] = (site.stock[m] ?? 0) + gross * frac * q;
       s.month.made[rec.output] = (s.month.made[rec.output] ?? 0) + whole;
       // Wear: surging wears plants down; normal running holds steady.
-      if (def.owner === 'state') site.condition = clamp(site.condition + (p.run === 'surge' ? -0.12 : 0.02));
+      if (def.owner === 'state') site.condition = clamp(site.condition + (p.run === 'surge' ? -0.12 : p.run === 'single' ? 0.04 : 0.02));
     }
   }
 }
@@ -404,8 +411,10 @@ function fight(s: SimState): DayFight {
       leakSeverity += leaked * th.severity;
       if (leaked >= 1 && th.severity >= 1) feed(s, 'bad', `${Math.round(leaked)} ${th.name.toLowerCase()}${Math.round(leaked) > 1 ? 's' : ''} got through over ${REGIONS[region].name}.`, base.id);
     }
-    // Land fires.
+    // Land fires. The region's shortfall is the average over the lines it fires, so adding a line never multiplies it.
     const arty = regionBases(region, 'land');
+    let shortSum = 0;
+    let shortLines = 0;
     for (const line of LAND_LINES) {
       if (!s.lines[line].unlocked || !arty.length) continue;
       const want = sround(s, ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * REGIONS[region].landShare * landMult(s, region) * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * randRange(s, 0.85, 1.15));
@@ -417,8 +426,12 @@ function fight(s: SimState): DayFight {
         if (got >= want) break;
       }
       s.month.fired[line] = (s.month.fired[line] ?? 0) + got;
-      if (want > got && !inGrace(s, line)) landShort += (want - got) / want;
+      if (!inGrace(s, line)) {
+        shortSum += Math.max(0, want - got) / want;
+        shortLines++;
+      }
     }
+    if (shortLines) landShort += shortSum / shortLines;
   }
   return { leakSeverity, landShort };
 }
@@ -490,7 +503,7 @@ function lifecycle(s: SimState): void {
 function world(s: SimState): void {
   // Crises.
   if (!s.crisis) {
-    if (s.day > (s.scenario === 'tutorial' ? 420 : 90) && rand(s) < (0.08 * DIFF[s.difficulty].crisis) / DAYS_PER_MONTH) {
+    if (s.settings.crises && s.day > (s.scenario === 'tutorial' ? 420 : 90) && rand(s) < (0.08 * DIFF[s.difficulty].crisis) / DAYS_PER_MONTH) {
       const c = pick(s, CRISES);
       s.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'warning', days: 60, intensity: Math.round(randRange(s, 0.8, 1.3) * 100) / 100, mix: { ...c.mix } };
       feed(s, 'warn', `Intel: tension rising over the ${c.name} (${REGIONS[c.region].name}). Expect heavy fighting there in about two months. Stock the depot now.`, REGIONS[c.region].depot, true);
@@ -542,21 +555,24 @@ function world(s: SimState): void {
     }
     if (site.trainees.length) {
       for (const t of site.trainees) t.days -= 1 / (1 - 0.15 * skillOf(s, 'labor'));
-      const done = site.trainees.filter((t) => t.days <= 0).reduce((a, t) => a + t.count, 0);
+      const finished = site.trainees.filter((t) => t.days <= 0);
+      const done = finished.reduce((a, t) => a + t.count, 0);
       site.trainees = site.trainees.filter((t) => t.days > 0);
       if (done) {
+        absorbHires(site, done, finished.filter((t) => t.apprentice).reduce((a, t) => a + t.count, 0));
         site.workers += done;
         feed(s, 'good', `${done} trainees qualify at ${def.name}.`, site.id);
       }
     }
     if (s.day < 60 || !site.processes.length) continue;
-    if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < (0.025 * DIFF[s.difficulty].events) / DAYS_PER_MONTH) {
-      site.disruptionDays = randInt(s, 20, 90);
-      site.disruptionFactor = Math.round(randRange(s, 0.2, 0.6) * 100) / 100;
+    const hardened = s.network.hardened.includes(site.id);
+    if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < (0.025 * eventScale(s) * (hardened ? 0.4 : 1)) / DAYS_PER_MONTH) {
+      site.disruptionDays = Math.round(randInt(s, 20, 90) * (hardened ? 0.6 : 1));
+      site.disruptionFactor = Math.round(randRange(s, hardened ? 0.5 : 0.2, hardened ? 0.8 : 0.6) * 100) / 100;
       const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike', 'A cyber attack on the plant network'];
       feed(s, 'bad', `${pick(s, kinds)} at ${def.name}: output down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.round(site.disruptionDays / 7)} weeks.`, site.id, true);
     }
-    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * DIFF[s.difficulty].events) / DAYS_PER_MONTH) {
+    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * eventScale(s)) / DAYS_PER_MONTH) {
       site.embargoDays = randInt(s, 90, 300);
       feed(s, 'bad', `Export ban: the ${def.nation} halts shipments from ${def.name}.`, site.id, true);
     }
@@ -582,12 +598,13 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   strategyMonth(s, feed, { readiness: ready, excessLeaks: Math.max(0, fightTotals.leakSeverity - 2.5), burned: s.policy.demilMethod === 'burn' ? s.month.demilled : 0 });
   economyMonth(s, feed);
   livingMonth(s, feed);
+  peopleMonth(s, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
   const expect = { easy: 0.62, normal: 0.7, hard: 0.76 }[s.difficulty];
   let dc = (ready - expect) * 8;
   dc -= Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5);
   // landShort sums each day's shortfall fraction: average it over the month.
-  dc -= (fightTotals.landShort / DAYS_PER_MONTH) * 4;
+  dc -= Math.min(8, (fightTotals.landShort / DAYS_PER_MONTH) * 4);
   if (s.treasury < 0) dc -= 1 + -s.treasury / 400;
   s.confidence = clamp(s.confidence + dc);
   s.month.readiness = Math.round(ready * 100) / 100;
@@ -601,6 +618,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
     s.month.stock[l] = Math.round(nationalStock(s, l));
     s.month.target[l] = Math.round(reserveTarget(s, l));
   }
+  s.news.push({ month: s.month.month, headlines: writeEdition(s, s.month, s.history.at(-1)) });
+  if (s.news.length > 24) s.news.splice(0, s.news.length - 24);
   s.history.push(s.month);
   s.month = emptyMonth(s.history.length);
   s.treasury += s.appropriation;
@@ -622,6 +641,8 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   world(s);
   strategyDay(s, feed);
   livingDay(s, feed);
+  buildDay(s, feed);
+  peopleDay(s, feed, eventScale(s));
   produce(s);
   logistics(s);
   const f = fight(s);
@@ -634,7 +655,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
     acc.leakSeverity = 0;
     acc.landShort = 0;
   }
-  if (!s.over && s.day >= s.days) {
+  if (!s.over && !s.settings.endless && s.day >= s.days) {
     s.over = true;
     s.outcome = 'complete';
     feed(s, 'info', 'Your term as Director is over.', undefined, true);
@@ -646,6 +667,7 @@ export function advanceDays(prev: SimState, n = 1): SimState {
   if (prev.over) return prev;
   const s = structuredClone(prev);
   s.alert = null;
+  setNetwork(s.network.built, s.network.upgrades);
   const acc = monthFight.get(prev) ?? { leakSeverity: 0, landShort: 0 };
   for (let i = 0; i < n && !s.over; i++) stepDay(s, acc);
   monthFight.set(s, { ...acc });

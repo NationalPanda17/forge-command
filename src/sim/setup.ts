@@ -4,7 +4,9 @@ import { MIN_BASE_ROUNDS } from './tick';
 import { OBJECTIVES, makeCandidates } from './strategy';
 import { rand, randInt } from './rng';
 import { DAYS_PER_MONTH, baseDailyDraw, inputRates, nationalDailyDraw, regionDailyDraw } from './selectors';
-import type { Difficulty, Lot, MonthReport, ScenarioId, SimState, SiteState } from './types';
+import type { Difficulty, Lot, MonthReport, ScenarioId, Settings, SimState, SiteState } from './types';
+import { PEOPLE_START } from './people';
+import { setNetwork } from './graph';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -12,7 +14,17 @@ export interface SimOptions {
   difficulty?: Difficulty;
   scenario?: ScenarioId;
   months?: number;
+  /** Sandbox rules; the standard game uses DEFAULT_SETTINGS. */
+  settings?: Partial<Settings>;
+  /** Extra starting money and monthly budget, for the sandbox ($M). */
+  money?: { treasury?: number; appropriation?: number };
+  /** The ISO week of a weekly challenge run. */
+  challenge?: string;
 }
+
+export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false };
+/** Endless campaigns still need a number: a century. */
+const ENDLESS_DAYS = 100 * 360;
 
 export interface ScenarioDef {
   name: string;
@@ -35,6 +47,18 @@ export function migrate(s: SimState): SimState {
   s.chains ??= [];
   s.tutorial ??= null;
   s.supplemented ??= [];
+  s.network ??= { built: [], upgrades: {}, projects: [], icebreaker: false, hardened: [] };
+  s.settings = { ...DEFAULT_SETTINGS, ...(s.settings ?? {}) };
+  s.news ??= [];
+  s.challenge ??= null;
+  for (const site of Object.values(s.sites)) {
+    site.skill ??= PEOPLE_START.skill;
+    site.morale ??= PEOPLE_START.morale;
+    site.fatigue ??= PEOPLE_START.fatigue;
+    site.safety ??= PEOPLE_START.safety;
+    site.apprentices ??= PEOPLE_START.apprentices;
+  }
+  setNetwork(s.network.built, s.network.upgrades);
   if (!(s.scenario in SCENARIOS)) s.scenario = 'standard';
   return s;
 }
@@ -81,7 +105,8 @@ function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false):
   return lots.sort((a, b) => a.made - b.made);
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48 }: SimOptions): SimState {
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, challenge }: SimOptions): SimState {
+  const rules: Settings = { ...DEFAULT_SETTINGS, ...(settings ?? {}) };
   if (scenario === 'tutorial') {
     difficulty = 'easy';
     months = Math.min(months, 24);
@@ -92,11 +117,11 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     seed: seed >>> 0,
     rng: seed >>> 0,
     day: 0,
-    days: months * DAYS_PER_MONTH,
+    days: rules.endless ? ENDLESS_DAYS : months * DAYS_PER_MONTH,
     difficulty,
     scenario,
-    treasury: money.treasury,
-    appropriation: money.appropriation,
+    treasury: money.treasury + (extra?.treasury ?? 0),
+    appropriation: money.appropriation + (extra?.appropriation ?? 0),
     confidence: 60,
     sites: {},
     shipments: [],
@@ -125,6 +150,10 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     chains: [],
     tutorial: scenario === 'tutorial' ? { step: 0 } : null,
     supplemented: [],
+    network: { built: [], upgrades: {}, projects: [], icebreaker: false, hardened: [] },
+    settings: rules,
+    news: [],
+    challenge: challenge ? { week: challenge } : null,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -132,7 +161,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
       factions: { hawks: 55, treasury: 55, regions: 55, industry: 55 },
       decisions: [],
       objectives: OBJECTIVES.map((o) => ({ id: o.id, status: 'open' as const })),
-      baseBudget: money.appropriation,
+      baseBudget: money.appropriation + (extra?.appropriation ?? 0),
       startWorkers: 0,
       investedThisMonth: 0,
     },
@@ -166,6 +195,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
       embargoDays: 0,
       disruptionDays: 0,
       disruptionFactor: 1,
+      ...PEOPLE_START,
     };
     state.sites[def.id] = site;
   }
@@ -221,6 +251,8 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     state.appropriation = Math.round(state.appropriation * 1.1);
     state.strategy.baseBudget = state.appropriation;
   }
+  if (!rules.crises && state.crisis) state.crisis = null;
+  setNetwork([], {});
   void SITE_BY_ID;
   state.strategy.candidates = makeCandidates(state);
   state.strategy.startWorkers = Object.values(state.sites).reduce((a, x) => a + x.workers, 0);

@@ -1,7 +1,7 @@
 // Geography of the Commonwealth of Aldmere for the map. Everything here is deterministic: seeded noise and
 // midpoint displacement over hand-placed control points. Units are km, matching src/sim/world.ts.
 
-import { CITIES, ROUTES, ROUTE_KEY, SITES, SITE_BY_ID, type Mode, type RegionId } from '../../sim/world';
+import { CITIES, ROUTES, ROUTE_KEY, SITES, SITE_BY_ID, type Mode, type RegionId, CANDIDATE_ROUTES } from '../../sim/world';
 
 export type Pt = [number, number];
 
@@ -698,8 +698,15 @@ export const ROUTE_GEOMS: RouteGeom[] = ROUTES.map((r) => {
   return { key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
 });
 
+/** Links the player may build, drawn as plans until they open. */
+export const CANDIDATE_GEOMS: (RouteGeom & { id: string })[] = CANDIDATE_ROUTES.map((r) => {
+  const pts = buildRoute(r.a, r.b, r.mode);
+  const cum = cumLen(pts);
+  return { id: r.id, key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
+});
+
 export const GEOMS_BY_KEY: Map<string, RouteGeom[]> = new Map();
-for (const g of ROUTE_GEOMS) {
+for (const g of [...ROUTE_GEOMS, ...CANDIDATE_GEOMS]) {
   const l = GEOMS_BY_KEY.get(g.key) ?? [];
   l.push(g);
   GEOMS_BY_KEY.set(g.key, l);
