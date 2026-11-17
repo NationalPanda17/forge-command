@@ -1,6 +1,6 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
-import { expandCost, qualifyCost, reworkCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, SUPPLIERS, suppliersOf } from './data';
+import { debottleneckCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, STAGES, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -108,6 +108,58 @@ export function advise(state: GameState): Advice[] {
     }
     if (line.testShare < MIN_SAFE_TEST_SHARE) {
       out.push({ id: `test-${id}`, tone: 'suggest', text: `${LINES[id].name} test share is below 3%. Latent defects may slip into the reserve.`, action: { type: 'setTestShare', line: id, share: 0.05 }, actionLabel: 'Set to 5%' });
+    }
+  }
+
+  // Factory floor: test cells and stage bottlenecks.
+  for (const c of CAMPUS_IDS) {
+    const cs = state.campuses[c];
+    const t = cs.lastTestHours;
+    if (t.avail > 0 && t.need > t.avail * 0.95 && cs.testCellBuilds.length === 0) {
+      const action: Action = { type: 'buildTestCell', campus: c };
+      out.push({
+        id: `testcell-${c}`,
+        tone: t.need > t.avail ? 'urgent' : 'suggest',
+        text: `Acceptance testing at ${CAMPUSES[c].name} needs ${Math.round(t.need)} test-cell hours a month and has ${Math.round(t.avail)}. Finished rounds are queuing for test.`,
+        action: ok(action) ? action : undefined,
+        actionLabel: `Build test cell ($${testCellCost(c)}M)`,
+      });
+    }
+  }
+  for (const id of LINE_IDS) {
+    const line = state.lines[id];
+    if (line.run === 'idle' || line.debottlenecking || coverMonths(state, id) > 4) continue;
+    const st = line.stages;
+    for (let i = 0; i < st.length - 1; i++) {
+      if (st[i].limit === 'capacity' && st[i + 1].limit === 'starved' && st[i].throughput > 0) {
+        const action: Action = { type: 'debottleneck', line: id, stage: i };
+        if (ok(action) && state.treasury > debottleneckCost(id) + 100) {
+          out.push({
+            id: `debottleneck-${id}`,
+            tone: 'suggest',
+            text: `${STAGES[id][i].name} is the slowest step on the ${LINES[id].name} line: the next stage sits waiting. Widen it.`,
+            action,
+            actionLabel: `Widen +20% ($${debottleneckCost(id)}M)`,
+          });
+        }
+        break;
+      }
+    }
+  }
+  for (const f of FACILITY_IDS) {
+    const def = FACILITIES[f];
+    if (state.facilities[f].status !== 'none') continue;
+    const troubled = suppliersOf(def.component).some(
+      (sid) => state.suppliers[sid].qualified && (state.suppliers[sid].embargoMonths > 0 || state.suppliers[sid].shockMonths > 0 || state.suppliers[sid].health < 35),
+    );
+    if (troubled && state.treasury > def.buildCost + 250) {
+      out.push({
+        id: `facility-${f}`,
+        tone: 'info',
+        text: `${COMPONENTS[def.component].name} keep running short. Building ${def.name} would make you independent of suppliers for part of your needs.`,
+        action: { type: 'buildFacility', facility: f },
+        actionLabel: `Build ($${def.buildCost}M)`,
+      });
     }
   }
 

@@ -9,17 +9,22 @@ import {
   HIRE_COST,
   LINES,
   MAX_UPGRADE,
-  NEW_TRANCHE_MATURITY,
   RETOOL_COST_SHARE,
   RETOOL_MONTHS,
   REWORK_COST_SHARE,
+  STAGES,
   SUPPLIERS,
+  TEST_CELLS,
   UPGRADE,
+  DEBOTTLENECK_COST_SHARE,
+  DEBOTTLENECK_MONTHS,
+  MAX_DEBOTTLENECK,
+  FACILITIES,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
-import { expansions, freeBays } from './selectors';
-import type { Action, CampusId, GameState, LineId, UpgradeKind } from './types';
+import { expansions, freeBays, newTranche } from './selectors';
+import type { Action, CampusId, FacilityId, GameState, LineId, UpgradeKind } from './types';
 
 export const expandCost = (id: LineId) => LINES[id].expandCost;
 export const retoolCost = (to: LineId) => Math.round(LINES[to].expandCost * RETOOL_COST_SHARE);
@@ -35,6 +40,9 @@ export const cancelPenalty = (state: GameState, component: keyof GameState['comp
   const k = state.components[component].contracts.find((x) => x.id === contract);
   return k ? k.qtyPerMonth * k.monthsLeft * k.unitPrice * CANCEL_PENALTY : 0;
 };
+export const debottleneckCost = (id: LineId) => Math.round(LINES[id].expandCost * DEBOTTLENECK_COST_SHARE);
+export const testCellCost = (c: CampusId) => TEST_CELLS[c].cost;
+export const facilityBuildMonths = (state: GameState) => DIFFICULTY[state.difficulty].buildMonths + 3;
 export const supplementalAvailable = (state: GameState) => state.mods.supplementalCooldown === 0 && !state.mods.supplementalPending;
 
 const funds = (state: GameState, cost: number) => (state.treasury >= cost ? null : `Not enough funds (needs $${Math.round(cost)}M).`);
@@ -67,6 +75,29 @@ export function validateAction(state: GameState, a: Action): string | null {
       if (line.upgrades[a.kind] >= MAX_UPGRADE) return 'Already at the top level.';
       return funds(state, upgradeCost(a.line, a.kind));
     }
+    case 'debottleneck': {
+      const line = state.lines[a.line];
+      if (!STAGES[a.line][a.stage]) return 'Unknown stage.';
+      if (line.debottlenecking) return 'Another stage on this line is already being widened.';
+      if ((line.debottleneck[a.stage] ?? 0) >= MAX_DEBOTTLENECK) return 'This stage is already as wide as it gets.';
+      return funds(state, debottleneckCost(a.line));
+    }
+    case 'buildTestCell':
+      if (state.campuses[a.campus].testCellBuilds.length >= 2) return 'Two test cells are already under construction here.';
+      return funds(state, testCellCost(a.campus));
+    case 'buildFacility': {
+      const st = state.facilities[a.facility];
+      if (st.status !== 'none') return st.status === 'building' ? 'Already under construction.' : 'Already built.';
+      return funds(state, FACILITIES[a.facility].buildCost);
+    }
+    case 'expandFacility': {
+      const st = state.facilities[a.facility];
+      if (st.status !== 'running') return 'Build the plant first.';
+      if (st.tranches.length - 1 >= FACILITIES[a.facility].maxExpansions) return 'No room left to expand this plant.';
+      return funds(state, FACILITIES[a.facility].expandCost);
+    }
+    case 'setFacilityRun':
+      return state.facilities[a.facility].status === 'running' ? null : 'Build the plant first.';
     case 'reworkQuarantine':
       if (!state.lines[a.line].quarantine.length) return 'Nothing in quarantine.';
       return funds(state, reworkCost(state, a.line));
@@ -112,6 +143,15 @@ export function validateAction(state: GameState, a: Action): string | null {
   }
 }
 
+function buildFacility(s: GameState, f: FacilityId): void {
+  const def = FACILITIES[f];
+  charge(s, def.buildCost);
+  const st = s.facilities[f];
+  st.status = 'building';
+  st.monthsLeft = facilityBuildMonths(s);
+  st.tranches = [{ ...newTranche(s, def.baseCap), base: true }];
+}
+
 function charge(s: GameState, cost: number): void {
   s.treasury -= cost;
   s.pending.projects += cost;
@@ -138,7 +178,7 @@ export function applyAction(state: GameState, a: Action): GameState {
       break;
     case 'expandLine':
       charge(s, expandCost(a.line));
-      s.lines[a.line].tranches.push({ capacity: LINES[a.line].baseCapacity * EXPAND_STEP, maturity: NEW_TRANCHE_MATURITY, base: false });
+      s.lines[a.line].tranches.push(newTranche(s, LINES[a.line].baseCapacity * EXPAND_STEP));
       break;
     case 'retoolBay': {
       charge(s, retoolCost(a.to));
@@ -161,6 +201,24 @@ export function applyAction(state: GameState, a: Action): GameState {
     case 'upgradeLine':
       charge(s, upgradeCost(a.line, a.kind));
       s.lines[a.line].installing = { kind: a.kind, monthsLeft: UPGRADE[a.kind].months };
+      break;
+    case 'debottleneck':
+      charge(s, debottleneckCost(a.line));
+      s.lines[a.line].debottlenecking = { stage: a.stage, monthsLeft: DEBOTTLENECK_MONTHS };
+      break;
+    case 'buildTestCell':
+      charge(s, testCellCost(a.campus));
+      s.campuses[a.campus].testCellBuilds.push(TEST_CELLS[a.campus].months);
+      break;
+    case 'buildFacility':
+      buildFacility(s, a.facility);
+      break;
+    case 'expandFacility':
+      charge(s, FACILITIES[a.facility].expandCost);
+      s.facilities[a.facility].tranches.push(newTranche(s, FACILITIES[a.facility].expandCap));
+      break;
+    case 'setFacilityRun':
+      s.facilities[a.facility].run = a.run;
       break;
     case 'reworkQuarantine': {
       charge(s, reworkCost(s, a.line));

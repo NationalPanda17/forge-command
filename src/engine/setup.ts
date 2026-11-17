@@ -1,5 +1,9 @@
 import {
   BASE_BAYS_PER_LINE,
+  FACILITY_IDS,
+  STAGES,
+  START_WIP_MONTHS,
+  TEST_CELLS,
   START_STOCK_MONTHS,
   CAMPUSES,
   CAMPUS_IDS,
@@ -26,6 +30,8 @@ import type {
   ComponentId,
   ComponentState,
   Difficulty,
+  FacilityId,
+  FacilityState,
   GameState,
   Ledger,
   LineId,
@@ -62,6 +68,8 @@ export function baselineNeed(c: ComponentId): number {
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
+export const emptyFacility = (id: FacilityId): FacilityState => ({ id, status: 'none', monthsLeft: 0, tranches: [], run: 'normal', lastOutput: 0, lastLimit: null });
+
 export function newGame({ seed, difficulty = 'normal', scenario = 'standard', months = 48 }: NewGameOptions): GameState {
   const rules = DIFFICULTY[difficulty];
   const sc = SCENARIOS[scenario];
@@ -71,7 +79,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     const def = LINES[id];
     lines[id] = {
       id,
-      tranches: [{ capacity: def.baseCapacity, maturity: 1, base: true }],
+      tranches: [{ capacity: def.baseCapacity, maturity: 1, base: true, faiMonths: 0 }],
       run: 'normal',
       priority: 'normal',
       wear: 10,
@@ -81,6 +89,10 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
       installing: null,
       quarantine: [],
       substitutes: {},
+      wip: STAGES[id].slice(1).map(() => Math.round(def.baseCapacity * START_WIP_MONTHS * 100) / 100),
+      debottleneck: STAGES[id].map(() => 0),
+      debottlenecking: null,
+      stages: STAGES[id].map(() => ({ cap: 0, throughput: 0, scrap: 0, limit: null })),
       testShare: 0.05,
       latentRisk: 0,
       last: { output: 0, degraded: 0, quarantined: 0, tested: 0, toPartners: 0, toReserve: 0, staffing: 1, limit: null, usedSubstitutes: [] },
@@ -94,7 +106,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 2,
+    version: 3,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
@@ -109,6 +121,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     suppliers,
     components,
     reserves,
+    facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
     tenders: [],
@@ -158,6 +171,9 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
       strikeMonths: 0,
       securityMonths: 0,
       lastCrewNeed: 0,
+      testCells: TEST_CELLS[c].start,
+      testCellBuilds: [],
+      lastTestHours: { need: 0, avail: 0 },
     };
   }
   for (const c of CAMPUS_IDS) {

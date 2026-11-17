@@ -9,7 +9,6 @@ import {
   GRACE_MONTHS,
   LINES,
   NATIONS,
-  NEW_TRANCHE_MATURITY,
   PARTNERS,
   PARTNER_IDS,
   SUPPLIERS,
@@ -17,7 +16,7 @@ import {
   linesAt,
 } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import { freeBays, reserveTarget, reserveTotal } from './selectors';
+import { freeBays, newTranche, reserveTarget, reserveTotal } from './selectors';
 import type { CampusId, Decision, GameState, LineId, MonthReport, PartnerId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -416,7 +415,7 @@ export function resolveDecision(state: GameState, decisionId: number, optionId: 
           messages.push({ tone: 'warn', text: `No free bay at ${CAMPUSES[LINES[line].campus].name}: ${PARTNERS[p].name}'s offer lapses.` });
           break;
         }
-        state.lines[line].tranches.push({ capacity: LINES[line].baseCapacity * EXPAND_STEP, maturity: NEW_TRANCHE_MATURITY, base: false });
+        state.lines[line].tranches.push(newTranche(state, LINES[line].baseCapacity * EXPAND_STEP));
         state.partnerContracts.push({
           id: state.nextId++,
           partner: p,

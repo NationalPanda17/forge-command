@@ -22,6 +22,7 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type FacilityId = 'motorWorks' | 'arsenalForge' | 'opticsLab';
 
 // ---------- Static catalog ----------
 
@@ -125,6 +126,59 @@ export interface Tranche {
   maturity: number;
   /** True for the original floor (4 bays, never retooled). */
   base: boolean;
+  /** Months of first-article inspection left before this capacity counts. */
+  faiMonths: number;
+}
+
+export interface StageDef {
+  id: string;
+  name: string;
+  /** Stage capacity relative to the line's capacity. */
+  mult: number;
+  /** Share of units that pass this stage (before learning). */
+  yield: number;
+  /** Components consumed at this stage. */
+  comps: ComponentId[];
+  /** Acceptance stage: test-cell hours per unit. */
+  testHours?: number;
+}
+
+export interface StageLast {
+  cap: number;
+  throughput: number;
+  scrap: number;
+  /** What held this stage back. */
+  limit: 'capacity' | 'starved' | 'blocked' | 'parts' | 'tests' | null;
+}
+
+export interface FacilityDef {
+  id: FacilityId;
+  name: string;
+  campus: CampusId;
+  component: ComponentId;
+  buildCost: number;
+  baseCap: number;
+  expandCap: number;
+  expandCost: number;
+  maxExpansions: number;
+  crew: number;
+  /** Other components consumed per unit made. */
+  inputs: Partial<Record<ComponentId, number>>;
+  /** $M per unit of raw materials and consumables. */
+  unitCost: number;
+  /** $M per month to keep it running. */
+  overhead: number;
+  blurb: string;
+}
+
+export interface FacilityState {
+  id: FacilityId;
+  status: 'none' | 'building' | 'running';
+  monthsLeft: number;
+  tranches: Tranche[];
+  run: 'idle' | 'normal';
+  lastOutput: number;
+  lastLimit: ComponentId | 'capacity' | 'crew' | 'idle' | null;
 }
 
 export interface LineLast {
@@ -135,7 +189,7 @@ export interface LineLast {
   toPartners: number;
   toReserve: number;
   staffing: number;
-  limit: ComponentId | 'capacity' | 'idle' | 'crew' | 'strike' | null;
+  limit: ComponentId | 'capacity' | 'idle' | 'crew' | 'strike' | 'tests' | 'stage' | null;
   usedSubstitutes: ComponentId[];
 }
 
@@ -154,6 +208,12 @@ export interface LineState {
   /** Units held for inspection: rework or scrap. */
   quarantine: { qty: number; monthsLeft: number }[];
   substitutes: Partial<Record<ComponentId, boolean>>;
+  /** Units waiting between stages (one buffer after every stage but the last). */
+  wip: number[];
+  /** Debottleneck level per stage (each +20% to that stage). */
+  debottleneck: number[];
+  debottlenecking: { stage: number; monthsLeft: number } | null;
+  stages: StageLast[];
   /** Fraction of output to test & evaluation. */
   testShare: number;
   /** Latent defect risk from thin testing, 0..1. */
@@ -181,6 +241,10 @@ export interface CampusState {
   /** Security sweeps lower sabotage risk for a while. */
   securityMonths: number;
   lastCrewNeed: number;
+  testCells: number;
+  /** Months left on each test cell under construction. */
+  testCellBuilds: number[];
+  lastTestHours: { need: number; avail: number };
 }
 
 export interface SupplierState {
@@ -345,7 +409,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 2;
+  version: 3;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -360,6 +424,7 @@ export interface GameState {
   suppliers: Record<string, SupplierState>;
   components: Record<ComponentId, ComponentState>;
   reserves: Record<LineId, ReserveState>;
+  facilities: Record<FacilityId, FacilityState>;
   partners: Record<PartnerId, PartnerState>;
   partnerContracts: PartnerContract[];
   tenders: Tender[];
@@ -389,6 +454,11 @@ export type Action =
   | { type: 'retoolBay'; from: LineId; to: LineId }
   | { type: 'buildBays'; campus: CampusId }
   | { type: 'upgradeLine'; line: LineId; kind: UpgradeKind }
+  | { type: 'debottleneck'; line: LineId; stage: number }
+  | { type: 'buildTestCell'; campus: CampusId }
+  | { type: 'buildFacility'; facility: FacilityId }
+  | { type: 'expandFacility'; facility: FacilityId }
+  | { type: 'setFacilityRun'; facility: FacilityId; run: 'idle' | 'normal' }
   | { type: 'reworkQuarantine'; line: LineId }
   | { type: 'setSubstitute'; line: LineId; component: ComponentId; on: boolean }
   | { type: 'setSubstituteAll'; component: ComponentId; on: boolean }

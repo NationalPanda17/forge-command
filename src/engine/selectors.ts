@@ -1,6 +1,10 @@
 // Derived values. Pure reads of GameState, shared by the engine, the advisor and the UI.
 import {
   BASE_BAYS_PER_LINE,
+  FACILITIES,
+  FACILITY_IDS,
+  FAI_MONTHS,
+  NEW_TRANCHE_MATURITY,
   CAMPUSES,
   COMPONENTS,
   DIFFICULTY,
@@ -19,13 +23,21 @@ import {
   linesAt,
   suppliersOf,
 } from './data';
-import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ReserveState } from './types';
+import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ReserveState, Tranche } from './types';
+
+/** New capacity: first-article inspection first, then ramp-up from about 30%. */
+export const newTranche = (state: GameState, capacity: number): Tranche => ({
+  capacity,
+  maturity: NEW_TRANCHE_MATURITY,
+  base: false,
+  faiMonths: FAI_MONTHS[state.difficulty],
+});
 
 export const installedCapacity = (line: LineState) => line.tranches.reduce((s, t) => s + t.capacity, 0);
 export const expansions = (line: LineState) => line.tranches.filter((t) => !t.base).length;
 
 export function effectiveCapacity(line: LineState): number {
-  const raw = line.tranches.reduce((s, t) => s + t.capacity * t.maturity, 0);
+  const raw = line.tranches.reduce((s, t) => s + (t.faiMonths > 0 ? 0 : t.capacity * t.maturity), 0);
   return line.installing ? raw * 0.85 : raw;
 }
 
@@ -48,8 +60,20 @@ export function crewNeed(state: GameState, id: LineId): number {
   return (def.baseCrew * (installedCapacity(line) / def.baseCapacity) * RUN_CREW[line.run] * auto) / productivity(line);
 }
 
+/** Crew for in-house plants on this campus. */
+export function facilityCrewAt(state: GameState, campus: CampusId): number {
+  let n = 0;
+  for (const f of FACILITY_IDS) {
+    const st = state.facilities[f];
+    if (FACILITIES[f].campus !== campus || st.status !== 'running') continue;
+    const installed = st.tranches.reduce((a, t) => a + t.capacity, 0);
+    n += FACILITIES[f].crew * (installed / FACILITIES[f].baseCap) * (st.run === 'idle' ? 0.15 : 1);
+  }
+  return n;
+}
+
 export const campusCrewNeed = (state: GameState, campus: CampusId) =>
-  linesAt(campus).reduce((s, id) => s + crewNeed(state, id), 0);
+  linesAt(campus).reduce((s, id) => s + crewNeed(state, id), 0) + facilityCrewAt(state, campus);
 
 /** 0..1: share of crew needs the campus can cover this month. */
 export function staffing(state: GameState, campus: CampusId): number {

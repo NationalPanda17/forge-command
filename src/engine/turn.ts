@@ -10,10 +10,9 @@ import {
   GRACE_MONTHS,
   LINES,
   LINE_IDS,
-  MIN_SAFE_TEST_SHARE,
-  NEW_TRANCHE_MATURITY,
   SCENARIOS,
   SPOT_PREMIUM,
+  STAGES,
   SUPPLIERS,
   UPGRADE,
   WEAR_DELTA,
@@ -22,24 +21,15 @@ import {
 } from './data';
 import { applyAction } from './actions';
 import { adaptOpponent, computeForecast, resolveDemand } from './demand';
+import { runFacilities, runFactory } from './factory';
 import { applyFallbacks, goBankrupt, rollEvents } from './events';
-import { accruePartnerQuotas, averageGoodwill, deliverToPartners, maybeSpawnTender, settlePartners } from './partners';
+import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import {
-  campusCrewNeed,
-  lineOverhead,
-  plannedOutput,
-  readiness,
-  staffing,
-  storageCost,
-  supplierCap,
-  wageBill,
-} from './selectors';
+import { lineOverhead, newTranche, readiness, storageCost, supplierCap, wageBill } from './selectors';
 import { emptyLedger } from './setup';
-import type { Action, ComponentId, GameState, LineId, MonthReport, Priority, YearReview } from './types';
+import type { Action, GameState, MonthReport, YearReview } from './types';
 
 type Messages = MonthReport['messages'];
-const PRIORITY_ORDER: Priority[] = ['high', 'normal', 'low'];
 const round2 = (v: number) => Math.round(v * 100) / 100;
 const fmt = (v: number) => Math.round(v).toLocaleString('en-US');
 
@@ -85,7 +75,7 @@ function advanceProjects(s: GameState, messages: Messages): void {
     cs.construction = cs.construction.filter((x) => x.monthsLeft > 0);
     for (const r of cs.retooling) r.monthsLeft--;
     for (const r of cs.retooling.filter((x) => x.monthsLeft <= 0)) {
-      s.lines[r.to].tranches.push({ capacity: LINES[r.to].baseCapacity * EXPAND_STEP, maturity: NEW_TRANCHE_MATURITY, base: false });
+      s.lines[r.to].tranches.push(newTranche(s, LINES[r.to].baseCapacity * EXPAND_STEP));
       messages.push({ tone: 'good', text: `Retooled bay now builds ${LINES[r.to].name}.` });
     }
     cs.retooling = cs.retooling.filter((x) => x.monthsLeft > 0);
@@ -98,6 +88,13 @@ function advanceProjects(s: GameState, messages: Messages): void {
       messages.push({ tone: 'good', text: `${graduated} trainees qualify at ${CAMPUSES[c].name}.` });
     }
     if (cs.securityMonths > 0) cs.securityMonths--;
+    const before = cs.testCellBuilds.length;
+    cs.testCellBuilds = cs.testCellBuilds.map((m) => m - 1).filter((m) => m > 0);
+    const done = before - cs.testCellBuilds.length;
+    if (done > 0) {
+      cs.testCells += done;
+      messages.push({ tone: 'good', text: `New test cell${done > 1 ? 's' : ''} open at ${CAMPUSES[c].name}.` });
+    }
   }
   for (const id of LINE_IDS) {
     const line = s.lines[id];
@@ -107,6 +104,15 @@ function advanceProjects(s: GameState, messages: Messages): void {
         line.upgrades[line.installing.kind]++;
         messages.push({ tone: 'good', text: `${UPGRADE[line.installing.kind].name} level ${line.upgrades[line.installing.kind]} is live on the ${LINES[id].name} line.` });
         line.installing = null;
+      }
+    }
+    if (line.debottlenecking) {
+      line.debottlenecking.monthsLeft--;
+      if (line.debottlenecking.monthsLeft <= 0) {
+        const i = line.debottlenecking.stage;
+        line.debottleneck[i] = (line.debottleneck[i] ?? 0) + 1;
+        messages.push({ tone: 'good', text: `${STAGES[id][i].name} on the ${LINES[id].name} line widened (+20%).` });
+        line.debottlenecking = null;
       }
     }
   }
@@ -196,158 +202,24 @@ function runSupply(s: GameState, messages: Messages): number {
   return spend;
 }
 
-interface ProductionResult {
-  output: Record<LineId, number>;
-  componentSpend: number;
-  revenue: number;
-}
-
-function runProduction(s: GameState, messages: Messages): ProductionResult {
+/** Lines age: wear, first-article inspection, ramp-up, quarantine clocks. */
+function ageLines(s: GameState, messages: Messages): void {
   const rules = DIFFICULTY[s.difficulty];
-  const output = Object.fromEntries(LINE_IDS.map((id) => [id, 0])) as Record<LineId, number>;
-  let componentSpend = 0;
-  let revenue = 0;
-  const subLeft = Object.fromEntries(COMPONENT_IDS.map((c) => [c, COMPONENTS[c].substitute.cap])) as Record<ComponentId, number>;
-
-  const staffed = Object.fromEntries(CAMPUS_IDS.map((c) => [c, staffing(s, c)]));
-  for (const c of CAMPUS_IDS) s.campuses[c].lastCrewNeed = campusCrewNeed(s, c);
-
-  for (const prio of PRIORITY_ORDER) {
-    const ids = LINE_IDS.filter((id) => s.lines[id].priority === prio && s.lines[id].run !== 'idle');
-    const desired = Object.fromEntries(ids.map((id) => [id, plannedOutput(s, id)])) as Record<LineId, number>;
-    const ratio = {} as Record<ComponentId, number>;
-    for (const c of COMPONENT_IDS) {
-      const need = ids.reduce((sum, id) => sum + desired[id] * (LINES[id].bom[c] ?? 0), 0);
-      const cs = s.components[c];
-      if (need > cs.stock && !rules.shortages) {
-        // Easy: suppliers always keep up, at list price.
-        componentSpend += (need - cs.stock) * COMPONENTS[c].price;
-        cs.lastDelivered = round2(cs.lastDelivered + need - cs.stock);
-        cs.stock = need;
-      }
-      ratio[c] = need > 0 ? Math.min(1, cs.stock / need) : 1;
-    }
-    for (const id of ids) {
-      const line = s.lines[id];
-      const def = LINES[id];
-      const bom = Object.keys(def.bom) as ComponentId[];
-      let frac = 1;
-      let limit: ComponentId | null = null;
-      const subShare = {} as Record<ComponentId, number>;
-      for (const c of bom) {
-        const p = ratio[c];
-        let sub = 0;
-        if (p < 1 && line.substitutes[c]) {
-          const needed = desired[id] * (def.bom[c] ?? 0);
-          sub = Math.min(1 - p, needed > 0 ? subLeft[c] / needed : 0);
-        }
-        subShare[c] = sub;
-        if (p + sub < frac) {
-          frac = p + sub;
-          limit = c;
-        }
-      }
-      const built = desired[id] * frac;
-      let degradedFrac = 0;
-      const used: ComponentId[] = [];
-      for (const c of bom) {
-        const q = def.bom[c] ?? 0;
-        const primaryFrac = Math.min(ratio[c], frac);
-        const subFrac = frac - primaryFrac;
-        const cs = s.components[c];
-        const prim = desired[id] * primaryFrac * q;
-        const sub = desired[id] * subFrac * q;
-        cs.stock = Math.max(0, cs.stock - prim);
-        cs.lastUsed += prim;
-        cs.lastShort += desired[id] * q - prim - sub;
-        if (sub > 0) {
-          subLeft[c] -= sub;
-          cs.lastSubstituted += sub;
-          componentSpend += sub * COMPONENTS[c].price * COMPONENTS[c].substitute.priceMult;
-          used.push(c);
-          if (frac > 0) degradedFrac = Math.max(degradedFrac, subFrac / frac);
-        }
-      }
-      const total = built + line.partial;
-      let out = Math.floor(total + 1e-9);
-      line.partial = total - out;
-
-      // Quality: wear, quality systems and commercial-grade parts drive faults.
-      let quarantined = 0;
-      const commercial = used.includes('microelectronics') ? 1.4 : 1;
-      const faultP = (Math.max(0, line.wear - 25) / 150) * (1 - 0.3 * line.upgrades.quality) * commercial;
-      if (out > 0 && rand(s) < faultP) {
-        quarantined = Math.max(1, Math.round(out * randRange(s, 0.15, 0.35)));
-        out -= quarantined;
-        line.quarantine.push({ qty: quarantined, monthsLeft: 3 });
-        messages.push({ tone: 'warn', text: `Quality fault at ${CAMPUSES[def.campus].name}: ${fmt(quarantined)} ${def.name} quarantined for inspection.` });
-      }
-      line.experience += out;
-
-      // Allocation: test & evaluation, then partners, then the reserve.
-      let degraded = Math.round(out * degradedFrac);
-      let full = out - degraded;
-      const tested = Math.min(out, Math.round(out * line.testShare));
-      const testFull = Math.min(full, tested);
-      full -= testFull;
-      degraded -= tested - testFull;
-      const deliv = deliverToPartners(s, id, full + degraded);
-      revenue += deliv.revenue;
-      const pFull = Math.min(full, deliv.delivered);
-      full -= pFull;
-      degraded -= deliv.delivered - pFull;
-      const r = s.reserves[id];
-      r.stock += full;
-      r.degraded += degraded;
-      r.made += full + degraded;
-      output[id] = out;
-
-      // Thin testing lets latent defects slip into the reserve.
-      if (line.testShare < MIN_SAFE_TEST_SHARE) line.latentRisk = Math.min(1, line.latentRisk + (MIN_SAFE_TEST_SHARE - line.testShare) * 4);
-      else line.latentRisk *= 0.6;
-      if (line.latentRisk > 0 && rand(s) < line.latentRisk * 0.25 && r.stock > 0) {
-        const recalled = Math.max(1, Math.round(r.stock * 0.08));
-        r.stock -= recalled;
-        line.latentRisk = 0;
-        s.confidence = clamp(s.confidence - 3);
-        messages.push({ tone: 'bad', text: `Recall: a latent defect turns up in fielded ${def.name}. ${fmt(recalled)} pulled from the reserve. More testing would have caught it.` });
-      }
-
-      line.last = {
-        output: out,
-        degraded: Math.round(out * degradedFrac),
-        quarantined,
-        tested,
-        toPartners: deliv.delivered,
-        toReserve: full + degraded,
-        staffing: staffed[def.campus],
-        limit: s.campuses[def.campus].strikeMonths > 0 ? 'strike' : limit && frac < 0.999 ? limit : staffed[def.campus] < 0.98 ? 'crew' : 'capacity',
-        usedSubstitutes: used,
-      };
-    }
-  }
-
   for (const id of LINE_IDS) {
     const line = s.lines[id];
-    if (line.run === 'idle') {
-      line.last = { output: 0, degraded: 0, quarantined: 0, tested: 0, toPartners: 0, toReserve: 0, staffing: staffed[LINES[id].campus], limit: 'idle', usedSubstitutes: [] };
-    }
     const wear = WEAR_DELTA[line.run] - (line.run === 'surge' ? line.upgrades.quality : 0);
     line.wear = clamp(line.wear + wear);
-    for (const t of line.tranches) t.maturity = Math.min(1, round2(t.maturity + rules.rampPerMonth));
+    for (const t of line.tranches) {
+      if (t.faiMonths > 0) {
+        t.faiMonths--;
+        if (t.faiMonths === 0) messages.push({ tone: 'good', text: `First-article inspection passed: new ${LINES[id].name} capacity starts ramping up.` });
+      } else t.maturity = Math.min(1, round2(t.maturity + rules.rampPerMonth));
+    }
     for (const q of line.quarantine) q.monthsLeft--;
     const scrapped = line.quarantine.filter((q) => q.monthsLeft <= 0).reduce((a, q) => a + q.qty, 0);
     if (scrapped > 0) messages.push({ tone: 'bad', text: `${fmt(scrapped)} quarantined ${LINES[id].name} scrapped after inspection lapsed.` });
     line.quarantine = line.quarantine.filter((q) => q.monthsLeft > 0);
   }
-  for (const c of COMPONENT_IDS) {
-    const cs = s.components[c];
-    cs.stock = round2(cs.stock);
-    cs.lastUsed = round2(cs.lastUsed);
-    cs.lastShort = round2(Math.max(0, cs.lastShort));
-    cs.lastSubstituted = round2(cs.lastSubstituted);
-  }
-  return { output, componentSpend, revenue };
 }
 
 function runWorkforce(s: GameState, messages: Messages): void {
@@ -411,7 +283,10 @@ export function endTurn(state: GameState): GameState {
 
   ledger.components = runSupply(s, messages);
   accruePartnerQuotas(s);
-  const prod = runProduction(s, messages);
+  const plants = runFacilities(s, messages);
+  ledger.components += plants.materials;
+  const prod = runFactory(s, messages);
+  ageLines(s, messages);
   ledger.components += prod.componentSpend;
   ledger.revenue += prod.revenue;
   const partnerPenalty = settlePartners(s, messages);
@@ -425,7 +300,7 @@ export function endTurn(state: GameState): GameState {
 
   // Money.
   ledger.wages = CAMPUS_IDS.reduce((a, c) => a + wageBill(s, c), 0);
-  ledger.overhead = LINE_IDS.reduce((a, id) => a + lineOverhead(s, id), 0);
+  ledger.overhead = LINE_IDS.reduce((a, id) => a + lineOverhead(s, id), 0) + plants.overhead;
   ledger.storage = storageCost(s);
   ledger.appropriation = s.appropriation;
   s.treasury += s.appropriation + prod.revenue - ledger.wages - ledger.overhead - ledger.components - ledger.storage - partnerPenalty;

@@ -18,6 +18,9 @@ import type {
   ThreatDef,
   ThreatId,
   Family,
+  FacilityDef,
+  FacilityId,
+  StageDef,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -323,7 +326,7 @@ export interface ScenarioDef {
 
 export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   standard: { id: 'standard', name: 'Standing Watch', blurb: 'A calm start. Build up before the storms come.', pressure: 1, reserveMonths: 3, budgetMult: 1, treasuryMult: 1, quietMonths: 3 },
-  longWar: { id: 'longWar', name: 'The Long War', blurb: 'An air campaign is already under way, and the pressure never really lets up.', pressure: 1.15, reserveMonths: 4, budgetMult: 1.25, treasuryMult: 1, openingCrisis: 'halvard', quietMonths: 0 },
+  longWar: { id: 'longWar', name: 'The Long War', blurb: 'An air campaign is already under way, and the pressure never really lets up.', pressure: 1.1, reserveMonths: 5, budgetMult: 1.25, treasuryMult: 1, openingCrisis: 'halvard', quietMonths: 0 },
   brokenChain: { id: 'brokenChain', name: 'Broken Chain', blurb: 'The Karsk Federation halts gallium and germanium exports, and Sable Circuit Works is struggling. Find new sources fast.', pressure: 1, reserveMonths: 3, budgetMult: 1.05, treasuryMult: 1.2, embargo: { supplier: 'karskmetals', months: 10 }, shock: { supplier: 'sable', factor: 0.55, months: 6 }, quietMonths: 4 },
   rebuild: { id: 'rebuild', name: 'Empty Racks', blurb: 'Years of neglect left the reserve nearly empty. The money is finally there: spend it well.', pressure: 1, reserveMonths: 1, budgetMult: 1.2, treasuryMult: 1.6, quietMonths: 8 },
 };
@@ -352,6 +355,66 @@ export const UPGRADE: Record<'automation' | 'quality', { name: string; costShare
 export const MAX_UPGRADE = 2;
 export const REWORK_COST_SHARE = 0.15;
 export const MIN_SAFE_TEST_SHARE = 0.03;
+
+// ---------- Factory floor ----------
+
+const motor = (comps: ComponentId[]): StageDef => ({ id: 'motor', name: 'Motor & airframe', mult: 1.15, yield: 0.99, comps });
+const guidance = (comps: ComponentId[]): StageDef => ({ id: 'guidance', name: 'Guidance integration', mult: 1.1, yield: 0.98, comps });
+const assembly: StageDef = { id: 'assembly', name: 'Final assembly', mult: 1.06, yield: 0.995, comps: [] };
+const acceptance = (testHours: number): StageDef => ({ id: 'acceptance', name: 'Acceptance test', mult: 1.25, yield: 0.975, comps: [], testHours });
+
+/** Each line is a chain of stages; units wait in buffers between them. */
+export const STAGES: Record<LineId, StageDef[]> = {
+  pac3: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(30)],
+  sm6: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(45)],
+  tamir: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(1.5)],
+  irist: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(6)],
+  stinger: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(3)],
+  gmlrs: [motor(['srm', 'energetics']), guidance(['microelectronics']), assembly, acceptance(1.2)],
+  shell155: [
+    { id: 'machining', name: 'Body machining', mult: 1.1, yield: 0.99, comps: ['shellBodies'] },
+    { id: 'fill', name: 'Fill & pack', mult: 1.06, yield: 0.99, comps: ['energetics'] },
+    { id: 'acceptance', name: 'Lot acceptance', mult: 1.3, yield: 0.995, comps: [], testHours: 0.012 },
+  ],
+};
+/** Buffers hold at most this many months of line capacity. */
+export const WIP_MONTHS = 1.5;
+/** Buffers start with this many months of line capacity. */
+export const START_WIP_MONTHS = 0.3;
+export const DEBOTTLENECK_STEP = 0.2;
+export const MAX_DEBOTTLENECK = 2;
+export const DEBOTTLENECK_COST_SHARE = 0.3;
+export const DEBOTTLENECK_MONTHS = 2;
+
+export const TEST_CELL_HOURS = 200;
+export const TEST_CELLS: Record<CampusId, { start: number; cost: number; months: number }> = {
+  corran: { start: 3, cost: 40, months: 4 },
+  northgate: { start: 1, cost: 20, months: 3 },
+  ashford: { start: 3, cost: 25, months: 3 },
+};
+export const FAI_MONTHS: Record<Difficulty, number> = { easy: 0, normal: 1, hard: 2 };
+
+export const FACILITIES: Record<FacilityId, FacilityDef> = {
+  motorWorks: {
+    id: 'motorWorks', name: 'Aldmere Motor Works', campus: 'ashford', component: 'srm',
+    buildCost: 380, baseCap: 150, expandCap: 75, expandCost: 90, maxExpansions: 3, crew: 280,
+    inputs: { energetics: 0.06 }, unitCost: 0.012, overhead: 3,
+    blurb: 'Cast your own solid rocket motors. Expensive and slow to build, but nobody can embargo it, and each motor costs a fraction of the market price.',
+  },
+  arsenalForge: {
+    id: 'arsenalForge', name: 'Arsenal Forge', campus: 'ashford', component: 'shellBodies',
+    buildCost: 200, baseCap: 8000, expandCap: 4000, expandCost: 60, maxExpansions: 3, crew: 220,
+    inputs: {}, unitCost: 0.0005, overhead: 2,
+    blurb: 'A state forge for 155mm shell bodies, so Greystone is no longer the only game in town.',
+  },
+  opticsLab: {
+    id: 'opticsLab', name: 'Northgate Optics Lab', campus: 'northgate', component: 'irSeeker',
+    buildCost: 150, baseCap: 18, expandCap: 9, expandCost: 45, maxExpansions: 2, crew: 120,
+    inputs: { criticalMaterials: 0.6, microelectronics: 0.5 }, unitCost: 0.012, overhead: 1.5,
+    blurb: 'Integrate imaging IR seekers at home instead of shipping them across the strait.',
+  },
+};
+export const FACILITY_IDS = Object.keys(FACILITIES) as FacilityId[];
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */
