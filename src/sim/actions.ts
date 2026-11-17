@@ -2,6 +2,8 @@
 import { DAYS_PER_MONTH, lotQty } from './selectors';
 import type { Policy, RunLevel, SimState } from './types';
 import { MATERIALS, RECIPES, SITE_BY_ID, type LineId, type MaterialId } from './world';
+import { RESEARCH, hasResearch, resolveDecision, startResearch, type ResearchId, type StaffRole } from './strategy';
+import { feed } from './tick';
 
 export type SimAction =
   | { type: 'setRun'; site: string; process: number; run: RunLevel }
@@ -13,7 +15,11 @@ export type SimAction =
   | { type: 'qualify'; site: string }
   | { type: 'invest'; site: string; process: number }
   | { type: 'refurbish'; site: string; line: LineId }
-  | { type: 'setPolicy'; policy: Partial<Policy> };
+  | { type: 'setPolicy'; policy: Partial<Policy> }
+  | { type: 'research'; research: ResearchId }
+  | { type: 'hireStaff'; candidate: number }
+  | { type: 'fireStaff'; role: StaffRole }
+  | { type: 'decide'; decision: number; option: string };
 
 export const CONTRACT_DISCOUNT = { 12: 0.9, 24: 0.85, 36: 0.8 } as const;
 const HIRE_COST = 0.015;
@@ -82,6 +88,23 @@ export function validate(s: SimState, a: SimAction): string | null {
     }
     case 'setPolicy':
       return null;
+    case 'research': {
+      const r = RESEARCH[a.research];
+      if (hasResearch(s, a.research)) return 'Already done.';
+      if (s.strategy.research.active) return 'Your engineers are busy with another project.';
+      const missing = r.requires.filter((q) => !hasResearch(s, q));
+      if (missing.length) return `Needs ${missing.map((q) => RESEARCH[q].name).join(', ')} first.`;
+      return funds(s, r.cost);
+    }
+    case 'hireStaff': {
+      const p = s.strategy.candidates.find((c) => c.id === a.candidate);
+      if (!p) return 'That candidate has taken another job.';
+      return funds(s, p.salary * 3);
+    }
+    case 'fireStaff':
+      return s.strategy.staff[a.role] ? null : 'Nobody holds that post.';
+    case 'decide':
+      return s.strategy.decisions.some((d) => d.id === a.decision) ? null : 'That decision is gone.';
   }
 }
 
@@ -108,6 +131,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       p.maturity = (p.capacity * p.maturity + add * 0.1) / (p.capacity + add);
       p.capacity += add;
       p.expansions++;
+      if (a.type === 'invest') s.strategy.investedThisMonth += cost;
       s.feed.push({ day: s.day, tone: 'info', text: `New capacity ordered at ${SITE_BY_ID[a.site].name}: ${RECIPES[p.recipe].name}.`, site: a.site });
       break;
     }
@@ -134,7 +158,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     case 'qualify':
       charge(s, qualifyCost(a.site));
-      s.sites[a.site].qualifyingDays = QUALIFY_DAYS;
+      s.sites[a.site].qualifyingDays = Math.round(QUALIFY_DAYS * (hasResearch(s, 'rapidQual') ? 0.5 : 1));
       break;
     case 'refurbish': {
       const site = s.sites[a.site];
@@ -149,6 +173,26 @@ export function apply(state: SimState, a: SimAction): SimState {
       void lotQty;
       break;
     }
+    case 'research':
+      startResearch(s, a.research);
+      break;
+    case 'hireStaff': {
+      const p = s.strategy.candidates.find((c) => c.id === a.candidate)!;
+      charge(s, p.salary * 3);
+      s.strategy.staff[p.role] = p;
+      s.strategy.candidates = s.strategy.candidates.filter((c) => c.id !== p.id);
+      feed(s, 'good', `${p.name} joins the Board.`);
+      break;
+    }
+    case 'fireStaff': {
+      const p = s.strategy.staff[a.role]!;
+      charge(s, p.salary * 3);
+      s.strategy.staff[a.role] = null;
+      break;
+    }
+    case 'decide':
+      resolveDecision(s, a.decision, a.option, feed);
+      break;
     case 'setPolicy':
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };
       break;

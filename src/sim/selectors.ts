@@ -1,7 +1,8 @@
 // Derived values over the simulation state.
 import { BASE_LINES, CHEAP, LAND_DRAW, LAND_LINES, PREMIUM, THREATS, THREAT_IDS } from './fight';
 import type { Lot, ProcessState, SimState, SiteState } from './types';
-import { FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
+import { hasResearch, recipeInputs, recipeScrap } from './strategy';
+import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 export const RUN_FACTOR = { idle: 0, normal: 1, surge: 1.3 } as const;
 export const DAYS_PER_MONTH = 30;
@@ -25,7 +26,7 @@ export function crewNeed(site: SiteState): number {
   const def = SITE_BY_ID[site.id];
   if (!site.processes.length) return def.crew;
   const share = site.processes.reduce((a, p) => a + (1 + 0.25 * p.expansions) * (p.run === 'idle' ? 0.15 : p.run === 'surge' ? 1.15 : 1), 0) / site.processes.length;
-  return def.crew * share;
+  return def.crew * share + site.extraCrew;
 }
 
 /** Daily use of each input at the current plan. */
@@ -33,9 +34,8 @@ export function inputRates(s: SimState, site: SiteState): Partial<Record<Materia
   const out: Partial<Record<MaterialId, number>> = {};
   if (SITE_BY_ID[site.id].owner === 'foreign') return out;
   for (const p of site.processes) {
-    const rec = RECIPES[p.recipe];
-    const gross = processRate(s, site, p) / (1 - rec.scrap);
-    for (const [m, q] of Object.entries(rec.inputs) as [MaterialId, number][]) out[m] = (out[m] ?? 0) + gross * q;
+    const gross = processRate(s, site, p) / (1 - recipeScrap(s, p.recipe, SITE_BY_ID[site.id].owner));
+    for (const [m, q] of Object.entries(recipeInputs(s, p.recipe)) as [MaterialId, number][]) out[m] = (out[m] ?? 0) + gross * q;
   }
   return out;
 }
@@ -50,13 +50,14 @@ export function regionBases(region: RegionId, kind: 'air' | 'land'): string[] {
 export function regionDailyDraw(s: SimState, region: RegionId, line: LineId, crisisMult = 1): number {
   if (!unlocked(s, line)) return 0;
   const reg = REGIONS[region];
-  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * crisisMult;
+  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * crisisMult * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1);
   let shots = 0;
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
     const live = th.assign.filter((a) => a.weight > 0 && unlocked(s, a.line) && !(s.policy.conserve && CHEAP.includes(t) && PREMIUM.includes(a.line)));
     const w = live.reduce((a, x) => a + x.weight, 0);
-    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * reg.threatShare * th.shots * (a.weight / w);
+    const passive = t === 'drone' && hasResearch(s, 'hpm') ? 0.8 : 1;
+    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * reg.threatShare * passive * th.shots * (a.weight / w);
   }
   return shots * crisisMult;
 }

@@ -1,4 +1,5 @@
 import type { LineId, MaterialId, RegionId } from './world';
+import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'longWar' | 'brokenChain' | 'rebuild';
@@ -43,6 +44,8 @@ export interface SiteState {
   workers: number;
   /** New hires still in training. */
   trainees: { count: number; days: number }[];
+  /** Extra crew needed for lines added later (new products). */
+  extraCrew: number;
   /** Private and foreign companies: 0..100 financial health. */
   health: number;
   qualified: boolean;
@@ -157,4 +160,15 @@ export interface SimState {
   outcome: 'running' | 'complete' | 'dismissed';
   /** Set when something important happens; the clock pauses if the player wants it to. */
   alert: FeedItem | null;
+  strategy: {
+    research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
+    staff: Record<StaffRole, Person | null>;
+    candidates: Person[];
+    factions: Record<FactionId, number>;
+    decisions: Decision[];
+    objectives: { id: string; status: 'open' | 'done' | 'failed' }[];
+    baseBudget: number;
+    startWorkers: number;
+    investedThisMonth: number;
+  };
 }

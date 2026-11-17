@@ -1,6 +1,7 @@
 // A new campaign: every site, its stock, legacy rounds of mixed ages in the depots and bases, and the starting contracts.
 import { BASE_LINES } from './fight';
 import { MIN_BASE_ROUNDS } from './tick';
+import { OBJECTIVES, makeCandidates } from './strategy';
 import { rand, randInt } from './rng';
 import { DAYS_PER_MONTH, baseDailyDraw, inputRates, nationalDailyDraw, regionDailyDraw } from './selectors';
 import type { Difficulty, Lot, MonthReport, ScenarioId, SimState, SiteState } from './types';
@@ -87,6 +88,17 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     over: false,
     outcome: 'running',
     alert: null,
+    strategy: {
+      research: { done: [], active: null },
+      staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
+      candidates: [],
+      factions: { hawks: 55, treasury: 55, regions: 55, industry: 55 },
+      decisions: [],
+      objectives: OBJECTIVES.map((o) => ({ id: o.id, status: 'open' as const })),
+      baseBudget: money.appropriation,
+      startWorkers: 0,
+      investedThisMonth: 0,
+    },
   };
 
   for (const def of SITES) {
@@ -110,6 +122,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
       unserviceable: {},
       workers: def.crew,
       trainees: [],
+      extraCrew: 0,
       health: def.owner === 'state' ? 100 : Math.round(55 + rand(state) * 30),
       qualified: def.qualified,
       qualifyingDays: null,
@@ -156,5 +169,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     state.contracts.push({ id: state.nextId++, site: src.id, material: mat as LineId, perDay: Math.round(need * 0.85 * 1000) / 1000, price: MATERIALS[mat as LineId].price * 0.88, endDay: 9 * DAYS_PER_MONTH });
   }
   void SITE_BY_ID;
+  state.strategy.candidates = makeCandidates(state);
+  state.strategy.startWorkers = Object.values(state.sites).reduce((a, x) => a + x.workers, 0);
   return state;
 }
