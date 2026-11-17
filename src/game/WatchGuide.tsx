@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
 import type { SimState } from '../sim/types';
+import { monthsTo } from '../sim/analytics';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
 interface Watch {
@@ -49,6 +50,23 @@ export function watchList(s: SimState): Watch[] {
     const r = nationalStock(s, l) / Math.max(1, reserveTarget(s, l));
     if (r < 0.5) out.push({ tone: 'warn', text: `${MATERIALS[l].name} reserve at ${Math.round(r * 100)}% of the one-year goal.`, material: l });
   }
+  // A year ahead: rounds that will run low before you can react.
+  for (const l of FINISHED as LineId[]) {
+    if (!s.lines[l].unlocked || reserveTarget(s, l) <= 0) continue;
+    if (nationalStock(s, l) / reserveTarget(s, l) < 0.5) continue;
+    const m = monthsTo(s, l, 0.5, 9);
+    if (m !== null) out.push({ tone: 'warn', text: `Forecast: ${MATERIALS[l].name} falls below half of target in ${m} month${m > 1 ? 's' : ''} (Plan tab).`, material: l });
+  }
+  // Markets.
+  for (const c of s.contracts) {
+    const left = c.endDay - s.day;
+    if (left <= 45 && !s.contracts.some((k) => k !== c && k.material === c.material && k.endDay > c.endDay)) out.push({ tone: 'warn', text: `Contract for ${MATERIALS[c.material].name.toLowerCase()} with ${SITE_BY_ID[c.site].name} ends in ${left} days. Tender for a new one (Markets tab).`, site: c.site, material: c.material });
+  }
+  for (const t of s.tenders) out.push({ tone: 'info', text: `Bids for ${MATERIALS[t.material].name.toLowerCase()} are waiting to be awarded (Markets tab).`, material: t.material });
+  for (const x of s.exports) {
+    const due = (x.qty * (s.day - x.start)) / Math.max(1, x.endDay - x.start);
+    if (x.delivered < due * 0.8 && s.day - x.start > 30) out.push({ tone: 'warn', text: `Export order for ${x.customer} is behind: ${Math.round(x.delivered)} of ${Math.round(x.qty)} delivered.`, material: x.line });
+  }
   const retired = Object.values(s.sites).reduce((a, x) => a + Object.entries(x.unserviceable).reduce((b, [, q]) => b + (q ?? 0), 0), 0) - Object.values(s.sites.karrowDemil.unserviceable).reduce((a, q) => a + (q ?? 0), 0);
   if (retired >= 1) out.push({ tone: 'info', text: `${Math.round(retired)} retired rounds are waiting to move to Karrow or be refurbished.` });
   if (!s.strategy.research.active) out.push({ tone: 'info', text: 'Your engineers are idle (Board tab).' });
@@ -94,7 +112,9 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <P>You run the munitions industry of a fictional country, in real time. The clock is paused: press 1× (or space) to start it.</P>
         <ol className="list-decimal pl-5">
           <Li>Open <b>Watch</b>. It lists what needs you, most urgent first, with links to the site or the supply chain behind it.</Li>
-          <Li>Click your arsenals (amber icons on the map) to see their lines, what limits them, and their stock of parts.</Li>
+          <Li>Click your arsenals (the square cyan markers on the map) to see their lines, what limits them, and their stock of parts.</Li>
+          <Li>Open <b>Plan</b> to see each round a year ahead, and the weakest link under it.</Li>
+          <Li>Open <b>Markets</b> before the starting contracts end after nine months, and tender for new ones.</Li>
           <Li>Use <b>Materials</b> to follow any part down to the mine, and see who makes it and where it is.</Li>
           <Li>Watch the <b>Stockpile</b>: much of the war reserve is old and will retire unless you test, refurbish or replace it.</Li>
           <Li>Open the <b>Board</b> to start research, hire staff and answer decisions.</Li>
@@ -135,6 +155,32 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li><b>Your arsenals:</b> set shifts, expand, hire (training takes about three months) and overhaul worn plants.</Li>
         <Li><b>Private companies:</b> they sell to anyone. Contracts reserve their output for you at a discount; without one you pay 30% more. Fund their expansion, qualify new suppliers (about eight months), and bail them out if they falter, or watch them close.</Li>
         <Li><b>Disruptions:</b> fires, failures, floods and strikes cut a site's output for weeks. Everything downstream feels it.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'plan',
+    title: 'Planning',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Forecast:</b> the Plan tab projects each round's national stock for twelve months from today's output, expected firing (crises included), exports and lots reaching the end of their life.</Li>
+        <Li><b>What limits it:</b> it follows the round's bill of materials down to the mine, taking the tightest input at each level, and shows supply against demand for each.</Li>
+        <Li><b>Overstock hurts:</b> a line far above target still eats motors, warheads and seekers that other rounds need. Idle it at its arsenal until it comes back down.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'markets',
+    title: 'Markets and the world',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Prices</b> rise about 3% a year, faster in a crisis. Wages, running costs, freight and spot purchases all follow. Contracts lock a price, which is worth more every year. Budgets keep up with most, but not all, of it.</Li>
+        <Li><b>Tenders:</b> every qualified supplier bids at once. More bidders mean sharper prices, which is one more reason to qualify second sources. Weak firms bid low but are less reliable, and may later ask to reprice.</Li>
+        <Li><b>Seasons:</b> winter ice cuts the northern sea lanes and snow slows roads; the spring thaw floods low roads; summer heat trims energetics output. Stock the north before winter.</Li>
+        <Li><b>Allies</b> sometimes ask for rounds, and when you are short they may sell you some at a premium. Helping them raises relations.</Li>
+        <Li><b>Export orders</b> bring money and please industry, but are delivered from the central depot and never below half of target. Falling short costs a penalty.</Li>
+        <Li><b>Developing situations:</b> pay disputes, suspect parts and mine accidents unfold in stages. What you decide at the first stage shapes the next.</Li>
+        <Li><b>In a crisis</b> you get one chance to ask for a supplementary budget.</Li>
       </ul>
     ),
   },

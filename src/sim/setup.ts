@@ -1,5 +1,5 @@
 // A new campaign: every site, its stock, legacy rounds of mixed ages in the depots and bases, and the starting contracts.
-import { BASE_LINES } from './fight';
+import { BASE_LINES, CRISES } from './fight';
 import { MIN_BASE_ROUNDS } from './tick';
 import { OBJECTIVES, makeCandidates } from './strategy';
 import { rand, randInt } from './rng';
@@ -12,6 +12,31 @@ export interface SimOptions {
   difficulty?: Difficulty;
   scenario?: ScenarioId;
   months?: number;
+}
+
+export interface ScenarioDef {
+  name: string;
+  blurb: string;
+}
+export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
+  standard: { name: 'Peacetime', blurb: 'An old, thin reserve and four years to fix it. The standard game.' },
+  warFooting: { name: 'War footing', blurb: 'A crisis is already under way in the north. More money, and no time to learn.' },
+  sanctions: { name: 'Sanctions', blurb: 'Every foreign supplier is under an export ban for most of a year, and prices are already up.' },
+  rebuild: { name: 'Rebuild', blurb: 'Years of neglect: the war reserve is half the usual size, but the Committee has opened its purse.' },
+  tutorial: { name: 'Tutorial', blurb: 'A guided first two years on Easy, with no crisis for the first year.' },
+};
+
+/** Fills in fields added after a save was made, so older saves keep working. */
+export function migrate(s: SimState): SimState {
+  s.priceIndex ??= 1;
+  s.tenders ??= [];
+  s.exports ??= [];
+  s.allies ??= { merrow: 55, calder: 55 };
+  s.chains ??= [];
+  s.tutorial ??= null;
+  s.supplemented ??= [];
+  if (!(s.scenario in SCENARIOS)) s.scenario = 'standard';
+  return s;
 }
 
 export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = {
@@ -57,6 +82,10 @@ function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false):
 }
 
 export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48 }: SimOptions): SimState {
+  if (scenario === 'tutorial') {
+    difficulty = 'easy';
+    months = Math.min(months, 24);
+  }
   const money = DIFFICULTY_MONEY[difficulty];
   const state: SimState = {
     version: 1,
@@ -89,6 +118,13 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     over: false,
     outcome: 'running',
     alert: null,
+    priceIndex: scenario === 'sanctions' ? 1.12 : 1,
+    tenders: [],
+    exports: [],
+    allies: { merrow: 55, calder: 55 },
+    chains: [],
+    tutorial: scenario === 'tutorial' ? { step: 0 } : null,
+    supplemented: [],
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -147,7 +183,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   // Legacy rounds: the central depot, regional depots and bases.
   for (const line of START_LINES) {
     const daily = nationalDailyDraw(state, line);
-    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * (['gmlrs', 'shell155'].includes(line) ? 300 : 240), true);
+    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * (['gmlrs', 'shell155'].includes(line) ? 300 : 240) * (scenario === 'rebuild' ? 0.5 : 1), true);
     for (const region of FIGHTING_REGIONS) {
       const depot = REGIONS[region].depot;
       const rd = regionDailyDraw(state, region as RegionId, line);
@@ -168,6 +204,22 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     const src = SITES.find((x) => x.owner === 'private' && x.qualified && x.processes.some((p) => RECIPES[p.recipe].output === mat));
     if (!src) continue;
     state.contracts.push({ id: state.nextId++, site: src.id, material: mat as LineId, perDay: Math.round(need * 0.85 * 1000) / 1000, price: MATERIALS[mat as LineId].price * 0.88, endDay: 9 * DAYS_PER_MONTH });
+  }
+  // Scenario starts.
+  if (scenario === 'warFooting') {
+    const c = CRISES.find((x) => x.region === 'north') ?? CRISES[0];
+    state.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'active', days: 240, intensity: 1.1, mix: { ...c.mix } };
+    state.appropriation = Math.round(state.appropriation * 1.15);
+    state.strategy.baseBudget = state.appropriation;
+    state.confidence = 55;
+    state.strategy.factions.hawks = 65;
+    state.supplemented.push(c.id);
+  }
+  if (scenario === 'sanctions') for (const def of SITES) if (def.owner === 'foreign') state.sites[def.id].embargoDays = 270;
+  if (scenario === 'rebuild') {
+    state.treasury += 500;
+    state.appropriation = Math.round(state.appropriation * 1.1);
+    state.strategy.baseBudget = state.appropriation;
   }
   void SITE_BY_ID;
   state.strategy.candidates = makeCandidates(state);

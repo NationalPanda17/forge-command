@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.0.0: depth
+
+### Planning and analytics
+- **Plan tab:**
+  - Each round's stock against target for up to two years, plus a 12-month forecast. The forecast counts output,
+    expected firing (crises included), exports and lots reaching the end of their life.
+  - **What limits it:** follows a round's bill of materials down to the mine, showing supply against demand at
+    each level.
+  - The weakest links in the whole chain, and a warning when overstocked lines eat parts other rounds need.
+- **Watch list:** forecast warnings, contracts about to lapse, bids waiting and export orders falling behind.
+- **End-of-term report:** a grade, readiness, confidence and treasury over the term, and the reserve you leave
+  behind.
+
+### A deeper economy
+- **Inflation:** prices rise about 3% a year, faster in a crisis. Wages, running costs, freight, spot buying and
+  expansion all follow. Budgets keep up with most, but not all, of it.
+- **Tenders:** every qualified supplier bids at once.
+  - More bidders mean sharper prices.
+  - Weak firms bid low and are less reliable.
+  - Contracts lock today's price.
+- **Supplier finances:** steady contracts keep firms healthy. Weak firms on old fixed-price contracts ask to
+  reprice.
+- **Supplementary budgets:** one request per crisis.
+
+### A living world
+- **Seasons:**
+  - Winter sea ice in the north and snow on the roads.
+  - Spring floods.
+  - Summer heat trimming energetics output.
+- **Allies** (the Merrow Compact and the Calder League) ask for rounds, and sell you theirs when you are short.
+- **Export orders** from foreign customers, delivered from the central depot without breaching half of target.
+- **Developing situations** that unfold in stages: pay disputes and strikes, suspect parts and recalls, mine
+  accidents and inspections.
+
+### The first hour
+- **Scenarios:**
+  - Peacetime.
+  - War footing (a crisis from day one).
+  - Sanctions (every foreign supplier banned for most of a year).
+  - Rebuild (half the reserve, more money).
+- **A guided tutorial:** two years on Easy, eight steps, no crisis in the first year.
+- **Fifteen achievements,** remembered in your browser.
+- **Rebalanced difficulty:** a competent director now finishes Easy and Normal, and most Hard campaigns.
+  Hands-off play still loses on Hard.
+- **Older saves still load.**
+
 ## 2.0.0: the network
 
 A full rebuild: from a monthly turn game to a real-time management game.

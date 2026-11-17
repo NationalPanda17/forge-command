@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { apply, type SimAction } from '../sim/actions';
 import { advanceDays } from '../sim/tick';
 import type { SimState } from '../sim/types';
+import { migrate } from '../sim/setup';
 
 export type Speed = 0 | 1 | 2 | 4 | 8;
 
@@ -13,7 +14,7 @@ export function loadSim(): SimState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as SimState;
-    return s?.version === 1 && s.sites ? s : null;
+    return s?.version === 1 && s.sites ? migrate(s) : null;
   } catch {
     return null;
   }

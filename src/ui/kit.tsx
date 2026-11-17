@@ -101,48 +101,84 @@ export function Segmented<T extends string>({ value, options, onChange, label, t
 
 export interface Series {
   label: string;
-  values: number[];
+  /** null leaves a gap (for example, history and forecast on one chart). */
+  values: (number | null)[];
   color: string;
   dashed?: boolean;
 }
 
+const lastValue = (v: (number | null)[]) => {
+  for (let i = v.length - 1; i >= 0; i--) if (v[i] !== null && Number.isFinite(v[i])) return v[i] as number;
+  return 0;
+};
+
 /** A compact multi-series line chart (SVG). */
-export function LineChart({ series, height = 120, min, max, format = (v: number) => v.toFixed(0), xLabels }: { series: Series[]; height?: number; min?: number; max?: number; format?: (v: number) => string; xLabels?: string[] }) {
+export function LineChart({
+  series,
+  height = 120,
+  min,
+  max,
+  format = (v: number) => v.toFixed(0),
+  xLabels,
+  marker,
+  markerLabel,
+}: {
+  series: Series[];
+  height?: number;
+  min?: number;
+  max?: number;
+  format?: (v: number) => string;
+  xLabels?: string[];
+  /** Index of a vertical marker, such as today. */
+  marker?: number;
+  markerLabel?: string;
+}) {
   const n = Math.max(...series.map((s) => s.values.length));
   if (n < 2) return <div className="flex h-16 items-center text-[11px] text-ops-dim">History appears after a couple of months.</div>;
-  const all = series.flatMap((s) => s.values);
+  const all = series.flatMap((s) => s.values).filter((v): v is number => v !== null && Number.isFinite(v));
   const lo = min ?? Math.min(0, ...all);
   const hi = max ?? Math.max(...all, lo + 1);
   const w = 400;
   const pad = 4;
   const y = (v: number) => pad + (height - 2 * pad) * (1 - (v - lo) / (hi - lo || 1));
   const x = (i: number) => (i / (n - 1)) * w;
+  const runs = (vals: (number | null)[]) => {
+    const out: string[] = [];
+    let cur: string[] = [];
+    vals.forEach((v, i) => {
+      if (v === null || !Number.isFinite(v)) {
+        if (cur.length > 1) out.push(cur.join(' '));
+        cur = [];
+      } else cur.push(`${x(i)},${y(v)}`);
+    });
+    if (cur.length > 1) out.push(cur.join(' '));
+    return out;
+  };
   return (
     <div>
+      <div className="mb-0.5 flex justify-between text-[10px] text-ops-dim">
+        <span>{format(hi)}</span>
+        {markerLabel && <span className="text-ops-cyan">{markerLabel}</span>}
+      </div>
       <svg viewBox={`0 0 ${w} ${height}`} className="w-full" style={{ height }} preserveAspectRatio="none" role="img" aria-label={series.map((s) => s.label).join(', ')}>
         {[0.25, 0.5, 0.75].map((g) => (
           <line key={g} x1={0} x2={w} y1={pad + (height - 2 * pad) * g} y2={pad + (height - 2 * pad) * g} stroke="rgb(var(--ops-line))" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         ))}
         {lo < 0 && hi > 0 && <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="rgb(var(--ops-dim))" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />}
-        {series.map((s) => (
-          <polyline
-            key={s.label}
-            points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={1.75}
-            strokeDasharray={s.dashed ? '5 4' : undefined}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
+        {marker !== undefined && <line x1={x(marker)} x2={x(marker)} y1={0} y2={height} stroke="rgb(var(--ops-cyan) / 0.6)" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
+        {series.map((s) =>
+          runs(s.values).map((pts, k) => (
+            <polyline key={`${s.label}-${k}`} points={pts} fill="none" stroke={s.color} strokeWidth={1.75} strokeDasharray={s.dashed ? '5 4' : undefined} vectorEffect="non-scaling-stroke" />
+          )),
+        )}
       </svg>
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] text-ops-dim">
+      <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 text-[10px] text-ops-dim">
         <span>{xLabels?.[0]}</span>
-        <span className="flex flex-wrap gap-3">
+        <span className="flex flex-1 flex-wrap justify-center gap-x-3 gap-y-1">
           {series.map((s) => (
-            <span key={s.label} className="inline-flex items-center gap-1">
+            <span key={s.label} className="inline-flex items-center gap-1 whitespace-nowrap">
               <span className="inline-block h-0.5 w-3" style={{ background: s.color }} />
-              {s.label} <span className="text-ops-text">{format(s.values[s.values.length - 1])}</span>
+              {s.label} <span className="text-ops-text">{format(lastValue(s.values))}</span>
             </span>
           ))}
         </span>

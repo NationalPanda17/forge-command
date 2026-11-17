@@ -2,7 +2,8 @@ import type { LineId, MaterialId, RegionId } from './world';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-export type ScenarioId = 'standard' | 'longWar' | 'brokenChain' | 'rebuild';
+export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial';
+export type AllyId = 'merrow' | 'calder';
 export type RunLevel = 'idle' | 'normal' | 'surge';
 export type ThreatId = 'drone' | 'rocket' | 'cruise' | 'ballistic' | 'aircraft';
 
@@ -120,6 +121,58 @@ export interface MonthReport {
   treasury: number;
   retired: number;
   demilled: number;
+  /** National serviceable stock of each line at month end. */
+  stock?: Partial<Record<LineId, number>>;
+  /** The Committee's reserve target for each line at month end. */
+  target?: Partial<Record<LineId, number>>;
+  priceIndex?: number;
+  exported?: number;
+}
+
+/** One supplier's offer in a tender. */
+export interface Bid {
+  site: string;
+  perDay: number;
+  /** $M per unit. */
+  price: number;
+  /** 0..1: how likely they are to deliver in full. */
+  reliability: number;
+  note: string;
+}
+
+export interface Tender {
+  id: number;
+  material: MaterialId;
+  perDay: number;
+  months: 12 | 24 | 36;
+  opened: number;
+  /** Bids lapse on this day. */
+  expires: number;
+  bids: Bid[];
+}
+
+/** An order from a foreign customer, delivered from the central depot. */
+export interface ExportOrder {
+  id: number;
+  customer: string;
+  line: LineId;
+  qty: number;
+  delivered: number;
+  /** $M per round. */
+  price: number;
+  start: number;
+  endDay: number;
+}
+
+/** A multi-stage event waiting for its next stage. */
+export interface Chain {
+  id: number;
+  kind: 'labour' | 'quality' | 'safety';
+  site: string;
+  stage: number;
+  /** Day the next stage happens. */
+  due: number;
+  material?: MaterialId;
 }
 
 export interface Policy {
@@ -165,6 +218,17 @@ export interface SimState {
   outcome: 'running' | 'complete' | 'dismissed';
   /** Set when something important happens; the clock pauses if the player wants it to. */
   alert: FeedItem | null;
+  /** 1.0 at the start; prices, wages and running costs rise with it. */
+  priceIndex: number;
+  tenders: Tender[];
+  exports: ExportOrder[];
+  /** Relations with allied governments, 0..100. */
+  allies: Record<AllyId, number>;
+  chains: Chain[];
+  /** Tutorial progress, when playing the tutorial. */
+  tutorial: { step: number } | null;
+  /** Crises that already asked for supplementary money. */
+  supplemented: string[];
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;
