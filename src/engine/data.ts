@@ -27,6 +27,10 @@ import type {
   ResearchId,
   TheaterDef,
   TheaterId,
+  StaffRole,
+  Quirk,
+  FactionId,
+  ExportPolicy,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -523,6 +527,43 @@ export const DEFAULT_DEPOT_MONTHS = 1.5;
 export const RIVAL_NAME = 'Vardan Directorate';
 export const LOAN_GOODWILL = 55;
 export const LOAN_COOLDOWN = 12;
+
+// ---------- People and politics ----------
+
+export const STAFF_ROLES: Record<StaffRole, { title: string; effect: (skill: number) => string }> = {
+  procurement: { title: 'Chief of Procurement', effect: (k) => `Contracts and spot buys ${k * 4}% cheaper` },
+  quality: { title: 'Quality Director', effect: (k) => `Quality faults ${k * 15}% rarer` },
+  logistics: { title: 'Head of Logistics', effect: (k) => `Convoys carry ${k * 10}% more; airlifts ${k * 20}% cheaper` },
+  research: { title: 'Chief Engineer', effect: (k) => `Research projects ${k * 12}% faster` },
+  labor: { title: 'Labour Relations Director', effect: (k) => `Morale +${k * 3} on every campus` },
+};
+export const STAFF_ROLE_IDS = Object.keys(STAFF_ROLES) as StaffRole[];
+export const QUIRKS: Record<Quirk, { name: string; blurb: string }> = {
+  none: { name: 'Steady', blurb: 'No surprises.' },
+  abrasive: { name: 'Abrasive', blurb: 'Gets results, but morale drops 3 on every campus.' },
+  connected: { name: 'Well connected', blurb: 'Old friends abroad: partner goodwill creeps up every month.' },
+  frugal: { name: 'Frugal', blurb: 'Watches every penny. The treasury faction likes that.' },
+  favourite: { name: 'Committee favourite', blurb: 'Popular with the hawks.' },
+};
+/** Fictional names for candidates. */
+export const FIRST_NAMES = ['Mara', 'Tomas', 'Ilse', 'Oren', 'Petra', 'Dag', 'Selin', 'Arvid', 'Noor', 'Calla', 'Bram', 'Ysolde', 'Kai', 'Rhea', 'Lio', 'Hester', 'Juno', 'Fenn', 'Asha', 'Corin'];
+export const LAST_NAMES = ['Venn', 'Hale', 'Oduya', 'Marsk', 'Thorne', 'Kessler', 'Ardent', 'Lund', 'Brask', 'Ferreira', 'Okonkwo-Hart', 'Saelen', 'Drummond', 'Ivarsen', 'Quill', 'Ostrander', 'Mbeki-Lowe', 'Caradoc', 'Halloran', 'Vey'];
+export const SALARY_PER_SKILL = 0.12;
+export const HIRE_MONTHS_SALARY = 3;
+
+export const FACTIONS: Record<FactionId, { name: string; weight: number; wants: string }> = {
+  hawks: { name: 'Defence hawks', weight: 0.3, wants: 'Full racks, few leakers, a strong answer in a crisis.' },
+  treasury: { name: 'Treasury bench', weight: 0.25, wants: 'Staying within budget. Overspending infuriates them.' },
+  regions: { name: 'Regional members', weight: 0.15, wants: 'Jobs at the campuses in their districts. Strikes and layoffs hurt.' },
+  industry: { name: 'Industry caucus', weight: 0.15, wants: 'Buying at home: domestic suppliers and your own plants.' },
+  internationalists: { name: 'Alliance group', weight: 0.15, wants: 'Good relations with partner nations and steady exports.' },
+};
+export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
+export const EXPORT_POLICIES: Record<ExportPolicy, { name: string; blurb: string; tenderRate: number; priceMult: number }> = {
+  restrictive: { name: 'Restrictive', blurb: 'Few export licences. Hawks approve; partners and the alliance group do not.', tenderRate: 0.4, priceMult: 1 },
+  balanced: { name: 'Balanced', blurb: 'Case by case.', tenderRate: 1, priceMult: 1 },
+  open: { name: 'Open', blurb: 'Sell to friends freely: more tenders at better prices, but the hawks worry about the reserve.', tenderRate: 1.8, priceMult: 1.1 },
+};
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */

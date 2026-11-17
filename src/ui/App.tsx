@@ -13,12 +13,13 @@ import Ledger from './tabs/Ledger';
 import Overview from './tabs/Overview';
 import Partners from './tabs/Partners';
 import Plants from './tabs/Plants';
+import Politics from './tabs/Politics';
 import Research from './tabs/Research';
 import Supply from './tabs/Supply';
 import Workforce from './tabs/Workforce';
 import World from './tabs/World';
 
-export type TabId = 'overview' | 'map' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'intel' | 'ledger' | 'guide';
+export type TabId = 'overview' | 'map' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'politics' | 'intel' | 'ledger' | 'guide';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -28,6 +29,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'supply', label: 'Supply chain' },
   { id: 'research', label: 'Research' },
   { id: 'partners', label: 'Partners' },
+  { id: 'politics', label: 'Politics' },
   { id: 'intel', label: 'Intel' },
   { id: 'ledger', label: 'Ledger' },
   { id: 'guide', label: 'Guide' },
@@ -221,6 +223,7 @@ export default function App() {
         {tab === 'supply' && <Supply state={state} act={act} />}
         {tab === 'research' && <Research state={state} act={act} />}
         {tab === 'partners' && <Partners state={state} act={act} />}
+        {tab === 'politics' && <Politics state={state} act={act} />}
         {tab === 'intel' && <Intel state={state} act={act} />}
         {tab === 'ledger' && <Ledger state={state} act={act} />}
         {tab === 'guide' && <Guide />}

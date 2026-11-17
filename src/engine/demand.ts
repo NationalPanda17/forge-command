@@ -17,6 +17,7 @@ import {
   threatPlural,
 } from './data';
 import { pick, rand, randRange } from './rng';
+import { airliftMult } from './politics';
 import { calmDraw, isEstablished, landEfficiency, nationalStock, passiveFilter } from './selectors';
 import type { Forecast, GameState, LineId, MonthReport, TheaterId, ThreatId, ThreatTally } from './types';
 
@@ -155,7 +156,7 @@ function take(state: GameState, theater: TheaterId, id: LineId, want: number, ta
     r.stock -= cFull;
     r.degraded -= cDeg;
     tally.airlift += cFull + cDeg;
-    tally.cost += (cFull + cDeg) * LINES[id].unitCost * AIRLIFT_COST;
+    tally.cost += (cFull + cDeg) * LINES[id].unitCost * AIRLIFT_COST * airliftMult(state);
     state.theaters[theater].lastAirlift += cFull + cDeg;
   }
   return { full: dFull + cFull, degraded: dDeg + cDeg };

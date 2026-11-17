@@ -20,6 +20,7 @@ import { adaptOpponent, computeForecast, resolveDemand } from './demand';
 import { runFacilities, runFactory } from './factory';
 import { runMarkets, runSupply } from './supply';
 import { TRANSPORT_UPKEEP, dispatchConvoys, growRival, receiveConvoys } from './logistics';
+import { budgetRequestDecision, moraleBonus, runPolitics, salaries } from './politics';
 import { applyFallbacks, rollEvents } from './events';
 import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
@@ -153,7 +154,7 @@ function runWorkforce(s: GameState, messages: Messages): void {
     const ids = linesAt(c);
     const surgeShare = ids.filter((id) => s.lines[id].run === 'surge').length / ids.length;
     const understaffed = cs.workers < cs.lastCrewNeed * 0.95;
-    const target = 62 + (cs.wage === 'premium' ? 14 : 0) - surgeShare * 30 - (understaffed ? 8 : 0) - (cs.strikeMonths > 0 ? 10 : 0);
+    const target = 62 + moraleBonus(s) + (cs.wage === 'premium' ? 14 : 0) - surgeShare * 30 - (understaffed ? 8 : 0) - (cs.strikeMonths > 0 ? 10 : 0);
     cs.morale = clamp(cs.morale + (target - cs.morale) * 0.25 + randRange(s, -1.5, 1.5));
     const quitRate = 0.006 + (Math.max(0, 50 - cs.morale) / 50) * 0.015;
     const quits = Math.round(cs.workers * quitRate);
@@ -227,7 +228,7 @@ export function endTurn(state: GameState): GameState {
   maybeSpawnTender(s, messages);
 
   // Money.
-  ledger.wages = CAMPUS_IDS.reduce((a, c) => a + wageBill(s, c), 0);
+  ledger.wages = CAMPUS_IDS.reduce((a, c) => a + wageBill(s, c), 0) + salaries(s);
   ledger.overhead = LINE_IDS.reduce((a, id) => a + lineOverhead(s, id), 0) + plants.overhead;
   ledger.storage = storageCost(s);
   ledger.logistics = s.transport * TRANSPORT_UPKEEP + demand.airliftCost;
@@ -263,6 +264,9 @@ export function endTurn(state: GameState): GameState {
     messages.push({ tone: 'bad', text: 'The Board is over budget. The Committee is watching.' });
   }
   s.confidence = clamp(s.confidence + dc);
+  const income = s.appropriation + prod.revenue;
+  const spend = ledger.wages + ledger.overhead + ledger.components + ledger.storage + ledger.logistics + partnerPenalty + ledger.projects;
+  runPolitics(s, { readiness: ready, excessLeaks: Math.max(0, demand.leakSeverity - expectedLeaks), monthlyNet: income - spend }, messages);
   s.treasury = round2(s.treasury);
 
   s.history.push({
@@ -280,7 +284,10 @@ export function endTurn(state: GameState): GameState {
   });
   s.pending = emptyLedger();
 
-  if ((s.month + 1) % 12 === 0) s.reviews.push(yearReview(s));
+  if ((s.month + 1) % 12 === 0) {
+    s.reviews.push(yearReview(s));
+    if (s.month + 1 < s.months) budgetRequestDecision(s);
+  }
   s.month++;
   if (s.confidence <= 0) {
     s.over = true;

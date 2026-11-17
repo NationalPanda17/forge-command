@@ -18,6 +18,7 @@ import {
   WIP_MONTHS,
 } from './data';
 import { deliverToPartners } from './partners';
+import { qualityMult } from './politics';
 import { clamp, rand, randRange } from './rng';
 import { bomOf, campusCrewNeed, effectiveCapacity, hasResearch, productivity, staffing, strikeFactor, testHoursMult } from './selectors';
 import type { ComponentId, FacilityId, FacilityState, GameState, LineId, MonthReport, Priority, StageLast } from './types';
@@ -267,7 +268,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
       // Quality: wear, quality systems and commercial-grade parts drive faults.
       let quarantined = 0;
       const commercial = used.includes('microelectronics') ? 1.4 : 1;
-      const faultP = (Math.max(0, line.wear - 25) / 150) * (1 - 0.3 * line.upgrades.quality) * commercial;
+      const faultP = (Math.max(0, line.wear - 25) / 150) * (1 - 0.3 * line.upgrades.quality) * commercial * qualityMult(s);
       if (out > 0 && rand(s) < faultP) {
         quarantined = Math.max(1, Math.round(out * randRange(s, 0.15, 0.35)));
         out -= quarantined;

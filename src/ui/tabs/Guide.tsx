@@ -135,6 +135,21 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
     ),
   },
   {
+    id: 'politics',
+    title: 'People and politics',
+    body: () => (
+      <>
+        <ul className="list-disc pl-5">
+          <Li><b>Key staff:</b> five posts (procurement, quality, logistics, research, labour relations). Each hire brings a skill from 1 to 3 that improves their area, and often a quirk, good or bad. Hiring costs three months' salary, and letting someone go costs the same in severance. Good people get poached: match the offer or lose them. New candidates appear every six months.</Li>
+          <Li><b>The Committee</b> is five factions. The hawks want full racks, the treasury bench wants you within budget, the regional members want jobs at the campuses, the industry caucus wants you to buy at home, and the alliance group wants good partner relations. Their average pulls your confidence up or down every month.</Li>
+          <Li><b>Public support</b> rises in a crisis and falls when threats get through. It moves the hawks.</Li>
+          <Li><b>Budget requests:</b> at the end of each fiscal year, accept the Committee's figure, ask for less to please the treasury bench, or push for 12% more and risk a cut.</Li>
+          <Li><b>Export policy:</b> open brings more and better-paid tenders but worries the hawks. Restrictive does the opposite.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: 'workforce',
     title: 'Workforce',
     body: () => (

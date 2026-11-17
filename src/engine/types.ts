@@ -37,6 +37,24 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type StaffRole = 'procurement' | 'quality' | 'logistics' | 'research' | 'labor';
+export type Quirk = 'none' | 'abrasive' | 'connected' | 'frugal' | 'favourite';
+export type FactionId = 'hawks' | 'treasury' | 'regions' | 'industry' | 'internationalists';
+export type ExportPolicy = 'restrictive' | 'balanced' | 'open';
+
+export interface Person {
+  id: number;
+  name: string;
+  role: StaffRole;
+  /** 1..3 */
+  skill: number;
+  quirk: Quirk;
+  /** $M a month. */
+  salary: number;
+  /** Months in post. */
+  tenure: number;
+}
+
 export type TheaterId = 'north' | 'coast' | 'east' | 'isles';
 export type Tier2Id = 'perchlorate' | 'nitro' | 'steel' | 'wafers' | 'ore' | 'optics';
 export type FacilityId = 'motorWorks' | 'arsenalForge' | 'opticsLab';
@@ -513,7 +531,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 6;
+  version: 7;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -536,6 +554,14 @@ export interface GameState {
   transport: number;
   /** The rival power's arms industry, 100 at the start. */
   rival: number;
+  staff: Record<StaffRole, Person | null>;
+  candidates: Person[];
+  factions: Record<FactionId, number>;
+  /** Public support for the defense effort, 0..100. */
+  publicSupport: number;
+  exportPolicy: ExportPolicy;
+  /** Workers on the books at the start, for the regions faction. */
+  startWorkers: number;
   research: { done: ResearchId[]; active: { id: ResearchId; monthsLeft: number } | null };
   shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;
@@ -585,6 +611,9 @@ export type Action =
   | { type: 'investSupplier'; supplier: string }
   | { type: 'startResearch'; research: ResearchId }
   | { type: 'setDepotTarget'; theater: TheaterId; months: number }
+  | { type: 'hireStaff'; candidate: number }
+  | { type: 'fireStaff'; role: StaffRole }
+  | { type: 'setExportPolicy'; policy: ExportPolicy }
   | { type: 'buyTransport' }
   | { type: 'requestLoan'; partner: PartnerId; line: LineId }
   | { type: 'establishLine'; line: LineId }

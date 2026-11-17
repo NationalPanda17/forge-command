@@ -17,6 +17,7 @@ import {
   tier2For,
 } from './data';
 import { goBankrupt } from './events';
+import { procurementMult } from './politics';
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import { supplierCap } from './selectors';
 import { baselineNeed } from './setup';
@@ -167,7 +168,7 @@ export function runSupply(s: GameState, messages: Messages): number {
       if (d <= 0) continue;
       spot -= d;
       capLeft[sid] -= d;
-      spend += d * COMPONENTS[c].price * SUPPLIERS[sid].priceMult * SPOT_PREMIUM * cs.priceIndex;
+      spend += d * COMPONENTS[c].price * SUPPLIERS[sid].priceMult * SPOT_PREMIUM * cs.priceIndex * procurementMult(s);
       toStock += ship(sid, d);
     }
     cs.stock += toStock;

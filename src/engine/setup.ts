@@ -27,6 +27,7 @@ import {
 } from './data';
 import { computeForecast } from './demand';
 import { seedDepots } from './logistics';
+import { refreshCandidates } from './politics';
 import { spawnTender } from './partners';
 import { randRange } from './rng';
 import { calmDraw, crewNeed } from './selectors';
@@ -128,7 +129,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 6,
+    version: 7,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
@@ -155,6 +156,12 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     convoys: [],
     transport: START_TRANSPORT,
     rival: 100,
+    staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
+    candidates: [],
+    factions: { hawks: 55, treasury: 55, regions: 55, industry: 55, internationalists: 55 },
+    publicSupport: 55,
+    exportPolicy: 'balanced',
+    startWorkers: 0,
     facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
@@ -263,6 +270,8 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
 
   seedPipeline(state);
   seedDepots(state);
+  refreshCandidates(state);
+  state.startWorkers = CAMPUS_IDS.reduce((a, c) => a + campuses[c].workers, 0);
   spawnTender(state);
   state.forecast = computeForecast(state);
   return state;

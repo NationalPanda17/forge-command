@@ -18,6 +18,7 @@ import {
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import { freeBays, newTranche, reserveTarget, reserveTotal } from './selectors';
 import { wantsOf } from './partners';
+import { resolvePoliticsDecision } from './politics';
 import type { CampusId, Decision, GameState, LineId, MonthReport, PartnerId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -150,7 +151,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   }
 
   // A partner wants to buy from the reserve in calm times.
-  if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03)) {
+  if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03 * (state.exportPolicy === 'open' ? 2 : state.exportPolicy === 'restrictive' ? 0.3 : 1))) {
     const p = pick(state, PARTNER_IDS);
     const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     const stock = reserveTotal(state.reserves[line]);
@@ -300,6 +301,7 @@ export function resolveDecision(state: GameState, decisionId: number, optionId: 
   if (!d) return;
   state.decisions = state.decisions.filter((x) => x.id !== decisionId);
   const opt = d.options.some((o) => o.id === optionId) ? optionId : d.fallback;
+  if (resolvePoliticsDecision(state, d.kind, opt, d.data, messages)) return;
   switch (d.kind) {
     case 'bailout': {
       const sid = String(d.data.supplier);

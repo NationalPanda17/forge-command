@@ -1,6 +1,6 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
 import { debottleneckCost, establishCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, SUPPLIERS, suppliersOf } from './data';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, STAFF_ROLES, STAFF_ROLE_IDS, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -211,6 +211,16 @@ export function advise(state: GameState): Advice[] {
     const p = PARTNER_IDS.find((q) => validateAction(state, { type: 'requestLoan', partner: q, line: id }) === null);
     if (p) {
       out.push({ id: `loan-${id}`, tone: 'urgent', text: `${LINES[id].name} is nearly gone. ${PARTNERS[p].name} could lend you ${loanQty(id).toLocaleString('en-US')} now, repaid from production later.`, action: { type: 'requestLoan', partner: p, line: id }, actionLabel: 'Ask for a loan' });
+      break;
+    }
+  }
+
+  // Staff: fill empty posts with the best candidate you can afford.
+  for (const role of STAFF_ROLE_IDS) {
+    if (state.staff[role]) continue;
+    const best = state.candidates.filter((c) => c.role === role).sort((a, b) => b.skill - a.skill || a.salary - b.salary)[0];
+    if (best && state.treasury > 150 && validateAction(state, { type: 'hireStaff', candidate: best.id }) === null) {
+      out.push({ id: `staff-${role}`, tone: 'suggest', text: `Nobody is ${STAFF_ROLES[role].title}. ${best.name} (skill ${best.skill}) is available: ${STAFF_ROLES[role].effect(best.skill).toLowerCase()}.`, action: { type: 'hireStaff', candidate: best.id }, actionLabel: `Hire ${best.name.split(' ')[0]}` });
       break;
     }
   }

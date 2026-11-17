@@ -4,6 +4,7 @@ import { DIFFICULTY, LINES, LINE_IDS, LOAN_COOLDOWN, LOAN_GOODWILL, PARTNERS, TH
 import { expectedTheaterDraw } from './demand';
 import { clamp, randRange } from './rng';
 import { isEstablished, readiness } from './selectors';
+import { transportMult } from './politics';
 import type { GameState, LineId, MonthReport, PartnerId, TheaterId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -55,7 +56,8 @@ export function dispatchConvoys(s: GameState, messages: Messages): number {
     lineScale.set(id, Math.min(1, (r.stock + r.degraded) / want));
   }
   const tonnes = needs.reduce((a, n) => a + n.qty * (lineScale.get(n.line) ?? 0) * WEIGHT[n.line], 0);
-  const tScale = tonnes > s.transport ? s.transport / tonnes : 1;
+  const cap = s.transport * transportMult(s);
+  const tScale = tonnes > cap ? cap / tonnes : 1;
   let moved = 0;
   for (const n of needs) {
     const qty = Math.floor(n.qty * (lineScale.get(n.line) ?? 0) * tScale);
@@ -68,7 +70,7 @@ export function dispatchConvoys(s: GameState, messages: Messages): number {
     s.convoys.push({ id: s.nextId++, theater: n.theater, line: n.line, full, degraded, arrive: s.month + 1 });
     moved += (full + degraded) * WEIGHT[n.line];
   }
-  if (tScale < 0.95) messages.push({ tone: 'warn', text: `Convoys ran at full capacity (${Math.round(s.transport).toLocaleString('en-US')} t): some depots will not be topped up this month.` });
+  if (tScale < 0.95) messages.push({ tone: 'warn', text: `Convoys ran at full capacity (${Math.round(cap).toLocaleString('en-US')} t): some depots will not be topped up this month.` });
   return moved;
 }
 

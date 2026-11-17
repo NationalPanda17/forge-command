@@ -30,10 +30,14 @@ import {
   MAX_TRANSPORT,
   TRANSPORT_COST,
   TRANSPORT_STEP,
+  HIRE_MONTHS_SALARY,
+  STAFF_ROLES,
+  EXPORT_POLICIES,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
 import { loanBlocker, takeLoan } from './logistics';
+import { procurementMult, researchMult } from './politics';
 import { expansions, freeBays, hasResearch, isEstablished, maxUpgrade, newTranche } from './selectors';
 import type { Action, CampusId, FacilityId, GameState, LineId, UpgradeKind } from './types';
 
@@ -44,6 +48,8 @@ export const buildCost = (c: CampusId) => CAMPUSES[c].buildCost;
 export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * DIFFICULTY[state.difficulty].qualifyMult);
 export const qualifyMonths = (state: GameState, sid: string) =>
   Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult * (hasResearch(state, 'rapidQual') ? 0.5 : 1)));
+export const researchMonths = (state: GameState, r: keyof typeof RESEARCH) => Math.max(2, Math.round(RESEARCH[r].months * researchMult(state)));
+export const hireCost = (p: { salary: number }) => p.salary * HIRE_MONTHS_SALARY;
 export const establishCost = (id: LineId) => LINES[id].expandCost * ESTABLISH_COST_SHARE;
 export const researchAvailable = (state: GameState, r: keyof typeof RESEARCH) =>
   !hasResearch(state, r) && state.research.active?.id !== r && RESEARCH[r].requires.every((q) => hasResearch(state, q));
@@ -51,7 +57,7 @@ export const reworkCost = (state: GameState, id: LineId) =>
   state.lines[id].quarantine.reduce((s, q) => s + q.qty, 0) * LINES[id].unitCost * REWORK_COST_SHARE;
 /** Contracts lock today's market price for their whole term. */
 export const contractPrice = (state: GameState, sid: string, months: 12 | 24 | 36) =>
-  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months] * state.components[SUPPLIERS[sid].component].priceIndex;
+  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months] * state.components[SUPPLIERS[sid].component].priceIndex * procurementMult(state);
 export const investCost = (sid: string) => Math.max(10, Math.round(SUPPLIERS[sid].baseCap * COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * 8));
 export const cancelPenalty = (state: GameState, component: keyof GameState['components'], contract: number) => {
   const k = state.components[component].contracts.find((x) => x.id === contract);
@@ -178,6 +184,18 @@ export function validateAction(state: GameState, a: Action): string | null {
       return funds(state, TRANSPORT_COST);
     case 'requestLoan':
       return loanBlocker(state, a.partner, a.line);
+    case 'hireStaff': {
+      const p = state.candidates.find((c) => c.id === a.candidate);
+      if (!p) return 'That candidate has taken another job.';
+      return funds(state, hireCost(p) + (state.staff[p.role] ? hireCost(state.staff[p.role]!) : 0));
+    }
+    case 'fireStaff': {
+      const p = state.staff[a.role];
+      if (!p) return 'Nobody holds that post.';
+      return funds(state, hireCost(p));
+    }
+    case 'setExportPolicy':
+      return EXPORT_POLICIES[a.policy] ? null : 'Unknown policy.';
     case 'acceptTender':
     case 'declineTender':
       return state.tenders.some((t) => t.id === a.tender) ? null : 'That tender is gone.';
@@ -322,7 +340,7 @@ export function applyAction(state: GameState, a: Action): GameState {
       break;
     case 'startResearch':
       charge(s, RESEARCH[a.research].cost);
-      s.research.active = { id: a.research, monthsLeft: RESEARCH[a.research].months };
+      s.research.active = { id: a.research, monthsLeft: researchMonths(s, a.research) };
       break;
     case 'establishLine': {
       charge(s, establishCost(a.line));
@@ -337,6 +355,25 @@ export function applyAction(state: GameState, a: Action): GameState {
     case 'buyTransport':
       charge(s, TRANSPORT_COST);
       s.transport += TRANSPORT_STEP;
+      break;
+    case 'hireStaff': {
+      const p = s.candidates.find((c) => c.id === a.candidate)!;
+      const old = s.staff[p.role];
+      charge(s, hireCost(p) + (old ? hireCost(old) : 0));
+      s.staff[p.role] = { ...p, tenure: 0 };
+      s.candidates = s.candidates.filter((c) => c.id !== p.id);
+      s.inbox.push({ tone: 'good', text: `${p.name} joins as ${STAFF_ROLES[p.role].title}.${old ? ` ${old.name} leaves with severance.` : ''}` });
+      break;
+    }
+    case 'fireStaff': {
+      const p = s.staff[a.role]!;
+      charge(s, hireCost(p));
+      s.staff[a.role] = null;
+      s.inbox.push({ tone: 'info', text: `${p.name} leaves with severance. The post of ${STAFF_ROLES[a.role].title} is vacant.` });
+      break;
+    }
+    case 'setExportPolicy':
+      s.exportPolicy = a.policy;
       break;
     case 'requestLoan': {
       const qty = takeLoan(s, a.partner, a.line);

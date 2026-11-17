@@ -1,5 +1,5 @@
 // Partner nations: tenders, delivery contracts and goodwill.
-import { LINES, PARTNERS, PARTNER_IDS } from './data';
+import { EXPORT_POLICIES, LINES, PARTNERS, PARTNER_IDS } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import type { GameState, LineId, MonthReport, PartnerContract, PartnerId, Tender } from './types';
 
@@ -19,7 +19,7 @@ export function spawnTender(state: GameState): Tender | null {
     line,
     qtyPerMonth: qty,
     months: randInt(state, 6, 18),
-    unitPrice: Math.round(def.unitCost * randRange(state, 1.15, 1.5) * 10000) / 10000,
+    unitPrice: Math.round(def.unitCost * randRange(state, 1.15, 1.5) * EXPORT_POLICIES[state.exportPolicy].priceMult * 10000) / 10000,
     expires: state.month + 3,
   };
   state.tenders.push(tender);
@@ -28,7 +28,7 @@ export function spawnTender(state: GameState): Tender | null {
 
 export function maybeSpawnTender(state: GameState, messages: MonthReport['messages']): void {
   state.tenders = state.tenders.filter((t) => t.expires > state.month);
-  if (state.tenders.length < 3 && rand(state) < 0.2) {
+  if (state.tenders.length < 3 && rand(state) < 0.2 * EXPORT_POLICIES[state.exportPolicy].tenderRate) {
     const t = spawnTender(state);
     if (t) messages.push({
       tone: 'info',
