@@ -1,11 +1,12 @@
 // Forge Command 2.0: title screen and game.
 import { useRef, useState } from 'react';
-import { SCENARIOS, migrate, newSim } from '../sim/setup';
+import { DEFAULT_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
+import { bestForWeek, challengeFor, isoWeek, loadScores } from './scores';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { openCampaign } from '../sim/tick';
-import type { Difficulty, ScenarioId, SimState } from '../sim/types';
+import type { Difficulty, ScenarioId, Settings, SimState } from '../sim/types';
 import { seedFrom } from '../sim/rng';
-import { Btn } from '../ui/kit';
+import { Btn, NumberInput, Segmented } from '../ui/kit';
 import Shell from './Shell';
 import { dateLabel, loadSim, saveSim } from './useSim';
 
@@ -23,8 +24,22 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [years, setYears] = useState(4);
   const [scenario, setScenario] = useState<ScenarioId>('standard');
   const earned = loadAchievements();
-  const start = (sc: ScenarioId) => onStart(openCampaign(newSim({ seed: seedFrom(seed || '0'), difficulty, scenario: sc, months: years * 12 })));
   const [seed, setSeed] = useState(() => String(Math.floor(Math.random() * 1e6)));
+  const [rules, setRules] = useState<Settings>(DEFAULT_SETTINGS);
+  const [extra, setExtra] = useState({ treasury: 0, appropriation: 0 });
+  const sandbox = JSON.stringify(rules) !== JSON.stringify(DEFAULT_SETTINGS) || extra.treasury > 0 || extra.appropriation > 0;
+  const start = (sc: ScenarioId) =>
+    onStart(openCampaign(newSim({ seed: seedFrom(seed || '0'), difficulty, scenario: sc, months: years * 12, ...(sc === 'tutorial' ? {} : { settings: rules, money: extra }) })));
+  const week = isoWeek();
+  const challenge = challengeFor(week);
+  const best = bestForWeek(week);
+  const scores = loadScores().slice(0, 5);
+  const rule = (k: 'inflation' | 'seasons' | 'crises' | 'endless', label: string) => (
+    <label className="flex items-center gap-2">
+      <input type="checkbox" checked={rules[k]} onChange={(e) => setRules({ ...rules, [k]: e.target.checked })} />
+      {label}
+    </label>
+  );
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <header className="pt-8 text-center">
@@ -45,6 +60,18 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </div>
         <Btn kind="primary" className="px-4 py-2" onClick={() => start('tutorial')}>
           Play the tutorial
+        </Btn>
+      </section>
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4 text-[12px]">
+        <div className="min-w-0">
+          <div className="font-sans text-[15px] font-semibold text-white">This week's challenge · {week}</div>
+          <p className="text-ops-dim">
+            {SCENARIOS[challenge.scenario].name} on {challenge.difficulty}, two years, the same campaign for everyone this week.
+            {best ? ` Your best: ${best.grade}, ${best.score} points.` : ' No score yet.'}
+          </p>
+        </div>
+        <Btn kind="primary" className="px-4 py-2" onClick={() => onStart(openCampaign(newSim({ ...challenge, challenge: week })))}>
+          Take the challenge
         </Btn>
       </section>
       <section className="panel">
@@ -100,9 +127,44 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               <input className="input w-full" value={seed} onChange={(e) => setSeed(e.target.value)} />
             </label>
           </div>
+          <details className="rounded border border-ops-line/60 p-2">
+            <summary className="cursor-pointer text-ops-text">Sandbox rules{sandbox ? ' · changed' : ''}</summary>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                {rule('inflation', 'Inflation')}
+                {rule('seasons', 'Seasons')}
+                {rule('crises', 'Crises')}
+                {rule('endless', 'No end date')}
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <div className="label mb-1">Disruptions and events</div>
+                  <Segmented<string>
+                    label="Disruptions and events"
+                    value={String(rules.events)}
+                    onChange={(v) => setRules({ ...rules, events: Number(v) })}
+                    options={[
+                      { id: '0', label: 'None' },
+                      { id: '0.5', label: 'Rare' },
+                      { id: '1', label: 'Normal' },
+                      { id: '2', label: 'Often' },
+                    ]}
+                  />
+                </div>
+                <label className="flex flex-wrap items-center gap-2">
+                  <span className="label">Extra starting money $M</span>
+                  <NumberInput value={extra.treasury} onChange={(v) => setExtra({ ...extra, treasury: v })} step={100} label="Extra starting money" />
+                </label>
+                <label className="flex flex-wrap items-center gap-2">
+                  <span className="label">Extra budget $M a month</span>
+                  <NumberInput value={extra.appropriation} onChange={(v) => setExtra({ ...extra, appropriation: v })} step={10} label="Extra monthly budget" />
+                </label>
+              </div>
+            </div>
+          </details>
           <div className="flex justify-end">
             <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={() => start(scenario)}>
-              Take command →
+              {sandbox ? 'Start sandbox →' : 'Take command →'}
             </Btn>
           </div>
         </div>
@@ -150,6 +212,26 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           {err && <p className="w-full text-ops-red">{err}</p>}
         </div>
       </section>
+
+      {scores.length > 0 && (
+        <section className="panel">
+          <div className="panel-title">Your best campaigns</div>
+          <ol className="space-y-1 p-4 text-[11px]">
+            {scores.map((e, i) => (
+              <li key={e.key} className="grid grid-cols-[20px_minmax(0,1fr)_auto] gap-2">
+                <span className="text-ops-dim">{i + 1}.</span>
+                <span className="min-w-0 truncate text-ops-text">
+                  {SCENARIOS[e.scenario]?.name ?? e.scenario} · {e.difficulty}
+                  {e.week ? ` · challenge ${e.week}` : ''} <span className="text-ops-dim">· {e.date}</span>
+                </span>
+                <span className="text-white">
+                  {e.grade} · {e.score}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel-title">

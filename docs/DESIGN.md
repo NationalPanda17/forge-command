@@ -1,4 +1,4 @@
-# Forge Command 3.0: design
+# Forge Command 4.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -100,6 +100,44 @@ Physical figures follow public reference data where it exists, and are best gues
   - **Quality:** recall (lose half the parts on hand), or accept the risk; later, 60% odds that 12% of a central
     depot line is condemned.
   - **Safety:** an accident, then an inspection decision: co-fund the upgrade, or two months at 25%.
+
+## Building (`build.ts`)
+- **Links:** six candidate links in `world.ts`.
+  - Rail costs 0.3 $M a km and takes 270 days; road costs 0.1 $M a km and takes 150 days, both scaled by prices.
+  - When a link finishes, `graph.setNetwork` rebuilds the routing graph and clears the path cache.
+- **Upgrades:** each level adds 50% to a route's daily tonnage, two levels at most.
+  - Rail costs 0.12 $M a km per level and road 0.05; port works cost 30 a level.
+  - Air routes cannot be upgraded.
+- **Icebreaker:** in winter the northern sea factor goes from 0.6 to 0.9.
+- **Resilience grant:** at that site, disruptions are 0.4× as likely, last 0.6× as long, and keep 50–80% of output.
+- **Automation:** a line needs 0.7× the crew and has 0.8× the scrap. It takes 180 days.
+
+## People (`people.ts`)
+- **Skill** (0–100):
+  - output × (0.9 + 0.2 × skill), and scrap × (1.15 − 0.3 × skill);
+  - grows towards 88 (95 with apprentices) while lines run;
+  - new hires join at 40 and apprentices at 55.
+- **Morale** drifts to 62 + 6 × safety − 0.35 × fatigue − 60 × (price index − 1), plus 3 with apprentices.
+  - Below 50 it costs up to 15% of output.
+  - Pay deals add 7 to 15; refusals take away 10.
+- **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
+- **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
+
+## Sandbox and challenges
+- **Settings:** inflation, seasons and crises on or off; an events multiplier (0, 0.5, 1 or 2) that scales
+  disruptions, bans, chains and accidents; and an endless mode.
+- **Weekly challenge:** the seed comes from the ISO week; the scenario and difficulty rotate. Scores are kept in
+  local storage.
+
+## News (`news.ts`)
+- Each month's edition is written from the month report, the previous one and the month's feed:
+  - crises;
+  - readiness and confidence swings;
+  - accidents, strikes, bans and closures;
+  - openings and qualifications;
+  - prices;
+  - exports;
+  - the season ahead.
 
 ## Analytics (`analytics.ts`)
 - **Forecast:** stock + monthly output (planned, capped by last month's actual) − expected draw × crisis factor −

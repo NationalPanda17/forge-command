@@ -2,6 +2,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { seasonOf } from '../sim/living';
 import MarketsPanel from './MarketsPanel';
+import BuildPanel from './BuildPanel';
+import NewsPanel from './NewsPanel';
+import { sfx, setSoundEnabled } from '../ui/sound';
+import { loadAudioPrefs, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
+import type { MapNetwork, MapRipple } from '../ui/map/MapView';
 import PlanPanel from './PlanPanel';
 import TermReport from './TermReport';
 import { STEPS, TUTORIAL_DONE, TutorialCard } from './Tutorial';
@@ -20,18 +25,20 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'feed' | 'guide';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
   { id: 'plan', label: 'Plan' },
   { id: 'material', label: 'Materials' },
   { id: 'markets', label: 'Markets' },
+  { id: 'build', label: 'Build' },
   { id: 'stockpile', label: 'Stockpile' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'fight', label: 'Fight' },
   { id: 'strategy', label: 'Board' },
   { id: 'money', label: 'Money' },
+  { id: 'news', label: 'Courier' },
   { id: 'feed', label: 'Feed' },
   { id: 'guide', label: 'Guide' },
 ];
@@ -95,6 +102,55 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   }, [state.history.length, state.over, state.tutorial?.step]);
 
   const [reportClosed, setReportClosed] = useState(false);
+  const [highlight, setHighlight] = useState<string | null>(null);
+
+  // Sound and music.
+  const [audioPrefs, setAudioPrefs] = useState<AudioPrefs>(() => loadAudioPrefs());
+  const setAudio = (p: Partial<AudioPrefs>) => {
+    const next = { ...audioPrefs, ...p };
+    setAudioPrefs(next);
+    saveAudioPrefs(next);
+  };
+  useEffect(() => {
+    setSoundEnabled(audioPrefs.sfx);
+    music.setVolume(audioPrefs.volume);
+    if (audioPrefs.music) music.start();
+    else music.stop();
+  }, [audioPrefs]);
+  useEffect(() => () => music.stop(), []);
+  useEffect(() => music.setMood(state.crisis?.phase === 'active' ? 'tense' : 'calm'), [state.crisis?.phase]);
+  useEffect(() => {
+    if (state.alert) sfx.alert();
+  }, [state.alert]);
+  const months = useRef(state.history.length);
+  useEffect(() => {
+    if (state.history.length > months.current) sfx.month();
+    months.current = state.history.length;
+  }, [state.history.length]);
+  useEffect(() => {
+    if (toast.length) sfx.fanfare();
+  }, [toast]);
+
+  // The map: what is built or building, and brief rings where things just happened.
+  const network: MapNetwork = useMemo(
+    () => ({
+      built: state.network.built,
+      upgrades: state.network.upgrades,
+      building: state.network.projects.filter((p) => p.kind === 'link').map((p) => p.target),
+      upgrading: state.network.projects.filter((p) => p.kind === 'upgrade').map((p) => p.target),
+    }),
+    [state.network],
+  );
+  const ripples: MapRipple[] = useMemo(
+    () =>
+      state.feed
+        .map((f, i) => ({ f, i }))
+        .filter(({ f }) => f.site && f.day >= state.day - 1 && f.tone !== 'info')
+        .slice(-12)
+        .map(({ f, i }) => ({ key: `${f.day}-${i}-${f.site}`, site: f.site!, tone: f.tone })),
+    [state.feed, state.day],
+  );
+  const lead = state.news.at(-1)?.headlines[0];
   const markers = useMemo(() => markersFor(state), [state]);
   const shipments: MapShipment[] = useMemo(
     () =>
@@ -163,8 +219,21 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <Btn onClick={() => step(7)} why={speed !== 0 ? 'Pause first' : null} title="Advance one week">
             +7d
           </Btn>
+          <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
+            Sound
+          </Btn>
+          <Btn pressed={audioPrefs.music} onClick={() => setAudio({ music: !audioPrefs.music })} title="Generated background music">
+            Music
+          </Btn>
         </div>
       </header>
+
+      {lead && (
+        <button type="button" onClick={() => setPanel('news')} className="panel flex min-w-0 items-center gap-2 px-3 py-1 text-left text-[11px] hover:border-ops-dim">
+          <span className="label shrink-0">Courier</span>
+          <span className="min-w-0 truncate text-ops-text">{lead.title}</span>
+        </button>
+      )}
 
       {toast.length > 0 && (
         <div role="status" className="panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
@@ -196,7 +265,20 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ops-line/60 px-2 py-1">
             <MapLayerToggles layers={layers} onChange={setLayers} />
           </div>
-          <MapView markers={markers} shipments={shipments} routeUse={routeUse} crisisRegion={state.crisis?.region ?? null} selected={selected} onSelect={select} layers={layers} height="calc(100vh - 220px)" />
+          <MapView
+            markers={markers}
+            shipments={shipments}
+            routeUse={routeUse}
+            crisisRegion={state.crisis?.region ?? null}
+            selected={selected}
+            onSelect={select}
+            layers={layers}
+            height="calc(100vh - 220px)"
+            network={network}
+            showPlans={panel === 'build'}
+            highlight={highlight}
+            ripples={ripples}
+          />
           <div className="border-t border-ops-line/60 px-2 py-1">
             <MapLegend />
           </div>
@@ -220,6 +302,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <div className="min-h-0 flex-1 overflow-y-auto">
             {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
+            {panel === 'build' && <BuildPanel state={state} act={act} onHighlight={setHighlight} onSite={select} />}
+            {panel === 'news' && <NewsPanel state={state} />}
             {panel === 'site' && (selected ? <SitePanel state={state} siteId={selected} act={act} onMaterial={showMaterial} /> : <p className="p-3 text-[11px] text-ops-dim">Click any site on the map.</p>)}
             {panel === 'material' && <MaterialPanel state={state} material={material} onMaterial={showMaterial} onSite={select} />}
             {panel === 'stockpile' && <StockpilePanel state={state} act={act} onMaterial={showMaterial} />}

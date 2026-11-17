@@ -50,6 +50,13 @@ export function watchList(s: SimState): Watch[] {
     const r = nationalStock(s, l) / Math.max(1, reserveTarget(s, l));
     if (r < 0.5) out.push({ tone: 'warn', text: `${MATERIALS[l].name} reserve at ${Math.round(r * 100)}% of the one-year goal.`, material: l });
   }
+  // People in your plants.
+  for (const def of SITES.filter((x) => x.owner === 'state' && x.crew > 0 && x.processes.length)) {
+    const site = s.sites[def.id];
+    if (site.fatigue >= 50) out.push({ tone: 'warn', text: `Crews at ${def.name} are exhausted (fatigue ${Math.round(site.fatigue)}). Ease off the round-the-clock shifts before someone gets hurt.`, site: def.id });
+    if (site.morale < 40) out.push({ tone: 'warn', text: `Morale is low at ${def.name} (${Math.round(site.morale)}). A safety programme or a pay deal would help.`, site: def.id });
+  }
+  for (const p of s.network.projects) if (p.days <= 14) out.push({ tone: 'info', text: `A building project finishes in ${p.days} days (Build tab).` });
   // A year ahead: rounds that will run low before you can react.
   for (const l of FINISHED as LineId[]) {
     if (!s.lines[l].unlocked || reserveTarget(s, l) <= 0) continue;
@@ -181,6 +188,43 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li><b>Export orders</b> bring money and please industry, but are delivered from the central depot and never below half of target. Falling short costs a penalty.</Li>
         <Li><b>Developing situations:</b> pay disputes, suspect parts and mine accidents unfold in stages. What you decide at the first stage shapes the next.</Li>
         <Li><b>In a crisis</b> you get one chance to ask for a supplementary budget.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'build',
+    title: 'Building',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>New links:</b> six rail and road lines can be built. Open the Build tab to see them on the map as amber plans. They take five to nine months.</Li>
+        <Li><b>Upgrades:</b> the busiest routes can carry half as much again, twice over. Sea upgrades are port works.</Li>
+        <Li><b>The icebreaker</b> keeps the northern sea lanes at 90% through the winter.</Li>
+        <Li><b>Resilience grants</b> make disruptions at a supplier rarer, shorter and milder. Start with sole sources.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'people',
+    title: 'Plants and people',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Shifts:</b> idle, one shift (60% output, crews rest, plant wear falls), two shifts (normal) or round the clock (130%, but fatigue and wear build).</Li>
+        <Li><b>Skill</b> grows as the lines run and makes more with less scrap. New hires join at 40, apprentices at 55, so big hiring sprees dip output for a while.</Li>
+        <Li><b>Morale</b> drifts towards a level set by safety, fatigue and whether wages keep up with prices. Below 50 it slows work, and unhappy plants are where disputes start.</Li>
+        <Li><b>Accidents</b> are likelier with tired crews, worn plant and no safety programme. Each one stops a plant for weeks.</Li>
+        <Li><b>Automation</b> cuts a line's crew by 30% and its scrap by 20%. It takes six months.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'replay',
+    title: 'News, sound and replay',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>The Courier</b> prints a short edition at the end of every month. Its lead story shows under the header.</Li>
+        <Li><b>Sound and Music</b> buttons sit by the clock. The music turns tense during a crisis.</Li>
+        <Li><b>Sandbox rules</b> on the title screen switch off inflation, seasons or crises, change how often things go wrong, add money, or remove the end date.</Li>
+        <Li><b>The weekly challenge</b> is the same two-year campaign for everyone that week. Your best scores are kept in this browser.</Li>
       </ul>
     ),
   },

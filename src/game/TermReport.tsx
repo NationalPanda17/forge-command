@@ -6,12 +6,16 @@ import { MATERIALS } from '../sim/world';
 import { Btn, COLORS, LineChart } from '../ui/kit';
 import { int, money, pct, qty } from '../ui/format';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
+import { recordScore } from './scores';
+import { useMemo } from 'react';
 import { monthLabel2 } from './useSim';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
 
 export default function TermReport({ state, onClose, onMenu }: { state: SimState; onClose: () => void; onMenu: () => void }) {
   const r = termReport(state);
+  const board = useMemo(() => recordScore(state), [state]);
+  const rank = board.findIndex((e) => e.key.startsWith(`${state.seed}-${state.scenario}-${state.difficulty}-${state.day}-`)) + 1;
   const h = state.history;
   const x = h.length ? [monthLabel2(h[0].month), monthLabel2(h.at(-1)!.month)] : [];
   const earned = loadAchievements();
@@ -36,6 +40,8 @@ export default function TermReport({ state, onClose, onMenu }: { state: SimState
             <div className="label">Grade</div>
             <div className={`font-sans text-5xl font-bold leading-tight ${GRADE_TONE[r.grade]}`}>{r.grade}</div>
             <div className="text-ops-dim">score {r.score}</div>
+            {rank > 0 && <div className="text-[10px] text-ops-dim">#{rank} of your campaigns</div>}
+            {state.challenge && <div className="text-[10px] text-ops-cyan">challenge {state.challenge.week}</div>}
           </div>
         </header>
 

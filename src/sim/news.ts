@@ -6,10 +6,29 @@ const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a +
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** Cuts a feed line down to a headline: the part before the first colon, or the whole sentence. */
-function headlineFrom(text: string): string {
+/** Turns a feed line into a newspaper story: a headline, and a body that adds to it rather than repeating it. */
+function story(text: string): { title: string; body: string } {
+  let m = text.match(/^Export ban: the (.+) halts shipments from (.+)\.$/);
+  if (m) return { title: `${m[1]} halts exports from ${m[2]}`, body: `Nothing more leaves ${m[2]} until the ban is lifted. Plants that relied on it are looking for other sources.` };
+  m = text.match(/^(An explosion and fire|A major equipment failure|Flooding|A strike|A cyber attack on the plant network) at (.+): output down to (\d+)% for about (\d+) weeks\.$/);
+  if (m) {
+    const what = { 'An explosion and fire': 'Fire', 'A major equipment failure': 'Breakdown', Flooding: 'Floods', 'A strike': 'Strike', 'A cyber attack on the plant network': 'Cyber attack' }[m[1]] ?? m[1];
+    return { title: `${what} hits ${m[2]}`, body: `Output is down to ${m[3]}% for about ${m[4]} weeks. Everything downstream will feel it.` };
+  }
+  m = text.match(/^Accident at (.+?): (.+)$/);
+  if (m) return { title: `Accident at ${m[1]}`, body: `${m[2][0].toUpperCase()}${m[2].slice(1)}` };
+  m = text.match(/^Strike at (.+?): (.+)$/);
+  if (m) return { title: `Walkout at ${m[1]}`, body: `${m[2][0].toUpperCase()}${m[2].slice(1)}` };
+  m = text.match(/^(.+) opens to traffic\.$/);
+  if (m) return { title: `${m[1]} opens`, body: 'The new line carries its first freight today, and planners are already rerouting trains onto it.' };
+  m = text.match(/^(.+) is qualified to supply your arsenals\.$/);
+  if (m) return { title: `${m[1]} wins approval`, body: 'After months of audits and test articles, the arsenals have a new supplier to call on.' };
+  m = text.match(/^(.+) has closed for good\.$/);
+  if (m) return { title: `${m[1]} shuts its gates`, body: 'Its workers are laid off, and its customers are left looking elsewhere.' };
+  m = text.match(/^Surveillance firings fail: (.+)\.$/);
+  if (m) return { title: 'Old rounds fail their tests', body: `${m[1][0].toUpperCase()}${m[1].slice(1)}.` };
   const head = text.split(/:\s/)[0].replace(/\.$/, '');
-  return head.length > 70 ? `${head.slice(0, 67).trim()}…` : head;
+  return { title: head.length > 70 ? `${head.slice(0, 67).trim()}…` : head, body: text };
 }
 
 /** Writes this month's edition. Call at month end, before the report is filed. */
@@ -43,11 +62,11 @@ export function writeEdition(s: SimState, m: MonthReport, prev: MonthReport | un
   }
 
   // The month's big events, as the feed recorded them.
-  for (const f of items.filter((x) => x.tone === 'bad' && /Accident|Strike|Explosion|explosion|fire|failure|Flooding|strike|cyber|Export ban|closed|condemned/.test(x.text)).slice(0, 3)) {
-    out.push({ weight: 75, tone: 'bad', title: headlineFrom(f.text), body: f.text });
+  for (const f of items.filter((x) => (x.tone === 'bad' || x.tone === 'warn') && /^(Accident|Strike|An explosion|A major|Flooding|A strike|A cyber|Export ban|Surveillance firings fail)|has closed/.test(x.text)).slice(0, 3)) {
+    out.push({ weight: 75, tone: 'bad', ...story(f.text) });
   }
   for (const f of items.filter((x) => x.tone === 'good' && /opens to traffic|enters service|qualified to supply|is delivered in full|grants/.test(x.text)).slice(0, 2)) {
-    out.push({ weight: 65, tone: 'good', title: headlineFrom(f.text), body: f.text });
+    out.push({ weight: 65, tone: 'good', ...story(f.text) });
   }
 
   if (prev?.priceIndex && m.priceIndex && m.priceIndex / prev.priceIndex > 1.004)
@@ -57,6 +76,16 @@ export function writeEdition(s: SimState, m: MonthReport, prev: MonthReport | un
   const moy = (m.month + 1) % 12;
   const seasonal: Record<number, string> = { 11: 'Winter closes in on the north', 2: 'Thaw floods the low roads', 5: 'Summer heat arrives', 8: 'A calm autumn for the railways' };
   if (seasonal[moy]) out.push({ weight: 30, tone: 'info', title: seasonal[moy], body: `${MONTHS[moy]} begins. Planners say it is time to move stock before the weather turns.` });
+
+  // One story per headline: repeats become a single, fuller story.
+  const seen = new Map<string, (typeof out)[number] & { n: number }>();
+  for (const h of out) {
+    const prior = seen.get(h.title);
+    if (prior) prior.n++;
+    else seen.set(h.title, { ...h, n: 1 });
+  }
+  out.length = 0;
+  for (const h of seen.values()) out.push(h.n > 1 ? { ...h, weight: h.weight + 5, body: h.title === 'Old rounds fail their tests' ? `${h.n} lots of old rounds failed their surveillance firings this month and were condemned.` : `${h.body} (${h.n} such reports this month.)` } : h);
 
   if (!out.length) out.push({ weight: 1, tone: 'info', title: 'A quiet month at the Board', body: `Readiness stands at ${pct(m.readiness)}. The arsenals worked, the trains ran, and nothing exploded.` });
   return out
