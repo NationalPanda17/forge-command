@@ -4,6 +4,8 @@ import type { Policy, RunLevel, SimState } from './types';
 import { MATERIALS, RECIPES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 import { RESEARCH, hasResearch, resolveDecision, startResearch, type ResearchId, type StaffRole } from './strategy';
 import { feed } from './tick';
+import { CONTRACT_DISCOUNT, TENDER_COST, bidders, makeTender, priceNow } from './economy';
+export { CONTRACT_DISCOUNT };
 
 export type SimAction =
   | { type: 'setRun'; site: string; process: number; run: RunLevel }
@@ -19,9 +21,11 @@ export type SimAction =
   | { type: 'research'; research: ResearchId }
   | { type: 'hireStaff'; candidate: number }
   | { type: 'fireStaff'; role: StaffRole }
-  | { type: 'decide'; decision: number; option: string };
+  | { type: 'decide'; decision: number; option: string }
+  | { type: 'openTender'; material: MaterialId; perDay: number; months: 12 | 24 | 36 }
+  | { type: 'awardTender'; tender: number; site: string }
+  | { type: 'tutorial'; step: number };
 
-export const CONTRACT_DISCOUNT = { 12: 0.9, 24: 0.85, 36: 0.8 } as const;
 const HIRE_COST = 0.015;
 export const TRAINING_DAYS = 90;
 
@@ -30,10 +34,10 @@ export function expandCost(s: SimState, site: string, process: number): number {
   const p = s.sites[site].processes[process];
   const out = RECIPES[p.recipe].output;
   const yearly = (p.capacity / (1 + 0.25 * p.expansions)) * MATERIALS[out].price * 360;
-  return Math.max(8, Math.round(yearly * 0.12));
+  return Math.max(8, Math.round(yearly * 0.12 * s.priceIndex));
 }
 export const investCost = (s: SimState, site: string, process: number) => Math.round(expandCost(s, site, process) * 1.4);
-export const repairCost = (s: SimState, site: string) => Math.max(2, Math.round((100 - s.sites[site].condition) * SITE_BY_ID[site].crew * 0.0004));
+export const repairCost = (s: SimState, site: string) => Math.max(2, Math.round((100 - s.sites[site].condition) * SITE_BY_ID[site].crew * 0.0004 * s.priceIndex));
 export const qualifyCost = (site: string) => Math.round(15 + SITE_BY_ID[site].crew * 0.08);
 export const QUALIFY_DAYS = 240;
 export const refurbishCost = (line: LineId, qty: number) => qty * MATERIALS[line].price * 0.35;
@@ -57,7 +61,7 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'hire':
       if (def!.owner !== 'state') return 'Only your own sites hire directly.';
       if (!(a.count > 0)) return 'Hire at least one person.';
-      return funds(s, a.count * HIRE_COST);
+      return funds(s, a.count * HIRE_COST * s.priceIndex);
     case 'repair':
       if (def!.owner !== 'state') return 'Only your own sites.';
       if (site!.condition >= 95) return 'Already in good repair.';
@@ -105,6 +109,20 @@ export function validate(s: SimState, a: SimAction): string | null {
       return s.strategy.staff[a.role] ? null : 'Nobody holds that post.';
     case 'decide':
       return s.strategy.decisions.some((d) => d.id === a.decision) ? null : 'That decision is gone.';
+    case 'openTender':
+      if (!(a.perDay > 0)) return 'Quantity must be above zero.';
+      if (!bidders(s, a.material).length) return 'No qualified supplier makes that. Qualify one first.';
+      if (s.tenders.some((t) => t.material === a.material)) return 'A tender for that is already open.';
+      return funds(s, TENDER_COST);
+    case 'awardTender': {
+      const t = s.tenders.find((x) => x.id === a.tender);
+      if (!t) return 'That tender has closed.';
+      const b = t.bids.find((x) => x.site === a.site);
+      if (!b) return 'No such bid.';
+      return b.perDay > 0 ? null : 'That supplier has no capacity to offer.';
+    }
+    case 'tutorial':
+      return s.tutorial ? null : 'Not in the tutorial.';
   }
 }
 
@@ -136,7 +154,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     }
     case 'hire':
-      charge(s, a.count * HIRE_COST);
+      charge(s, a.count * HIRE_COST * s.priceIndex);
       s.sites[a.site].trainees.push({ count: Math.floor(a.count), days: TRAINING_DAYS });
       break;
     case 'repair':
@@ -149,7 +167,7 @@ export function apply(state: SimState, a: SimAction): SimState {
         site: a.site,
         material: a.material,
         perDay: a.perDay,
-        price: MATERIALS[a.material].price * CONTRACT_DISCOUNT[a.months],
+        price: priceNow(s, a.material) * CONTRACT_DISCOUNT[a.months],
         endDay: s.day + a.months * DAYS_PER_MONTH,
       });
       break;
@@ -192,6 +210,23 @@ export function apply(state: SimState, a: SimAction): SimState {
     }
     case 'decide':
       resolveDecision(s, a.decision, a.option, feed);
+      break;
+    case 'openTender':
+      charge(s, TENDER_COST);
+      s.tenders.push(makeTender(s, a.material, a.perDay, a.months));
+      feed(s, 'info', `Tender opened for ${a.perDay} ${MATERIALS[a.material].name} a day over ${a.months} months.`);
+      break;
+    case 'awardTender': {
+      const t = s.tenders.find((x) => x.id === a.tender)!;
+      const b = t.bids.find((x) => x.site === a.site)!;
+      s.contracts.push({ id: s.nextId++, site: b.site, material: t.material, perDay: b.perDay, price: b.price, endDay: s.day + t.months * DAYS_PER_MONTH });
+      s.tenders = s.tenders.filter((x) => x.id !== t.id);
+      s.sites[b.site].health = Math.min(100, s.sites[b.site].health + 6);
+      feed(s, 'good', `Contract awarded to ${SITE_BY_ID[b.site].name}: ${b.perDay} ${MATERIALS[t.material].name} a day at $${b.price.toFixed(3)}M.`, b.site);
+      break;
+    }
+    case 'tutorial':
+      s.tutorial = { step: a.step };
       break;
     case 'setPolicy':
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };

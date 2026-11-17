@@ -4,6 +4,8 @@ import { pathBetween } from './graph';
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import {
   DAYS_PER_MONTH,
+  nationalStock,
+  reserveTarget,
   baseDailyDraw,
   crewNeed,
   inbound,
@@ -17,12 +19,14 @@ import {
   regionDailyDraw,
 } from './selectors';
 import { emptyMonth } from './setup';
+import { economyMonth, priceNow } from './economy';
+import { legCapFactor, livingDay, livingMonth, plantSeasonFactor } from './living';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
-const WAGE_PER_DAY = 0.0095 / DAYS_PER_MONTH;
+const WAGE_PER_DAY = 0.0095 / 30;
 const SPOT_PREMIUM = 1.3;
 const STATE_BUFFER_DAYS = 12;
 const PRIVATE_BUFFER_DAYS = 8;
@@ -96,7 +100,7 @@ function produce(s: SimState): void {
         p.lastLimit = 'idle';
         continue;
       }
-      let want = processRate(s, site, p);
+      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe);
       let limit: typeof p.lastLimit = site.status !== 'active' ? 'damaged' : 'capacity';
       if (def.owner === 'state' && crewNeed(site) > site.workers * 1.02) limit = 'crew';
       // Private producers stop when nobody is buying.
@@ -226,7 +230,11 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
   // Route capacity left today.
   let room = Infinity;
   const capMult = 1 + 0.08 * skillOf(s, 'logistics');
-  for (const leg of path.legs) room = Math.min(room, (leg.cap * capMult - (s.routeLoad[leg.key] ?? 0)) / Math.max(1e-9, w));
+  let prev = from;
+  for (const leg of path.legs) {
+    room = Math.min(room, (leg.cap * capMult * legCapFactor(s, prev, leg.to, leg.mode) - (s.routeLoad[leg.key] ?? 0)) / Math.max(1e-9, w));
+    prev = leg.to;
+  }
   qty = Math.min(qty, Math.max(0, room));
   if (!isLine(m)) qty = Math.floor(qty * 1000) / 1000;
   else qty = Math.floor(qty);
@@ -251,12 +259,12 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
   });
   const toState = SITE_BY_ID[to].owner === 'state';
   if (toState) {
-    const freight = qty * w * path.costPerT * (1 - 0.1 * skillOf(s, 'logistics'));
+    const freight = qty * w * path.costPerT * s.priceIndex * (1 - 0.1 * skillOf(s, 'logistics'));
     s.month.spend.transport += freight;
     s.treasury -= freight;
     if (SITE_BY_ID[from].owner !== 'state') {
       const k = s.contracts.find((c) => c.site === from && c.material === m && c.endDay > s.day);
-      const price = (k ? k.price : MATERIALS[m].price * SPOT_PREMIUM) * (1 - 0.04 * skillOf(s, 'procurement'));
+      const price = (k ? k.price : priceNow(s, m) * SPOT_PREMIUM) * (1 - 0.04 * skillOf(s, 'procurement'));
       s.treasury -= qty * price;
       s.month.spend.purchases += qty * price;
     }
@@ -482,7 +490,7 @@ function lifecycle(s: SimState): void {
 function world(s: SimState): void {
   // Crises.
   if (!s.crisis) {
-    if (s.day > 90 && rand(s) < (0.08 * DIFF[s.difficulty].crisis) / DAYS_PER_MONTH) {
+    if (s.day > (s.scenario === 'tutorial' ? 420 : 90) && rand(s) < (0.08 * DIFF[s.difficulty].crisis) / DAYS_PER_MONTH) {
       const c = pick(s, CRISES);
       s.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'warning', days: 60, intensity: Math.round(randRange(s, 0.8, 1.3) * 100) / 100, mix: { ...c.mix } };
       feed(s, 'warn', `Intel: tension rising over the ${c.name} (${REGIONS[c.region].name}). Expect heavy fighting there in about two months. Stock the depot now.`, REGIONS[c.region].depot, true);
@@ -496,6 +504,7 @@ function world(s: SimState): void {
         feed(s, 'bad', `Crisis: the ${s.crisis.name} has begun.`, REGIONS[s.crisis.region].depot, true);
       } else {
         feed(s, 'good', `The ${s.crisis.name} has wound down.`);
+        s.supplemented = s.supplemented.filter((x) => x !== s.crisis!.id);
         s.crisis = null;
       }
     }
@@ -562,6 +571,7 @@ function payDaily(s: SimState): void {
     ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
     ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? 0.3 : p.run === 'surge' ? 1.35 : 1), 0);
   }
+  ops *= s.priceIndex;
   s.treasury -= ops;
   s.month.spend.operations += ops;
 }
@@ -570,6 +580,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   const ready = readiness(s);
   expireDecisions(s, feed);
   strategyMonth(s, feed, { readiness: ready, excessLeaks: Math.max(0, fightTotals.leakSeverity - 2.5), burned: s.policy.demilMethod === 'burn' ? s.month.demilled : 0 });
+  economyMonth(s, feed);
+  livingMonth(s, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
   const expect = { easy: 0.62, normal: 0.7, hard: 0.76 }[s.difficulty];
   let dc = (ready - expect) * 8;
@@ -581,6 +593,14 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   s.month.readiness = Math.round(ready * 100) / 100;
   s.month.confidence = Math.round(s.confidence * 10) / 10;
   s.month.treasury = Math.round(s.treasury * 100) / 100;
+  s.month.priceIndex = s.priceIndex;
+  s.month.stock = {};
+  s.month.target = {};
+  for (const l of Object.keys(s.lines) as LineId[]) {
+    if (!s.lines[l].unlocked) continue;
+    s.month.stock[l] = Math.round(nationalStock(s, l));
+    s.month.target[l] = Math.round(reserveTarget(s, l));
+  }
   s.history.push(s.month);
   s.month = emptyMonth(s.history.length);
   s.treasury += s.appropriation;
@@ -601,6 +621,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   s.routeLoad = {};
   world(s);
   strategyDay(s, feed);
+  livingDay(s, feed);
   produce(s);
   logistics(s);
   const f = fight(s);

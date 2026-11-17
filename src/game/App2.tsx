@@ -1,6 +1,6 @@
 // Forge Command 2.0: title screen and game.
 import { useRef, useState } from 'react';
-import { newSim } from '../sim/setup';
+import { migrate, newSim } from '../sim/setup';
 import { openCampaign } from '../sim/tick';
 import type { Difficulty, SimState } from '../sim/types';
 import { seedFrom } from '../sim/rng';
@@ -103,7 +103,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               if (!f) return;
               try {
                 const s = JSON.parse(await f.text()) as SimState;
-                if (s?.version === 1 && s.sites && s.strategy) onStart(s);
+                if (s?.version === 1 && s.sites && s.strategy) onStart(migrate(s));
                 else setErr('That file is not a Forge Command 2.0 save.');
               } catch {
                 setErr('That file could not be read.');

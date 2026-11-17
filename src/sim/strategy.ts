@@ -1,6 +1,6 @@
 // The strategic layer on top of the network: research, key staff, Committee factions, decisions and objectives.
 import { clamp, pick, rand } from './rng';
-import type { FeedItem, SimState } from './types';
+import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
 import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
@@ -145,13 +145,14 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection';
   title: string;
   body: string;
   options: DecisionOption[];
   fallback: string;
   site?: string;
   value?: number;
+  data?: { line?: LineId; material?: MaterialId; qty?: number; price?: number; ally?: AllyId; customer?: string; chain?: number; contract?: number; months?: number };
 }
 
 // ---------- Objectives ----------
@@ -251,7 +252,8 @@ export function strategyMonth(s: SimState, feed: Feed, input: { readiness: numbe
 
   // Fiscal year: a budget review and a budget request.
   if ((s.history.length + 1) % 12 === 0) {
-    const next = Math.round(s.strategy.baseBudget * (0.85 + s.confidence / 333));
+    // Budgets keep up with most, but not all, of inflation.
+    const next = Math.round(s.strategy.baseBudget * (1 + (s.priceIndex - 1) * 0.7) * (0.85 + s.confidence / 333));
     feed(s, next >= s.appropriation ? 'good' : 'bad', `Fiscal-year review: the Committee sets your budget at $${next}M a month.`, undefined, true);
     s.appropriation = next;
     s.strategy.decisions.push({
@@ -269,11 +271,19 @@ export function strategyMonth(s: SimState, feed: Feed, input: { readiness: numbe
   }
 }
 
+/** Other modules handle their own decision cards; they register here to avoid import cycles. */
+export type Resolver = (s: SimState, d: Decision, opt: string, feed: Feed) => boolean;
+const RESOLVERS: Resolver[] = [];
+export const registerResolver = (r: Resolver) => {
+  if (!RESOLVERS.includes(r)) RESOLVERS.push(r);
+};
+
 export function resolveDecision(s: SimState, id: number, option: string, feed: Feed): void {
   const d = s.strategy.decisions.find((x) => x.id === id);
   if (!d) return;
   s.strategy.decisions = s.strategy.decisions.filter((x) => x.id !== id);
   const opt = d.options.some((o) => o.id === option) ? option : d.fallback;
+  for (const r of RESOLVERS) if (r(s, d, opt, feed)) return;
   if (d.kind === 'bailout' && d.site) {
     const site = s.sites[d.site];
     if (opt === 'bail') {

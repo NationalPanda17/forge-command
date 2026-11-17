@@ -2,6 +2,7 @@
 //   npm run balance
 import { apply, validate, type SimAction } from '../src/sim/actions';
 import { nationalStock, readiness, reserveTarget } from '../src/sim/selectors';
+import { monthsTo } from '../src/sim/analytics';
 import { newSim } from '../src/sim/setup';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import { advanceDays, openCampaign } from '../src/sim/tick';
@@ -11,7 +12,31 @@ import { FINISHED, RECIPES, SITES, type LineId } from '../src/sim/world';
 /** A competent but simple director: staff up, research, second sources, recycle, refurbish, chase crises, expand. */
 function active(s: SimState): SimAction[] {
   const acts: SimAction[] = [];
-  for (const d of s.strategy.decisions) acts.push({ type: 'decide', decision: d.id, option: d.kind === 'bailout' && s.treasury > 300 ? 'bail' : d.fallback });
+  const ready = readiness(s);
+  const rich = s.treasury > 400;
+  const choose: Record<string, string> = {
+    bailout: rich ? 'bail' : 'let',
+    budget: 'push',
+    reprice: 'accept',
+    supplement: 'ask',
+    allyRequest: ready > 0.85 ? 'send' : 'decline',
+    allyOffer: ready < 0.7 && s.treasury > 600 ? 'buy' : 'pass',
+    export: ready > 0.9 ? 'accept' : 'decline',
+    labour: rich ? 'pay' : 'talk',
+    recall: rich ? 'recall' : 'accept',
+    inspection: rich ? 'fund' : 'leave',
+  };
+  for (const d of s.strategy.decisions) acts.push({ type: 'decide', decision: d.id, option: choose[d.kind] ?? d.fallback });
+  // Re-tender contracts before they lapse, and award the cheapest dependable bid.
+  for (const c of s.contracts) {
+    if (c.endDay - s.day > 45 || s.tenders.some((t) => t.material === c.material)) continue;
+    if (s.contracts.some((k) => k !== c && k.material === c.material && k.endDay - s.day > 45)) continue;
+    acts.push({ type: 'openTender', material: c.material, perDay: c.perDay, months: 24 });
+  }
+  for (const t of s.tenders) {
+    const best = t.bids.filter((b) => b.perDay > 0 && b.reliability >= 0.5).sort((a, b) => a.price - b.price)[0];
+    if (best) acts.push({ type: 'awardTender', tender: t.id, site: best.site });
+  }
   for (const role of STAFF_ROLE_IDS) {
     if (s.strategy.staff[role]) continue;
     const best = s.strategy.candidates.filter((c) => c.role === role).sort((a, b) => b.skill - a.skill)[0];
@@ -32,7 +57,14 @@ function active(s: SimState): SimAction[] {
     site.processes.forEach((p, i) => {
       const line = RECIPES[p.recipe].output as LineId;
       if (!FINISHED.includes(line)) return;
-      if (nationalStock(s, line) < reserveTarget(s, line) * 0.7 && s.treasury > 600) acts.push({ type: 'expand', site: def.id, process: i });
+      // Throttle lines far above target so they stop eating shared parts; restart them when they come back down.
+      const level = nationalStock(s, line) / Math.max(1, reserveTarget(s, line));
+      if (level > 2 && p.run !== 'idle') acts.push({ type: 'setRun', site: def.id, process: i, run: 'idle' });
+      else if (level < 1.3 && p.run === 'idle' && s.lines[line].unlocked) acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' });
+      if (level > 1.2) return;
+      // Expand on the forecast, before the shortage arrives.
+      const soon = monthsTo(s, line, 0.85, 12) !== null || nationalStock(s, line) < reserveTarget(s, line) * 0.8;
+      if (soon && s.treasury > 500) acts.push({ type: 'expand', site: def.id, process: i });
     });
     if (site.workers < (def.crew + site.extraCrew) * 1.1) acts.push({ type: 'hire', site: def.id, count: 60 });
   }
@@ -44,7 +76,11 @@ for (const mode of ['hands-off', 'active'] as const) {
     for (const seed of [1, 2, 3]) {
       let s = openCampaign(newSim({ seed, difficulty, months: 48 }));
       while (!s.over) {
-        if (mode === 'active') for (const a of active(s)) s = apply(s, a);
+        if (mode === 'active') {
+          for (const a of active(s)) s = apply(s, a);
+          // Tenders open this pass are awarded straight away.
+          for (const a of active(s).filter((x) => x.type === 'awardTender')) s = apply(s, a);
+        }
         s = advanceDays(s, 30);
       }
       const leaks = s.history.reduce((a, h) => a + Object.values(h.leaked).reduce((x, y) => x + y, 0), 0);
