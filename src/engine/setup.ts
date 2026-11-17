@@ -67,7 +67,7 @@ export const emptyLedger = (): Ledger => ({
 
 /** Components the original floors need per month at a normal pace. */
 export function baselineNeed(c: ComponentId): number {
-  return LINE_IDS.reduce((sum, id) => sum + LINES[id].baseCapacity * (LINES[id].bom[c] ?? 0), 0);
+  return LINE_IDS.reduce((sum, id) => sum + (LINES[id].research ? 0 : LINES[id].baseCapacity * (LINES[id].bom[c] ?? 0)), 0);
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -93,12 +93,12 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     const def = LINES[id];
     lines[id] = {
       id,
-      tranches: [{ capacity: def.baseCapacity, maturity: 1, base: true, faiMonths: 0 }],
+      tranches: def.research ? [] : [{ capacity: def.baseCapacity, maturity: 1, base: true, faiMonths: 0 }],
       run: 'normal',
       priority: 'normal',
       wear: 10,
       partial: 0,
-      experience: def.baseCapacity * 12,
+      experience: def.research ? 0 : def.baseCapacity * 12,
       upgrades: { automation: 0, quality: 0 },
       installing: null,
       quarantine: [],
@@ -120,7 +120,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 4,
+    version: 5,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
@@ -137,6 +137,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     reserves,
     tier2: Object.fromEntries(TIER2_IDS.map((t) => [t, { id: t, availability: 1, priceIndex: 1, disruptionMonths: 0 }])) as Record<Tier2Id, Tier2State>,
     shipments: [],
+    research: { done: [], active: null },
     facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
@@ -178,7 +179,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     const def = CAMPUSES[c];
     campuses[c] = {
       id: c,
-      bays: linesAt(c).length * BASE_BAYS_PER_LINE + def.spareBays,
+      bays: linesAt(c).filter((id) => !LINES[id].research).length * BASE_BAYS_PER_LINE + def.spareBays,
       construction: [],
       retooling: [],
       workers: 0,

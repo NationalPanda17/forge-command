@@ -6,6 +6,9 @@ import {
   MAX_UPGRADE,
   UPGRADE,
   buildCost,
+  establishCost,
+  RESEARCH,
+  BASE_BAYS_PER_LINE,
   campusTestHours,
   testCellCost,
   TEST_CELLS,
@@ -225,6 +228,28 @@ function LineCard({ state, id, act }: { state: GameState; id: LineId; act: (a: A
   );
 }
 
+function NewLineCard({ state, id, act }: { state: GameState; id: LineId; act: (a: Action) => void }) {
+  const def = LINES[id];
+  const researched = !def.research || state.research.done.includes(def.research);
+  const setUp: Action = { type: 'establishLine', line: id };
+  return (
+    <article className="rounded border border-dashed border-ops-line/70 p-3 text-[11px]">
+      <h3 className="font-sans text-[16px] font-semibold text-ops-dim">{def.name}</h3>
+      <div className="text-[10px] text-ops-dim">
+        {def.maker} · {def.role} · ref. {def.publicRate}
+      </div>
+      <p className="mt-1 text-ops-text">{def.blurb}</p>
+      {researched ? (
+        <Btn className="mt-2" kind="primary" why={validateAction(state, setUp)} title={`Uses ${BASE_BAYS_PER_LINE} bays. The first units are inspected, then output ramps up from about 30%. Hire crew for it.`} onClick={() => act(setUp)}>
+          Set up the line · {money(establishCost(id))}
+        </Btn>
+      ) : (
+        <p className="mt-2 text-ops-amber">Needs research: {RESEARCH[def.research!].name} (Research tab).</p>
+      )}
+    </article>
+  );
+}
+
 function CampusSection({ state, campus, act }: { state: GameState; campus: CampusId; act: (a: Action) => void }) {
   const def = CAMPUSES[campus];
   const cs = state.campuses[campus];
@@ -273,9 +298,9 @@ function CampusSection({ state, campus, act }: { state: GameState; campus: Campu
         </span>
       </div>
       <div className="grid gap-3 p-3 2xl:grid-cols-2">
-        {linesAt(campus).map((id) => (
-          <LineCard key={id} state={state} id={id} act={act} />
-        ))}
+        {linesAt(campus).map((id) =>
+          state.lines[id].tranches.length > 0 ? <LineCard key={id} state={state} id={id} act={act} /> : <NewLineCard key={id} state={state} id={id} act={act} />,
+        )}
       </div>
     </Panel>
   );

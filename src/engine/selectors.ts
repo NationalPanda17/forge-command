@@ -25,7 +25,7 @@ import {
   linesAt,
   suppliersOf,
 } from './data';
-import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ReserveState, Tranche } from './types';
+import type { CampusId, ComponentId, ComponentState, GameState, LineId, LineState, ResearchId, ReserveState, ThreatId, Tranche } from './types';
 
 /** New capacity: first-article inspection first, then ramp-up from about 30%. */
 export const newTranche = (state: GameState, capacity: number): Tranche => ({
@@ -34,6 +34,35 @@ export const newTranche = (state: GameState, capacity: number): Tranche => ({
   base: false,
   faiMonths: FAI_MONTHS[state.difficulty],
 });
+
+// ---------- Research and established lines ----------
+
+export const hasResearch = (state: GameState, r: ResearchId) => state.research.done.includes(r);
+/** A line exists once its floor has been set up (base lines exist from the start). */
+export const isEstablished = (state: GameState, id: LineId) => state.lines[id].tranches.length > 0;
+export const activeLines = (state: GameState) => LINE_IDS.filter((id) => isEstablished(state, id));
+
+/** Parts per round after research. */
+export function bomOf(state: GameState, id: LineId): Partial<Record<ComponentId, number>> {
+  const out: Partial<Record<ComponentId, number>> = { ...LINES[id].bom };
+  const scale = (c: ComponentId, m: number) => {
+    if (out[c] !== undefined) out[c] = out[c]! * m;
+  };
+  if (hasResearch(state, 'galliumLight')) scale('criticalMaterials', 0.6);
+  if (hasResearch(state, 'commonMotors')) scale('srm', 0.85);
+  if (hasResearch(state, 'imFill')) scale('energetics', 0.9);
+  if (hasResearch(state, 'seekerDTC')) {
+    scale('rfSeeker', 0.8);
+    scale('irSeeker', 0.8);
+  }
+  return out;
+}
+export const testHoursMult = (state: GameState) => (hasResearch(state, 'digitalTest') ? 0.7 : 1);
+export const maxUpgrade = (state: GameState, kind: 'automation' | 'quality') => (kind === 'automation' && hasResearch(state, 'lightsOut') ? 3 : 2);
+/** Share of a threat class that reaches the interceptors after passive defenses. */
+export const passiveFilter = (state: GameState, t: ThreatId) => (t === 'drone' && hasResearch(state, 'hpm') ? 0.8 : 1);
+/** Demand multiplier on a land line's fire missions. */
+export const landEfficiency = (state: GameState, id: LineId) => (id === 'shell155' && hasResearch(state, 'smartFuzes') ? 0.85 : 1);
 
 export const installedCapacity = (line: LineState) => line.tranches.reduce((s, t) => s + t.capacity, 0);
 export const expansions = (line: LineState) => line.tranches.filter((t) => !t.base).length;
@@ -50,7 +79,7 @@ export function productivity(line: LineState): number {
 }
 
 export function usedBays(state: GameState, campus: CampusId): number {
-  const lines = linesAt(campus).reduce((s, id) => s + BASE_BAYS_PER_LINE + expansions(state.lines[id]), 0);
+  const lines = linesAt(campus).reduce((s, id) => s + (state.lines[id].tranches.length > 0 ? BASE_BAYS_PER_LINE : 0) + expansions(state.lines[id]), 0);
   return lines + state.campuses[campus].retooling.length;
 }
 export const freeBays = (state: GameState, campus: CampusId) => state.campuses[campus].bays - usedBays(state, campus);
@@ -96,7 +125,7 @@ export function plannedOutput(state: GameState, id: LineId): number {
 }
 
 export function plannedNeed(state: GameState, c: ComponentId): number {
-  return LINE_IDS.reduce((s, id) => s + plannedOutput(state, id) * (LINES[id].bom[c] ?? 0), 0);
+  return LINE_IDS.reduce((s, id) => s + plannedOutput(state, id) * (bomOf(state, id)[c] ?? 0), 0);
 }
 
 /** What one supplier can ship this month. */
@@ -124,11 +153,14 @@ export const backlogOf = (cs: ComponentState) => cs.contracts.reduce((s, k) => s
 export function calmDraw(state: GameState, id: LineId): number {
   const pressure = SCENARIOS[state.scenario].pressure;
   const def = LINES[id];
-  if (def.family === 'land') return (def.landDraw ?? 0) * pressure;
+  if (!isEstablished(state, id)) return 0;
+  if (def.family === 'land') return (def.landDraw ?? 0) * pressure * landEfficiency(state, id);
   let shots = 0;
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
-    for (const a of th.assign) if (a.line === id) shots += th.calm * th.shots * a.weight;
+    const live = th.assign.filter((a) => a.weight > 0 && isEstablished(state, a.line));
+    const wsum = live.reduce((s, a) => s + a.weight, 0);
+    for (const a of live) if (a.line === id) shots += th.calm * passiveFilter(state, t) * th.shots * (a.weight / wsum);
   }
   return shots * pressure;
 }
@@ -138,7 +170,7 @@ export const reserveTarget = (state: GameState, id: LineId) => calmDraw(state, i
 export const reserveTotal = (r: ReserveState) => r.stock + r.degraded;
 
 export function readiness(state: GameState): number {
-  const parts = LINE_IDS.map((id) => Math.min(1, reserveTotal(state.reserves[id]) / reserveTarget(state, id)));
+  const parts = activeLines(state).map((id) => Math.min(1, reserveTotal(state.reserves[id]) / Math.max(1, reserveTarget(state, id))));
   return parts.reduce((a, b) => a + b, 0) / parts.length;
 }
 

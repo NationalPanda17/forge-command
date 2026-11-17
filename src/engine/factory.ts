@@ -19,7 +19,7 @@ import {
 } from './data';
 import { deliverToPartners } from './partners';
 import { clamp, rand, randRange } from './rng';
-import { campusCrewNeed, effectiveCapacity, productivity, staffing, strikeFactor } from './selectors';
+import { bomOf, campusCrewNeed, effectiveCapacity, hasResearch, productivity, staffing, strikeFactor, testHoursMult } from './selectors';
 import type { ComponentId, FacilityId, FacilityState, GameState, LineId, MonthReport, Priority, StageLast } from './types';
 
 type Messages = MonthReport['messages'];
@@ -33,7 +33,7 @@ const learnFrac = (s: GameState, id: LineId) => (productivity(s.lines[id]) - 1) 
 /** Stage yield after learning: experience removes up to 40% of the scrap. */
 export function stageYield(s: GameState, id: LineId, i: number): number {
   const y = STAGES[id][i].yield;
-  return 1 - (1 - y) * (1 - 0.4 * learnFrac(s, id));
+  return 1 - (1 - y) * (1 - 0.4 * learnFrac(s, id)) * (hasResearch(s, 'yieldAnalytics') ? 0.7 : 1);
 }
 
 /** Units each stage can process this month, before parts, buffers and test cells. */
@@ -41,7 +41,8 @@ export function stageCaps(s: GameState, id: LineId): number[] {
   const line = s.lines[id];
   const campus = LINES[id].campus;
   const base = effectiveCapacity(line) * RUN_FACTOR[line.run] * staffing(s, campus) * strikeFactor(s, campus);
-  return STAGES[id].map((st, i) => base * st.mult * (1 + DEBOTTLENECK_STEP * (line.debottleneck[i] ?? 0)));
+  const lean = hasResearch(s, 'leanAssembly') ? 1.15 : 1;
+  return STAGES[id].map((st, i) => base * st.mult * (st.id === 'assembly' ? lean : 1) * (1 + DEBOTTLENECK_STEP * (line.debottleneck[i] ?? 0)));
 }
 
 /** Units each buffer can hold. */
@@ -52,7 +53,7 @@ export function testHoursNeed(s: GameState, id: LineId): number {
   const stages = STAGES[id];
   const last = stages[stages.length - 1];
   const caps = stageCaps(s, id);
-  return (last.testHours ?? 0) * Math.min(caps[caps.length - 2] ?? caps[0], caps[caps.length - 1]);
+  return (last.testHours ?? 0) * testHoursMult(s) * Math.min(caps[caps.length - 2] ?? caps[0], caps[caps.length - 1]);
 }
 
 export const campusTestHours = (s: GameState, campus: (typeof CAMPUS_IDS)[number]) => s.campuses[campus].testCells * TEST_CELL_HOURS;
@@ -144,7 +145,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
   }
 
   for (const prio of PRIORITY_ORDER) {
-    const ids = LINE_IDS.filter((id) => s.lines[id].priority === prio && s.lines[id].run !== 'idle');
+    const ids = LINE_IDS.filter((id) => s.lines[id].priority === prio && s.lines[id].run !== 'idle' && s.lines[id].tranches.length > 0);
 
     // Plan pass: how much each stage would process, to size this group's parts demand.
     const caps = {} as Record<LineId, number[]>;
@@ -161,7 +162,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
       let need = 0;
       for (const id of ids) {
         STAGES[id].forEach((st, i) => {
-          if (st.comps.includes(c)) need += planned[id][i] * (LINES[id].bom[c] ?? 0);
+          if (st.comps.includes(c)) need += planned[id][i] * (bomOf(s, id)[c] ?? 0);
         });
       }
       const cs = s.components[c];
@@ -176,8 +177,9 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
 
     for (const id of ids) {
       const line = s.lines[id];
-      const def = LINES[id];
+      const def = { ...LINES[id], bom: bomOf(s, id) };
       const stages = STAGES[id];
+      const testMult = testHoursMult(s);
       const campus = def.campus;
       const bufMax = bufferMax(s, id);
       const stageLast: StageLast[] = [];
@@ -204,8 +206,8 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
           }
         }
         if (st.testHours) {
-          const canTest = hoursLeft[campus] / st.testHours;
-          s.campuses[campus].lastTestHours.need += lim * st.testHours;
+          const canTest = hoursLeft[campus] / (st.testHours * testMult);
+          s.campuses[campus].lastTestHours.need += lim * st.testHours * testMult;
           if (canTest < lim) {
             lim = canTest;
             why = 'tests';
@@ -248,7 +250,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
             if (frac > 0) degradedFrac = Math.max(degradedFrac, subFrac / frac);
           }
         }
-        if (st.testHours) hoursLeft[campus] = Math.max(0, hoursLeft[campus] - through * st.testHours);
+        if (st.testHours) hoursLeft[campus] = Math.max(0, hoursLeft[campus] - through * st.testHours * testMult);
         if (i > 0) line.wip[i - 1] = Math.max(0, line.wip[i - 1] - through);
         const passed = through * stageYield(s, id, i);
         if (i < stages.length - 1) line.wip[i] += passed;
@@ -320,7 +322,7 @@ export function runFactory(s: GameState, messages: Messages): FactoryResult {
 
   for (const id of LINE_IDS) {
     const line = s.lines[id];
-    if (line.run === 'idle') {
+    if (line.run === 'idle' || line.tranches.length === 0) {
       line.last = { output: 0, degraded: 0, quarantined: 0, tested: 0, toPartners: 0, toReserve: 0, staffing: staffed[LINES[id].campus], limit: 'idle', usedSubstitutes: [] };
       line.stages = STAGES[id].map(() => ({ cap: 0, throughput: 0, scrap: 0, limit: null }));
     }

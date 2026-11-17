@@ -9,6 +9,7 @@ import {
   LINE_IDS,
   SCENARIOS,
   STAGES,
+  RESEARCH,
   UPGRADE,
   WEAR_DELTA,
   linesAt,
@@ -60,6 +61,15 @@ function endCrisisMonth(s: GameState, messages: Messages): void {
 
 /** Projects finish: buildings, retooled bays, upgrades, trainees, qualifications. */
 function advanceProjects(s: GameState, messages: Messages): void {
+  const r = s.research.active;
+  if (r) {
+    r.monthsLeft--;
+    if (r.monthsLeft <= 0) {
+      s.research.done.push(r.id);
+      s.research.active = null;
+      messages.push({ tone: 'good', text: `Research complete: ${RESEARCH[r.id].name}. ${RESEARCH[r.id].effect}` });
+    }
+  }
   for (const c of CAMPUS_IDS) {
     const cs = s.campuses[c];
     for (const b of cs.construction) b.monthsLeft--;
@@ -101,6 +111,7 @@ function advanceProjects(s: GameState, messages: Messages): void {
         line.installing = null;
       }
     }
+    if (line.debottlenecking && line.tranches.length === 0) line.debottlenecking = null;
     if (line.debottlenecking) {
       line.debottlenecking.monthsLeft--;
       if (line.debottlenecking.monthsLeft <= 0) {

@@ -1,7 +1,7 @@
 import {
   DIFFICULTY,
   LINES,
-  LINE_IDS,
+  activeLines,
   THREATS,
   THREAT_IDS,
   advise,
@@ -147,7 +147,7 @@ export default function Overview({ state, act }: { state: GameState; act: (a: Ac
 
         <Panel title="National reserve" right="goal: 6 months of calm draw">
           <ul className="divide-y divide-ops-line/50">
-            {LINE_IDS.map((id) => {
+            {activeLines(state).map((id) => {
               const r = state.reserves[id];
               const total = reserveTotal(r);
               const target = reserveTarget(state, id);

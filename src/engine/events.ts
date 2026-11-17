@@ -17,6 +17,7 @@ import {
 } from './data';
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import { freeBays, newTranche, reserveTarget, reserveTotal } from './selectors';
+import { wantsOf } from './partners';
 import type { CampusId, Decision, GameState, LineId, MonthReport, PartnerId } from './types';
 
 type Messages = MonthReport['messages'];
@@ -151,7 +152,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   // A partner wants to buy from the reserve in calm times.
   if (!state.crisis && !hasDecision(state, 'armsSale') && chance(0.03)) {
     const p = pick(state, PARTNER_IDS);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     const stock = reserveTotal(state.reserves[line]);
     if (stock > reserveTarget(state, line) * 0.8) {
       const qty = Math.max(1, Math.round(stock * randRange(state, 0.1, 0.2)));
@@ -230,7 +231,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   // Co-funded expansion from a friendly partner.
   if (friends.length && !hasDecision(state, 'cofund') && chance(0.025)) {
     const p = pick(state, friends);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     addDecision(state, {
       kind: 'cofund',
       title: `${PARTNERS[p].name} offers to co-fund ${LINES[line].name} capacity`,
@@ -247,7 +248,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   // Emergency airlift during crises.
   if (state.crisis?.phase === 'active' && !hasDecision(state, 'airlift') && chance(0.12)) {
     const p = pick(state, PARTNER_IDS);
-    const line = pick(state, PARTNERS[p].wants);
+    const line = pick(state, wantsOf(state, p).length ? wantsOf(state, p) : PARTNERS[p].wants.slice(0, 1));
     const qty = Math.max(1, Math.round(LINES[line].baseCapacity * randRange(state, 0.3, 0.8)));
     const price = Math.round(LINES[line].unitCost * 1.4 * 10000) / 10000;
     addDecision(state, {

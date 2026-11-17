@@ -1,6 +1,6 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
-import { debottleneckCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, STAGES, SUPPLIERS, suppliersOf } from './data';
+import { debottleneckCost, establishCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -84,7 +84,7 @@ export function advise(state: GameState): Advice[] {
   }
 
   // Reserve versus forecast.
-  for (const id of LINE_IDS) {
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
     const line = state.lines[id];
     const cover = coverMonths(state, id);
     if (cover < 2 && line.run !== 'surge' && line.wear < 55) {
@@ -126,7 +126,7 @@ export function advise(state: GameState): Advice[] {
       });
     }
   }
-  for (const id of LINE_IDS) {
+  for (const id of LINE_IDS.filter((x) => state.lines[x].tranches.length > 0)) {
     const line = state.lines[id];
     if (line.run === 'idle' || line.debottlenecking || coverMonths(state, id) > 4) continue;
     const st = line.stages;
@@ -179,6 +179,20 @@ export function advise(state: GameState): Advice[] {
     }
     if (freeBays(state, c) === 0 && !cs.construction.length) {
       out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${DIFFICULTY[state.difficulty].buildMonths} months.` });
+    }
+  }
+
+  // Research: keep the engineers busy.
+  if (!state.research.active && state.treasury > 250) {
+    const order: (keyof typeof RESEARCH)[] = ['galliumLight', 'apkws', 'digitalTest', 'rapidQual', 'commonMotors', 'yieldAnalytics', 'imFill', 'leanAssembly', 'seekerDTC', 'javelin', 'coyote', 'smartFuzes', 'lightsOut', 'hpm'];
+    const next = order.find((r) => validateAction(state, { type: 'startResearch', research: r }) === null);
+    if (next) {
+      out.push({ id: 'research', tone: 'info', text: `Your engineers are idle. Next up could be ${RESEARCH[next].name}: ${RESEARCH[next].effect}`, action: { type: 'startResearch', research: next }, actionLabel: `Start ($${RESEARCH[next].cost}M)` });
+    }
+  }
+  for (const id of LINE_IDS) {
+    if (state.lines[id].tranches.length === 0 && validateAction(state, { type: 'establishLine', line: id }) === null && state.treasury > establishCost(id) + 200) {
+      out.push({ id: `establish-${id}`, tone: 'suggest', text: `${LINES[id].name} is ready to build. Set up the line at ${CAMPUSES[LINES[id].campus].name}.`, action: { type: 'establishLine', line: id }, actionLabel: `Set up ($${establishCost(id)}M)` });
     }
   }
 

@@ -1,7 +1,7 @@
 // Demand: fictional threats arrive, interceptors are drawn from the reserve by doctrine, land fires by fire missions.
 import { threatPlural, CHEAP_THREATS, DIFFICULTY, LAND_LINES, LINES, LINE_IDS, PREMIUM_LINES, SCENARIOS, THREATS, THREAT_IDS } from './data';
 import { pick, rand, randRange } from './rng';
-import { calmDraw, reserveTotal } from './selectors';
+import { calmDraw, isEstablished, landEfficiency, passiveFilter, reserveTotal } from './selectors';
 import type { Forecast, GameState, LineId, MonthReport, ThreatId, ThreatTally } from './types';
 
 /** Engagement order: the most dangerous threats get first call on interceptors. */
@@ -37,11 +37,10 @@ export function expectedDraw(state: GameState, k: number, focus: ThreatId | null
   const out = emptyByLine();
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
-    const n = th.calm * pressure * threatMultiplier(state, t, active, focus);
-    for (const a of th.assign) {
-      if (a.weight <= 0) continue;
-      out[a.line] += n * th.shots * a.weight;
-    }
+    const n = th.calm * pressure * threatMultiplier(state, t, active, focus) * passiveFilter(state, t);
+    const live = th.assign.filter((a) => a.weight > 0 && isEstablished(state, a.line));
+    const wsum = live.reduce((s, a) => s + a.weight, 0);
+    for (const a of live) out[a.line] += n * th.shots * (a.weight / wsum);
   }
   for (const id of LAND_LINES) out[id] = calmDraw(state, id) * landMultiplier(state, active);
   return out;
@@ -69,7 +68,7 @@ export function adaptOpponent(state: GameState): void {
   let worst: LineId | null = null;
   let worstCover = Infinity;
   for (const id of LINE_IDS) {
-    if (LINES[id].family !== 'air') continue;
+    if (LINES[id].family !== 'air' || !isEstablished(state, id)) continue;
     const cover = reserveTotal(state.reserves[id]) / Math.max(0.1, calmDraw(state, id));
     if (cover < worstCover) {
       worstCover = cover;
@@ -130,8 +129,10 @@ export function resolveDemand(state: GameState): DemandResult {
     const th = THREATS[t];
     const n = sround(state, th.calm * pressure * threatMultiplier(state, t, active, state.opponentFocus) * randRange(state, 0.8, 1.2));
     if (n <= 0) continue;
-    const chain = th.assign.filter((a) => !(state.doctrine.conserve && CHEAP_THREATS.includes(t) && PREMIUM_LINES.includes(a.line)));
-    const shotsNeeded = n * th.shots;
+    // Passive defenses (research) stop some threats before any interceptor fires.
+    const passive = Math.round(n * (1 - passiveFilter(state, t)));
+    const chain = th.assign.filter((a) => isEstablished(state, a.line) && !(state.doctrine.conserve && CHEAP_THREATS.includes(t) && PREMIUM_LINES.includes(a.line)));
+    const shotsNeeded = (n - passive) * th.shots;
     const fired = new Map<LineId, { full: number; degraded: number }>();
     const add = (id: LineId, got: { full: number; degraded: number }) => {
       const prev = fired.get(id) ?? { full: 0, degraded: 0 };
@@ -170,7 +171,8 @@ export function resolveDemand(state: GameState): DemandResult {
       interceptorSpend += shots * LINES[id].unitCost;
       threatValueStopped += s * th.estCost;
     }
-    stopped = Math.min(n, stopped);
+    stopped = Math.min(n, stopped + passive);
+    threatValueStopped += passive * th.estCost;
     const leaked = Math.max(0, n - stopped);
     threats[t] = { arrived: n, stopped, leaked };
     leakSeverity += leaked * th.severity;
@@ -187,7 +189,8 @@ export function resolveDemand(state: GameState): DemandResult {
   // Land fires: fire missions draw on the reserve.
   let landShortfall = 0;
   for (const id of LAND_LINES) {
-    const want = sround(state, (LINES[id].landDraw ?? 0) * pressure * landMultiplier(state, active) * randRange(state, 0.9, 1.1));
+    if (!isEstablished(state, id)) continue;
+    const want = sround(state, (LINES[id].landDraw ?? 0) * pressure * landEfficiency(state, id) * landMultiplier(state, active) * randRange(state, 0.9, 1.1));
     const got = take(state, id, want);
     const shots = got.full + got.degraded;
     const r = state.reserves[id];

@@ -13,16 +13,18 @@ import Ledger from './tabs/Ledger';
 import Overview from './tabs/Overview';
 import Partners from './tabs/Partners';
 import Plants from './tabs/Plants';
+import Research from './tabs/Research';
 import Supply from './tabs/Supply';
 import Workforce from './tabs/Workforce';
 
-export type TabId = 'overview' | 'plants' | 'workforce' | 'supply' | 'partners' | 'intel' | 'ledger' | 'guide';
+export type TabId = 'overview' | 'plants' | 'workforce' | 'supply' | 'research' | 'partners' | 'intel' | 'ledger' | 'guide';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'plants', label: 'Plants' },
   { id: 'workforce', label: 'Workforce' },
   { id: 'supply', label: 'Supply chain' },
+  { id: 'research', label: 'Research' },
   { id: 'partners', label: 'Partners' },
   { id: 'intel', label: 'Intel' },
   { id: 'ledger', label: 'Ledger' },
@@ -185,6 +187,7 @@ export default function App() {
             >
               {t.label}
               {t.id === 'overview' && state.decisions.length > 0 && <span className="ml-1 text-ops-amber">●</span>}
+              {t.id === 'research' && !state.research.active && <span className="ml-1 text-ops-amber" title="Engineers idle">●</span>}
               {t.id === 'partners' && state.tenders.length > 0 && <span className="ml-1 text-ops-dim">{state.tenders.length}</span>}
             </button>
           ))}
@@ -213,6 +216,7 @@ export default function App() {
         {tab === 'plants' && <Plants state={state} act={act} />}
         {tab === 'workforce' && <Workforce state={state} act={act} />}
         {tab === 'supply' && <Supply state={state} act={act} />}
+        {tab === 'research' && <Research state={state} act={act} />}
         {tab === 'partners' && <Partners state={state} act={act} />}
         {tab === 'intel' && <Intel state={state} act={act} />}
         {tab === 'ledger' && <Ledger state={state} act={act} />}

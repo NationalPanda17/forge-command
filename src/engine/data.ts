@@ -23,6 +23,8 @@ import type {
   StageDef,
   Tier2Def,
   Tier2Id,
+  ResearchDef,
+  ResearchId,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -167,6 +169,27 @@ export const LINES: Record<LineId, LineDef> = {
     bom: { shellBodies: 1, energetics: 0.011 }, landDraw: 16500,
     blurb: 'The ammunition of attrition. Volume is everything.',
   },
+  apkws: {
+    id: 'apkws', name: 'APKWS', maker: 'BAE Systems', campus: 'northgate', family: 'air', role: 'Laser-guided rocket, against drones',
+    baseCapacity: 400, publicRate: 'about 25,000 per year (stated goal)', unitCost: 0.03, overhead: 1.2, baseCrew: 260, expandCost: 30,
+    bom: { srm: 0.3, energetics: 0.005, microelectronics: 2, criticalMaterials: 0.05 },
+    blurb: 'A guidance kit turns a cheap unguided rocket into a drone killer that costs about what the drone does.',
+    research: 'apkws',
+  },
+  coyote: {
+    id: 'coyote', name: 'Coyote Block 2', maker: 'RTX', campus: 'corran', family: 'air', role: 'Interceptor drone, against drones and cruise missiles',
+    baseCapacity: 25, publicRate: 'about 1,500 per year', unitCost: 0.11, overhead: 0.8, baseCrew: 220, expandCost: 40,
+    bom: { srm: 0.2, rfSeeker: 0.5, energetics: 0.003, microelectronics: 2, criticalMaterials: 0.2 },
+    blurb: 'A jet-powered interceptor drone: cheaper than a missile, faster than a drone.',
+    research: 'coyote',
+  },
+  javelin: {
+    id: 'javelin', name: 'Javelin', maker: 'Javelin Joint Venture (Lockheed Martin, RTX)', campus: 'ashford', family: 'land', role: 'Anti-armor missile',
+    baseCapacity: 66, publicRate: '3,960 per year (stated goal)', unitCost: 0.2, overhead: 1.5, baseCrew: 300, expandCost: 45,
+    bom: { srm: 0.5, irSeeker: 1.5, energetics: 0.008, microelectronics: 3, criticalMaterials: 0.8 }, landDraw: 40,
+    blurb: 'Fire-and-forget anti-armor. Land offensives burn through them.',
+    research: 'javelin',
+  },
 };
 
 export const LINE_IDS = Object.keys(LINES) as LineId[];
@@ -180,6 +203,8 @@ export const THREATS: Record<ThreatId, ThreatDef> = {
   drone: {
     id: 'drone', name: 'One-way attack drone', estCost: 0.035, shots: 1.2, severity: 0.15, calm: 14,
     assign: [
+      { line: 'apkws', weight: 0.5, pk: 0.8 },
+      { line: 'coyote', weight: 0.2, pk: 0.9 },
       { line: 'stinger', weight: 0.55, pk: 0.75 },
       { line: 'tamir', weight: 0.35, pk: 0.85 },
       { line: 'irist', weight: 0.1, pk: 0.9 },
@@ -201,6 +226,7 @@ export const THREATS: Record<ThreatId, ThreatDef> = {
     id: 'cruise', name: 'Cruise missile', estCost: 1.5, shots: 1.5, severity: 1, calm: 5,
     assign: [
       { line: 'irist', weight: 0.5, pk: 0.85 },
+      { line: 'coyote', weight: 0.15, pk: 0.7 },
       { line: 'sm6', weight: 0.25, pk: 0.9 },
       { line: 'pac3', weight: 0.25, pk: 0.85 },
       { line: 'tamir', weight: 0, pk: 0.6 },
@@ -238,9 +264,9 @@ export const CHEAP_THREATS: ThreatId[] = ['drone', 'rocket'];
 
 export const PARTNERS: Record<PartnerId, PartnerDef> = {
   varenna: { id: 'varenna', name: 'Republic of Varenna', blurb: 'A coastal republic with a long, exposed shoreline.', wants: ['pac3', 'sm6', 'irist'] },
-  osterholm: { id: 'osterholm', name: 'Kingdom of Osterholm', blurb: 'A northern kingdom rebuilding its air defenses.', wants: ['irist', 'stinger', 'gmlrs'] },
-  sundar: { id: 'sundar', name: 'Sundaric League', blurb: 'An island federation under constant rocket harassment.', wants: ['tamir', 'stinger', 'shell155'] },
-  calder: { id: 'calder', name: 'Free State of Calder', blurb: 'A landlocked ally with a long land border to hold.', wants: ['gmlrs', 'shell155', 'tamir'] },
+  osterholm: { id: 'osterholm', name: 'Kingdom of Osterholm', blurb: 'A northern kingdom rebuilding its air defenses.', wants: ['irist', 'stinger', 'gmlrs', 'javelin'] },
+  sundar: { id: 'sundar', name: 'Sundaric League', blurb: 'An island federation under constant rocket harassment.', wants: ['tamir', 'stinger', 'shell155', 'apkws'] },
+  calder: { id: 'calder', name: 'Free State of Calder', blurb: 'A landlocked ally with a long land border to hold.', wants: ['gmlrs', 'shell155', 'tamir', 'javelin', 'coyote'] },
 };
 export const PARTNER_IDS = Object.keys(PARTNERS) as PartnerId[];
 
@@ -373,6 +399,9 @@ export const STAGES: Record<LineId, StageDef[]> = {
   irist: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(6)],
   stinger: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(3)],
   gmlrs: [motor(['srm', 'energetics']), guidance(['microelectronics']), assembly, acceptance(1.2)],
+  apkws: [motor(['srm', 'energetics']), guidance(['microelectronics', 'criticalMaterials']), assembly, acceptance(0.2)],
+  coyote: [motor(['srm', 'energetics']), guidance(['rfSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(2)],
+  javelin: [motor(['srm', 'energetics']), guidance(['irSeeker', 'microelectronics', 'criticalMaterials']), assembly, acceptance(4)],
   shell155: [
     { id: 'machining', name: 'Body machining', mult: 1.1, yield: 0.99, comps: ['shellBodies'] },
     { id: 'fill', name: 'Fill & pack', mult: 1.06, yield: 0.99, comps: ['energetics'] },
@@ -442,6 +471,28 @@ export const SHELF_LIFE: Partial<Record<ComponentId, { months: number; loss: num
 export const INVEST_STEP = 0.3;
 export const MAX_INVEST = 2;
 export const INVEST_MONTHS = 8;
+
+// ---------- Research ----------
+
+export const RESEARCH: Record<ResearchId, ResearchDef> = {
+  apkws: { id: 'apkws', name: 'Laser-guided rockets', cost: 60, months: 6, requires: [], effect: 'Unlocks the APKWS line (Northgate).', blurb: 'License guidance kits that turn cheap rockets into drone killers.' },
+  coyote: { id: 'coyote', name: 'Interceptor drones', cost: 90, months: 8, requires: [], effect: 'Unlocks the Coyote Block 2 line (Corran).', blurb: 'Small jet interceptors for drones and slow cruise missiles.' },
+  javelin: { id: 'javelin', name: 'Javelin production licence', cost: 80, months: 6, requires: [], effect: 'Unlocks the Javelin line (Ashford).', blurb: 'Anti-armor missiles for the land war.' },
+  galliumLight: { id: 'galliumLight', name: 'Gallium-light RF modules', cost: 70, months: 8, requires: [], effect: 'Every line uses 40% less gallium and germanium.', blurb: 'Redesigned power amplifiers that need far less of the scarcest materials.' },
+  commonMotors: { id: 'commonMotors', name: 'Common motor cases', cost: 80, months: 9, requires: [], effect: 'Every line uses 15% less rocket motor.', blurb: 'Shared case and nozzle designs cut motor material and waste.' },
+  digitalTest: { id: 'digitalTest', name: 'Digital-twin acceptance', cost: 50, months: 6, requires: [], effect: 'Acceptance tests take 30% fewer test-cell hours.', blurb: 'Simulation replaces much of the time on the test stand.' },
+  rapidQual: { id: 'rapidQual', name: 'Rapid supplier qualification', cost: 30, months: 4, requires: [], effect: 'Qualifying a second source takes half as long.', blurb: 'Shared test data and pre-approved processes.' },
+  imFill: { id: 'imFill', name: 'Insensitive-munition fills', cost: 45, months: 6, requires: [], effect: 'Every line uses 10% less energetics, and energetics keep twice as long.', blurb: 'Safer, longer-lasting explosive fills.' },
+  leanAssembly: { id: 'leanAssembly', name: 'Lean final assembly', cost: 60, months: 6, requires: ['digitalTest'], effect: 'Final assembly runs 15% faster on every line.', blurb: 'Flow lines, kitting and fewer handoffs.' },
+  yieldAnalytics: { id: 'yieldAnalytics', name: 'Yield analytics', cost: 40, months: 5, requires: [], effect: 'Scrap falls by another 30% on every stage.', blurb: 'Statistical process control finds where units go wrong.' },
+  seekerDTC: { id: 'seekerDTC', name: 'Design-to-cost seekers', cost: 90, months: 10, requires: ['galliumLight'], effect: 'Every line uses 20% fewer RF and IR seeker units.', blurb: 'Simpler seekers with fewer parts and fewer rare materials.' },
+  lightsOut: { id: 'lightsOut', name: 'Lights-out cells', cost: 120, months: 10, requires: ['leanAssembly'], effect: 'Allows a third level of automation.', blurb: 'Robotic cells that run through the night.' },
+  smartFuzes: { id: 'smartFuzes', name: 'Precision fuzes for 155mm', cost: 70, months: 8, requires: [], effect: 'Fire missions need 15% fewer shells.', blurb: 'Course-correcting fuzes put more rounds on target.' },
+  hpm: { id: 'hpm', name: 'High-power microwave defense', cost: 200, months: 14, requires: ['coyote'], effect: '20% of drones are stopped before any interceptor is fired.', blurb: 'A directed-energy shield over key sites. Expensive, but it never runs out of rounds.' },
+};
+export const RESEARCH_IDS = Object.keys(RESEARCH) as ResearchId[];
+/** Bays and money needed to set up a new line once its research is done. */
+export const ESTABLISH_COST_SHARE = 3;
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */

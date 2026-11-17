@@ -123,7 +123,7 @@ function ComponentPanel({ state, c, act }: { state: GameState; c: ComponentId; a
   const need = plannedNeed(state, c);
   const cap = componentCap(state, c);
   const contracted = contractedPerMonth(cs);
-  const users = LINE_IDS.filter((id) => LINES[id].bom[c]);
+  const users = LINE_IDS.filter((id) => LINES[id].bom[c] && state.lines[id].tranches.length > 0);
   const subsOn = users.filter((id) => state.lines[id].substitutes[c]).length;
   const cover = need > 0 ? cs.stock / need : 99;
   return (

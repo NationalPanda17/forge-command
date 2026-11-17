@@ -97,6 +97,25 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
     ),
   },
   {
+    id: 'research',
+    title: 'Research and new lines',
+    body: () => (
+      <>
+        <P>
+          Your engineers run one project at a time, paid up front. Projects license new products, redesign rounds to need fewer scarce parts, speed up the
+          factory, or change the fight itself.
+        </P>
+        <ul className="list-disc pl-5">
+          <Li><b>New lines:</b> APKWS (laser-guided rockets, about $30K a round), Coyote Block 2 interceptor drones and Javelin. Research licenses the design. Then you set up the line in 4 free bays, inspect the first units, ramp up, and hire crew for it.</Li>
+          <Li><b>The cost exchange:</b> once APKWS and Coyote are running, doctrine sends them at drones first. Shooting a $35K drone with a $30K rocket instead of a $480K Stinger is how you win the cost exchange.</Li>
+          <Li><b>Design changes</b> cut gallium, motor, energetics and seeker use on every line, and stretch whatever supply you have.</Li>
+          <Li><b>Process projects</b> cut test-cell hours, speed up final assembly, cut scrap, unlock a third automation level, and halve supplier qualification time.</Li>
+          <Li><b>High-power microwave</b> stops one drone in five before any interceptor fires.</Li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: 'workforce',
     title: 'Workforce',
     body: () => (

@@ -7,6 +7,7 @@ import {
   NEW_TRANCHE_MATURITY,
   SCENARIOS,
   SUPPLIERS,
+  activeLines,
   advise,
   applyAction,
   baselineNeed,
@@ -207,7 +208,7 @@ describe('supply chain', () => {
     s.components.srm.stock = 0;
     s.components.srm.contracts = [];
     let after = endTurn(s);
-    for (const id of LINE_IDS) {
+    for (const id of activeLines(after)) {
       if (LINES[id].bom.srm) {
         // The motor stage stops at once; units already in the buffers keep moving for a while.
         expect(after.lines[id].stages[0].throughput).toBe(0);
@@ -307,7 +308,7 @@ describe('demand, doctrine and the cost exchange', () => {
     const s = run(4, 6);
     const arrived = s.history.reduce((a, h) => a + Object.values(h.threats).reduce((b, t) => b + t.arrived, 0), 0);
     expect(arrived).toBeGreaterThan(100);
-    for (const id of AIR_LINES) expect(s.reserves[id].used).toBeGreaterThan(0);
+    for (const id of AIR_LINES.filter((x) => s.lines[x].tranches.length > 0)) expect(s.reserves[id].used).toBeGreaterThan(0);
   });
 
   it('an empty reserve means more leakers', () => {
@@ -337,7 +338,7 @@ describe('demand, doctrine and the cost exchange', () => {
   it('records a cost exchange per interceptor', () => {
     const s = run(4, 12);
     const rows = costExchange(s);
-    expect(rows.length).toBe(AIR_LINES.length);
+    expect(rows.length).toBe(AIR_LINES.filter((x) => s.lines[x].tranches.length > 0).length);
     for (const r of rows) {
       expect(r.spend).toBeCloseTo(r.used * LINES[r.line].unitCost);
       expect(r.stopped).toBeGreaterThanOrEqual(0);

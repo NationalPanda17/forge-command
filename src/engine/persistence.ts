@@ -2,7 +2,7 @@ import { CAMPUS_IDS, COMPONENT_IDS, FACILITY_IDS, LINE_IDS, STAGES, SUPPLIER_IDS
 import { emptyFacility, seedPipeline } from './setup';
 import type { GameState } from './types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -54,6 +54,23 @@ export function migrate(raw: any): GameState | null {
       for (const sh of raw.shipments) sh.arrive += month;
     }
     raw.version = 4;
+  }
+  if (raw.version === 4) {
+    for (const id of LINE_IDS) {
+      if (!raw.lines[id]) {
+        raw.lines[id] = {
+          id, tranches: [], run: 'normal', priority: 'normal', wear: 10, partial: 0, experience: 0,
+          upgrades: { automation: 0, quality: 0 }, installing: null, quarantine: [], substitutes: {},
+          wip: STAGES[id].slice(1).map(() => 0), debottleneck: STAGES[id].map(() => 0), debottlenecking: null,
+          stages: STAGES[id].map(() => ({ cap: 0, throughput: 0, scrap: 0, limit: null })),
+          testShare: 0.05, latentRisk: 0,
+          last: { output: 0, degraded: 0, quarantined: 0, tested: 0, toPartners: 0, toReserve: 0, staffing: 1, limit: null, usedSubstitutes: [] },
+        };
+      }
+      raw.reserves[id] ??= { id, stock: 0, degraded: 0, made: 0, used: 0, unmet: 0, valueStopped: 0, engaged: {} };
+    }
+    raw.research ??= { done: [], active: null };
+    raw.version = 5;
   }
   return raw.version === SAVE_VERSION ? (raw as GameState) : null;
 }

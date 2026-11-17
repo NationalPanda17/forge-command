@@ -1,7 +1,7 @@
 import {
   DIFFICULTY,
   LINES,
-  LINE_IDS,
+  activeLines,
   THREATS,
   THREAT_IDS,
   coverMonths,
@@ -68,7 +68,7 @@ export default function Intel({ state, act }: { state: GameState; act: (a: Actio
                 </tr>
               </thead>
               <tbody>
-                {LINE_IDS.map((id) => {
+                {activeLines(state).map((id) => {
                   const f = state.forecast.draw[id];
                   const cap = effectiveCapacity(state.lines[id]);
                   const cover = coverMonths(state, id);

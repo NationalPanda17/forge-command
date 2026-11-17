@@ -22,10 +22,13 @@ import {
   FACILITIES,
   INVEST_MONTHS,
   MAX_INVEST,
+  RESEARCH,
+  ESTABLISH_COST_SHARE,
+  BASE_BAYS_PER_LINE,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
-import { expansions, freeBays, newTranche } from './selectors';
+import { expansions, freeBays, hasResearch, isEstablished, maxUpgrade, newTranche } from './selectors';
 import type { Action, CampusId, FacilityId, GameState, LineId, UpgradeKind } from './types';
 
 export const expandCost = (id: LineId) => LINES[id].expandCost;
@@ -33,7 +36,11 @@ export const retoolCost = (to: LineId) => Math.round(LINES[to].expandCost * RETO
 export const upgradeCost = (id: LineId, kind: UpgradeKind) => Math.round(LINES[id].expandCost * UPGRADE[kind].costShare);
 export const buildCost = (c: CampusId) => CAMPUSES[c].buildCost;
 export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * DIFFICULTY[state.difficulty].qualifyMult);
-export const qualifyMonths = (state: GameState, sid: string) => Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult));
+export const qualifyMonths = (state: GameState, sid: string) =>
+  Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult * (hasResearch(state, 'rapidQual') ? 0.5 : 1)));
+export const establishCost = (id: LineId) => LINES[id].expandCost * ESTABLISH_COST_SHARE;
+export const researchAvailable = (state: GameState, r: keyof typeof RESEARCH) =>
+  !hasResearch(state, r) && state.research.active?.id !== r && RESEARCH[r].requires.every((q) => hasResearch(state, q));
 export const reworkCost = (state: GameState, id: LineId) =>
   state.lines[id].quarantine.reduce((s, q) => s + q.qty, 0) * LINES[id].unitCost * REWORK_COST_SHARE;
 /** Contracts lock today's market price for their whole term. */
@@ -76,7 +83,7 @@ export function validateAction(state: GameState, a: Action): string | null {
     case 'upgradeLine': {
       const line = state.lines[a.line];
       if (line.installing) return 'An upgrade is already being installed.';
-      if (line.upgrades[a.kind] >= MAX_UPGRADE) return 'Already at the top level.';
+      if (line.upgrades[a.kind] >= maxUpgrade(state, a.kind)) return line.upgrades[a.kind] >= MAX_UPGRADE && a.kind === 'automation' && !hasResearch(state, 'lightsOut') ? 'Research lights-out cells for a third level.' : 'Already at the top level.';
       return funds(state, upgradeCost(a.line, a.kind));
     }
     case 'debottleneck': {
@@ -141,6 +148,22 @@ export function validateAction(state: GameState, a: Action): string | null {
       if (st.investingMonths !== null) return 'An expansion is already being built there.';
       if (st.capBonus >= MAX_INVEST) return 'This supplier cannot grow any further.';
       return funds(state, investCost(a.supplier));
+    }
+    case 'startResearch': {
+      const r = RESEARCH[a.research];
+      if (!r) return 'Unknown project.';
+      if (hasResearch(state, a.research)) return 'Already done.';
+      if (state.research.active) return 'Your engineers are busy with another project.';
+      const missing = r.requires.filter((q) => !hasResearch(state, q));
+      if (missing.length) return `Needs ${missing.map((q) => RESEARCH[q].name).join(', ')} first.`;
+      return funds(state, r.cost);
+    }
+    case 'establishLine': {
+      const def = LINES[a.line];
+      if (isEstablished(state, a.line)) return 'This line already exists.';
+      if (def.research && !hasResearch(state, def.research)) return `Research ${RESEARCH[def.research].name} first.`;
+      if (freeBays(state, def.campus) < BASE_BAYS_PER_LINE) return `Needs ${BASE_BAYS_PER_LINE} free bays at ${CAMPUSES[def.campus].name}.`;
+      return funds(state, establishCost(a.line));
     }
     case 'acceptTender':
     case 'declineTender':
@@ -284,6 +307,17 @@ export function applyAction(state: GameState, a: Action): GameState {
       s.suppliers[a.supplier].investingMonths = INVEST_MONTHS;
       s.suppliers[a.supplier].health = Math.min(100, s.suppliers[a.supplier].health + 20);
       break;
+    case 'startResearch':
+      charge(s, RESEARCH[a.research].cost);
+      s.research.active = { id: a.research, monthsLeft: RESEARCH[a.research].months };
+      break;
+    case 'establishLine': {
+      charge(s, establishCost(a.line));
+      const line = s.lines[a.line];
+      line.tranches = [{ ...newTranche(s, LINES[a.line].baseCapacity), base: true }];
+      line.run = 'normal';
+      break;
+    }
     case 'acceptTender':
       acceptTender(s, a.tender);
       break;

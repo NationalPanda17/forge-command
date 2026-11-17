@@ -10,7 +10,22 @@ export type ComponentId =
   | 'criticalMaterials'
   | 'shellBodies';
 
-export type LineId = 'pac3' | 'sm6' | 'tamir' | 'irist' | 'stinger' | 'gmlrs' | 'shell155';
+export type LineId = 'pac3' | 'sm6' | 'tamir' | 'irist' | 'stinger' | 'gmlrs' | 'shell155' | 'apkws' | 'coyote' | 'javelin';
+export type ResearchId =
+  | 'apkws'
+  | 'coyote'
+  | 'javelin'
+  | 'galliumLight'
+  | 'commonMotors'
+  | 'digitalTest'
+  | 'rapidQual'
+  | 'imFill'
+  | 'leanAssembly'
+  | 'yieldAnalytics'
+  | 'seekerDTC'
+  | 'lightsOut'
+  | 'smartFuzes'
+  | 'hpm';
 export type CampusId = 'corran' | 'northgate' | 'ashford';
 export type ThreatId = 'drone' | 'rocket' | 'cruise' | 'ballistic' | 'aircraft';
 export type PartnerId = 'varenna' | 'osterholm' | 'sundar' | 'calder';
@@ -92,6 +107,19 @@ export interface LineDef {
   bom: Partial<Record<ComponentId, number>>;
   /** Land fires only: units drawn per month in calm times. */
   landDraw?: number;
+  blurb: string;
+  /** Needs this research before the line can be set up. */
+  research?: ResearchId;
+}
+
+export interface ResearchDef {
+  id: ResearchId;
+  name: string;
+  /** $M up front. */
+  cost: number;
+  months: number;
+  requires: ResearchId[];
+  effect: string;
   blurb: string;
 }
 
@@ -445,7 +473,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 4;
+  version: 5;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -462,6 +490,7 @@ export interface GameState {
   reserves: Record<LineId, ReserveState>;
   facilities: Record<FacilityId, FacilityState>;
   tier2: Record<Tier2Id, Tier2State>;
+  research: { done: ResearchId[]; active: { id: ResearchId; monthsLeft: number } | null };
   shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;
   partnerContracts: PartnerContract[];
@@ -508,6 +537,8 @@ export type Action =
   | { type: 'cancelContract'; component: ComponentId; contract: number }
   | { type: 'qualifySupplier'; supplier: string }
   | { type: 'investSupplier'; supplier: string }
+  | { type: 'startResearch'; research: ResearchId }
+  | { type: 'establishLine'; line: LineId }
   | { type: 'acceptTender'; tender: number }
   | { type: 'declineTender'; tender: number }
   | { type: 'resolveDecision'; decision: number; option: string }
