@@ -125,11 +125,11 @@ export function apply(state: SimState, a: SimAction): SimState {
       const cost = a.type === 'expand' ? expandCost(s, a.site, a.process) : investCost(s, a.site, a.process);
       charge(s, cost);
       const p = s.sites[a.site].processes[a.process];
-      const base = p.capacity / (1 + 0.25 * p.expansions);
+      const total = p.capacity + (p.ramp ?? []).reduce((x, r) => x + r.cap, 0);
+      const base = total / (1 + 0.25 * p.expansions);
       const add = base * (a.type === 'invest' ? 0.3 : 0.25);
-      // New capacity is installed, inspected, then ramps up from about 30%.
-      p.maturity = (p.capacity * p.maturity + add * 0.1) / (p.capacity + add);
-      p.capacity += add;
+      // New capacity is installed and inspected, then ramps up from about 10% on its own.
+      (p.ramp ??= []).push({ cap: add, maturity: 0.1 });
       p.expansions++;
       if (a.type === 'invest') s.strategy.investedThisMonth += cost;
       s.feed.push({ day: s.day, tone: 'info', text: `New capacity ordered at ${SITE_BY_ID[a.site].name}: ${RECIPES[p.recipe].name}.`, site: a.site });

@@ -168,14 +168,14 @@ export const RECIPES: Record<string, RecipeDef> = {
   shell155: r('shell155', '155mm load, assemble and pack', 'shell155', { shellBody: 1, highExplosive: 0.011, fuze: 0.01, propCharge: 4 }, 0.005),
   apkws: r('apkws', 'APKWS integration', 'apkws', { rocketMotor: 0.006, warhead: 0.0042, seekerIR: 0.03, guidance: 0.03, actuators: 0.05, airframe: 0.002, fuze: 0.1 }, 0.02),
   coyote: r('coyote', 'Coyote integration', 'coyote', { rocketMotor: 0.008, warhead: 0.002, seekerRF: 0.1, guidance: 0.15, actuators: 0.2, airframe: 0.006, fuze: 0.2 }, 0.02),
-  javelin: r('javelin', 'Javelin integration', 'javelin', { rocketMotor: 0.004, warhead: 0.0084, seekerIR: 0.4, guidance: 0.2, actuators: 0.2, airframe: 0.005, fuze: 0.3 }, 0.02),
+  javelin: r('javelin', 'Javelin integration', 'javelin', { rocketMotor: 0.004, warhead: 0.0084, seekerIR: 0.25, guidance: 0.2, actuators: 0.2, airframe: 0.005, fuze: 0.3 }, 0.02),
 };
 export const recipeFor = (output: MaterialId) => Object.values(RECIPES).find((x) => x.output === output);
 
 /** Game production rates per day at the start (about a fifth of public reference rates). */
 export const LINE_RATE: Record<LineId, number> = {
   pac3: 10 / 30, sm6: 4 / 30, tamir: 40 / 30, irist: 8 / 30, stinger: 12 / 30, gmlrs: 230 / 30, shell155: 20000 / 30,
-  apkws: 400 / 30, coyote: 25 / 30, javelin: 66 / 30,
+  apkws: 80 / 30, coyote: 25 / 30, javelin: 66 / 30,
 };
 export const PUBLIC_RATE: Record<LineId, string> = {
   pac3: '650 per year (stated 2027 goal)', sm6: 'about 200 per year', tamir: 'about 2,400 per year', irist: 'about 500 per year',
@@ -302,7 +302,8 @@ export const SITES: SiteDef[] = [
   // Foreign suppliers (reached by sea)
   s({ id: 'karskMetals', name: 'Karsk State Metals', kind: 'foreign', x: 760, y: -45, region: 'north', owner: 'foreign', nation: 'Karsk Federation', processes: [{ recipe: 'aluminaSmelting', share: 0.4 }, { recipe: 'zincSmelting', share: 1.2 }], crew: 0, blurb: 'Cheap gallium and germanium, and a government fond of export controls.' }),
   s({ id: 'sableCircuits', name: 'Sable Circuit Works', kind: 'foreign', x: 300, y: 735, region: 'coast', owner: 'foreign', nation: 'Ostrel Republic', processes: [{ recipe: 'siChipFab', share: 0.8 }, { recipe: 'ganChipFab', share: 0.7 }, { recipe: 'waferFab', share: 0.6 }], crew: 0, blurb: 'High volume, low price, one ocean away.' }),
-  s({ id: 'brightwater', name: 'Brightwater Optics', kind: 'foreign', x: -50, y: 360, region: 'coast', owner: 'foreign', nation: 'Corvane Union', processes: [{ recipe: 'opticsGrinding', share: 0.8 }, { recipe: 'seekerIRAssembly', share: 1.0 }], crew: 0, blurb: 'Imaging IR seekers across the strait.' }),
+  s({ id: 'brightwater', name: 'Brightwater Optics', kind: 'foreign', x: -50, y: 360, region: 'coast', owner: 'foreign', nation: 'Corvane Union', processes: [{ recipe: 'opticsGrinding', share: 0.9 }, { recipe: 'seekerIRAssembly', share: 1.25 }], crew: 0, blurb: 'Imaging IR seekers across the strait.' }),
+  s({ id: 'lyreSensors', name: 'Lyre Sensors', kind: 'foreign', x: 230, y: 735, region: 'coast', owner: 'foreign', nation: 'Ostrel Republic', processes: [{ recipe: 'seekerRFAssembly', share: 0.6 }], crew: 0, qualified: false, blurb: 'Capable radar seekers from a country under pressure from all sides.' }),
   s({ id: 'northwind', name: 'Northwind Aerojet', kind: 'foreign', x: -50, y: 200, region: 'coast', owner: 'foreign', nation: 'Corvane Union', processes: [{ recipe: 'motorCasting', share: 0.4 }, { recipe: 'apElectrolysis', share: 0.4 }], crew: 0, qualified: false, blurb: 'Established motor maker across the strait.' }),
 ];
 export const SITE_BY_ID: Record<string, SiteDef> = Object.fromEntries(SITES.map((x) => [x.id, x]));
@@ -391,7 +392,7 @@ export const ROUTES: RouteDef[] = [
   road('karrowRange', 'skellSands'), road('greystone', 'hollinColliery'),
   // Sea lanes
   sea('portHalvard', 'portSkerry', 600), sea('portLowmouth', 'portSkerry', 600), sea('portSkerry', 'depotIsles', 600), sea('depotIsles', 'skerryBase', 600),
-  sea('portMeric', 'karskMetals'), sea('portLowmouth', 'sableCircuits'), sea('portHalvard', 'brightwater'), sea('portHalvard', 'northwind'),
+  sea('portMeric', 'karskMetals'), sea('portLowmouth', 'sableCircuits'), sea('portLowmouth', 'lyreSensors'), sea('portHalvard', 'brightwater'), sea('portHalvard', 'northwind'),
   sea('portHalvard', 'halvardGas', 2000), sea('portMeric', 'portHalvard', 2000), sea('portHalvard', 'portLowmouth', 2000),
   // Airlift
   air('corranAirHub', 'skerryBase', 30), air('corranAirHub', 'halvardAirBase'), air('corranAirHub', 'marchesSector'), air('corranAirHub', 'mericSector'),

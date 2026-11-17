@@ -2,7 +2,7 @@
 import { clamp, pick, rand } from './rng';
 import type { FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
-import { MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
+import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
 // ---------- Research ----------
 
@@ -84,8 +84,9 @@ function finishResearch(s: SimState, r: ResearchId, feed: Feed): void {
   const nl = NEW_LINE_SITE[r];
   if (nl) {
     s.lines[nl.line].unlocked = true;
+    s.lines[nl.line].since = s.day;
     const site = s.sites[nl.site];
-    const rate = { apkws: 400 / 30, coyote: 25 / 30, javelin: 66 / 30 }[nl.line as 'apkws' | 'coyote' | 'javelin'];
+    const rate = LINE_RATE[nl.line];
     site.processes.push({ recipe: nl.line, capacity: rate, maturity: 0.1, run: 'normal', partial: 0, lastOutput: 0, lastLimit: null, expansions: 0 });
     site.extraCrew += nl.crew;
     feed(s, 'info', `${MATERIALS[nl.line].name} line installed at ${SITE_BY_ID[nl.site].name}. Hire ${nl.crew} more workers there to run it.`, nl.site);

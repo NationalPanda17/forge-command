@@ -130,8 +130,13 @@ describe('player actions', () => {
     const s = start(13);
     const p0 = s.sites.corranWorks.processes[0].capacity;
     const after = apply({ ...s, treasury: 5000 }, { type: 'expand', site: 'corranWorks', process: 0 });
-    expect(after.sites.corranWorks.processes[0].capacity).toBeCloseTo(p0 * 1.25);
-    expect(after.sites.corranWorks.processes[0].maturity).toBeLessThan(1);
+    const p = after.sites.corranWorks.processes[0];
+    // Existing capacity keeps running; the new 25% ramps up on its own.
+    expect(p.capacity).toBeCloseTo(p0);
+    expect(p.ramp?.[0].cap).toBeCloseTo(p0 * 0.25);
+    expect(p.ramp?.[0].maturity).toBeLessThan(1);
+    const later = advanceDays(after, 400);
+    expect(later.sites.corranWorks.processes[0].capacity).toBeCloseTo(p0 * 1.25);
   });
 
   it('a supplier must be qualified before it can take a contract', () => {

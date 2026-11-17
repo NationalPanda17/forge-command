@@ -19,7 +19,8 @@ export function processRate(_s: SimState, site: SiteState, p: ProcessState): num
   const staff = def.owner === 'state' && def.crew > 0 ? Math.min(1, site.workers / Math.max(1, crewNeed(site))) : 1;
   const disruption = site.disruptionDays > 0 ? site.disruptionFactor : 1;
   const cond = 0.6 + 0.4 * (site.condition / 100);
-  return p.capacity * p.maturity * RUN_FACTOR[p.run] * staff * disruption * cond;
+  const ramping = (p.ramp ?? []).reduce((a, r) => a + r.cap * r.maturity, 0);
+  return (p.capacity * p.maturity + ramping) * RUN_FACTOR[p.run] * staff * disruption * cond;
 }
 
 export function crewNeed(site: SiteState): number {
@@ -87,8 +88,11 @@ export function nationalStock(s: SimState, line: LineId): number {
 export const RESERVE_DAYS = 365;
 export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * RESERVE_DAYS;
 
+/** New lines are judged only after a year in production. */
+export const inGrace = (s: SimState, l: LineId) => s.lines[l].since !== undefined && s.day - s.lines[l].since! < 360;
+
 export function readiness(s: SimState): number {
-  const lines = FINISHED.filter((l) => unlocked(s, l as LineId) && nationalDailyDraw(s, l as LineId) > 0) as LineId[];
+  const lines = FINISHED.filter((l) => unlocked(s, l as LineId) && !inGrace(s, l as LineId) && nationalDailyDraw(s, l as LineId) > 0) as LineId[];
   if (!lines.length) return 0;
   return lines.reduce((a, l) => a + Math.min(1, nationalStock(s, l) / Math.max(1, reserveTarget(s, l))), 0) / lines.length;
 }

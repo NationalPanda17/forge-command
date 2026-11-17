@@ -1,0 +1,1178 @@
+// Operational map of the Commonwealth of Aldmere: static geography, transport network, sites, shipments.
+
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef } from '../../sim/world';
+import * as G from './geo';
+import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
+
+// ---------- Public types ----------
+
+export interface MapMarker { tone?: 'ok' | 'warn' | 'bad' | 'idle'; badge?: string; pulse?: boolean }
+export interface MapShipment { id: number; path: string[]; /* site ids */ progress: number; /* 0..1 along the whole path */ mode: string; /* first-leg mode */ color?: string }
+export interface MapLayers { terrain: boolean; labels: boolean; rail: boolean; road: boolean; sea: boolean; air: boolean; flows: boolean; regions: boolean }
+export interface MapViewProps {
+  markers: Record<string, MapMarker>;
+  shipments: MapShipment[];
+  routeUse?: Record<string, number>; // ROUTE_KEY -> 0..1 utilisation, tint routes that are busy
+  crisisRegion?: RegionId | null; // glow the region in red
+  selected: string | null;
+  onSelect: (siteId: string | null) => void;
+  layers: MapLayers;
+  height?: number | string;
+}
+
+export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false };
+
+// ---------- Palette ----------
+
+const ops = (v: string, a?: number) => (a === undefined ? `rgb(var(--ops-${v}))` : `rgb(var(--ops-${v}) / ${a})`);
+
+const SEA = '#07111f';
+const LAND = '#14232b';
+const COAST = 'rgba(132, 204, 236, 0.6)';
+const WATER = '#12304c';
+const RIVER = 'rgba(96, 178, 226, 0.8)';
+const RAIL = 'rgba(176, 194, 218, 0.9)';
+const ROAD = 'rgba(222, 196, 142, 0.85)';
+
+export const MODE_COLOR: Record<string, string> = { rail: ops('amber'), road: ops('text'), sea: ops('cyan'), air: ops('violet') };
+const TONE_COLOR: Record<NonNullable<MapMarker['tone']>, string> = { ok: ops('green'), warn: ops('amber'), bad: ops('red'), idle: ops('dim') };
+const OWNER_COLOR: Record<SiteDef['owner'], string> = { state: ops('cyan'), private: ops('text'), foreign: ops('violet') };
+const REGION_COLOR: Record<RegionId, string> = { north: ops('blue'), coast: ops('cyan'), east: ops('amber'), isles: ops('violet'), central: ops('green') };
+const FIGHTING: RegionId[] = ['north', 'coast', 'east', 'isles'];
+
+const FONT_MONO = '"JetBrains Mono", ui-monospace, monospace';
+const FONT_HEAD = '"Rajdhani", "Inter", system-ui, sans-serif';
+
+// ---------- View maths ----------
+
+interface View { S: number; tx: number; ty: number }
+interface Size { w: number; h: number }
+
+const MIN_Z = 0.85;
+const MAX_Z = 14;
+
+const fitScale = (sz: Size) => Math.max(0.05, Math.min((sz.w - 16) / G.FRAME_W, (sz.h - 16) / G.FRAME_H));
+
+function fitView(sz: Size): View {
+  const S = fitScale(sz);
+  return { S, tx: (sz.w - G.FRAME_W * S) / 2 - G.FRAME.x0 * S, ty: (sz.h - G.FRAME_H * S) / 2 - G.FRAME.y0 * S };
+}
+
+function clampAxis(t: number, S: number, a0: number, a1: number, len: number): number {
+  const m = 48;
+  const span = (a1 - a0) * S;
+  if (span <= len - 2 * m) return (len - span) / 2 - a0 * S;
+  return Math.max(len - m - a1 * S, Math.min(m - a0 * S, t));
+}
+
+function clampView(v: View, sz: Size): View {
+  const s0 = fitScale(sz);
+  const S = Math.max(s0 * MIN_Z, Math.min(s0 * MAX_Z, v.S));
+  return { S, tx: clampAxis(v.tx, S, G.FRAME.x0, G.FRAME.x1, sz.w), ty: clampAxis(v.ty, S, G.FRAME.y0, G.FRAME.y1, sz.h) };
+}
+
+function zoomAbout(v: View, px: number, py: number, k: number): View {
+  const S = v.S * k;
+  return { S, tx: px - ((px - v.tx) * S) / v.S, ty: py - ((py - v.ty) * S) / v.S };
+}
+
+/** Level of detail from pixels per km. */
+const lodOf = (S: number) => (S < 1.6 ? 0 : S < 3 ? 1 : S < 6 ? 2 : 3);
+const markerPx = (S: number) => Math.max(11, Math.min(28, 18 + 4 * Math.log2(S)));
+/** Shrinks text on small maps (phones). */
+const uiScale = (S: number) => Math.max(0.72, Math.min(1, 0.6 + 0.4 * S));
+/** Smaller towns are unlabelled on very small maps. */
+const cityLabelled = (pop: number, S: number) => S >= 0.5 || pop >= 100;
+
+const LOD_CSS = `
+.fcm[data-lod="0"] .l1,.fcm[data-lod="0"] .l2,.fcm[data-lod="0"] .l3,.fcm[data-lod="1"] .l2,.fcm[data-lod="1"] .l3,.fcm[data-lod="2"] .l3{display:none}
+.fcm:not([data-lod="0"]) .l0only{display:none}
+@keyframes fcm-pulse{from{transform:scale(1);opacity:.9}to{transform:scale(2.4);opacity:0}}
+.fcm-pulse{transform-box:fill-box;transform-origin:center;animation:fcm-pulse 1.6s ease-out infinite}
+@keyframes fcm-crisis{0%,100%{opacity:.5}50%{opacity:1}}
+.fcm-crisis{animation:fcm-crisis 2.4s ease-in-out infinite}
+.fcm-marker{cursor:pointer;outline:none}
+.fcm-marker:hover .fcm-mbody{stroke-width:2.2}
+@media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis{animation:none}}
+`;
+
+// ---------- Static layers ----------
+
+const Defs = memo(function Defs({ uid }: { uid: string }) {
+  const geo = G.geography();
+  return (
+    <defs>
+      <clipPath id={`${uid}-frame`}>
+        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} />
+      </clipPath>
+      <clipPath id={`${uid}-land`}>
+        <path d={geo.land} />
+      </clipPath>
+      {(Object.keys(G.REGION_RINGS) as RegionId[]).map((r) => (
+        <clipPath key={r} id={`${uid}-reg-${r}`}>
+          <path d={G.ringPath(G.REGION_RINGS[r])} />
+        </clipPath>
+      ))}
+      <pattern id={`${uid}-hatch`} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1={0} y1={0} x2={0} y2={5} stroke="rgba(242, 84, 91, 0.2)" strokeWidth={0.6} />
+      </pattern>
+      <pattern id={`${uid}-streets`} width={1.3} height={1.3} patternUnits="userSpaceOnUse" patternTransform="rotate(14)">
+        <path d="M0 0H1.3M0 0V1.3" stroke="rgba(201, 216, 236, 0.32)" strokeWidth={0.12} fill="none" />
+      </pattern>
+      <pattern id={`${uid}-danger`} width={3} height={3} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+        <line x1={0} y1={0} x2={0} y2={3} stroke="rgba(242, 84, 91, 0.22)" strokeWidth={0.35} />
+      </pattern>
+      <radialGradient id={`${uid}-vignette`} cx="50%" cy="45%" r="70%">
+        <stop offset="60%" stopColor="#000" stopOpacity={0} />
+        <stop offset="100%" stopColor="#000" stopOpacity={0.45} />
+      </radialGradient>
+      <filter id={`${uid}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation={5} />
+      </filter>
+    </defs>
+  );
+});
+
+const nss = { vectorEffect: 'non-scaling-stroke' as const };
+
+const StaticGeo = memo(function StaticGeo({ uid, terrain, relief }: { uid: string; terrain: boolean; relief: string | null }) {
+  const geo = G.geography();
+  const urban = G.URBAN.map((u) => u.d).join('');
+  const lakes = G.LAKES.map((l) => l.d).join('');
+  const bands: [number, string][] = [
+    [70, '#081525'],
+    [46, '#0a192b'],
+    [31, 'rgba(56, 214, 245, 0.10)'],
+    [30, '#0b1d31'],
+    [19, 'rgba(56, 214, 245, 0.12)'],
+    [18, '#0d2238'],
+    [9.8, 'rgba(56, 214, 245, 0.14)'],
+    [9, '#0f2840'],
+    [4.2, 'rgba(56, 214, 245, 0.16)'],
+    [3.6, '#112e48'],
+  ];
+  return (
+    <g>
+      <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={SEA} />
+      <g fill="none" strokeLinejoin="round">
+        {bands.map(([w, c], i) => (
+          <path key={i} d={geo.land} stroke={c} strokeWidth={w} />
+        ))}
+      </g>
+      <path d={geo.land} fill={LAND} />
+      {terrain && relief && (
+        <image href={relief} x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} preserveAspectRatio="none" clipPath={`url(#${uid}-land)`} opacity={0.95} />
+      )}
+      {terrain && (
+        <g clipPath={`url(#${uid}-land)`}>
+          <path d={geo.fields[0]} fill="rgba(150, 170, 110, 0.055)" />
+          <path d={geo.fields[1]} fill="rgba(190, 170, 110, 0.045)" />
+          <path d={geo.fields[2]} fill="rgba(110, 160, 130, 0.06)" />
+          {geo.contours.map((d, i) => (
+            <path key={i} d={d} className={i % 2 ? 'l1' : undefined} fill="none" stroke={i % 2 ? 'rgba(210, 220, 230, 0.08)' : 'rgba(220, 225, 235, 0.15)'} strokeWidth={i % 2 ? 0.6 : 0.85} style={nss} />
+          ))}
+          <path d={geo.trees.shade} stroke="rgba(0, 8, 6, 0.35)" strokeWidth={0.6} fill="none" className="l1" />
+          <path d={geo.trees.canopy} fill="rgba(58, 128, 92, 0.42)" stroke="rgba(110, 190, 140, 0.18)" strokeWidth={0.18} />
+        </g>
+      )}
+      {/* Vardan Directorate */}
+      <g clipPath={`url(#${uid}-land)`}>
+        <path d={geo.vardan} fill="rgba(4, 8, 14, 0.5)" />
+        <path d={geo.vardan} fill={`url(#${uid}-hatch)`} />
+      </g>
+      {/* Water */}
+      <path d={lakes} fill={WATER} stroke={COAST} strokeWidth={0.7} style={nss} />
+      <g clipPath={`url(#${uid}-land)`} fill="none" strokeLinecap="round" strokeLinejoin="round" stroke={RIVER}>
+        {G.RIVERS.map((r, i) => (
+          <path key={i} d={r.d} className={r.order === 3 ? 'l1' : undefined} strokeWidth={r.order === 1 ? 1.7 : r.order === 2 ? 1.1 : 0.75} style={nss} />
+        ))}
+      </g>
+      {/* Salt pans, ranges, pipeline */}
+      <path className="l1" d={G.SALT_PANS} fill="rgba(220, 230, 240, 0.12)" stroke="rgba(220, 230, 240, 0.3)" strokeWidth={0.5} style={nss} />
+      <g className="l1">
+        {G.DANGER_AREAS.map((a) => (
+          <g key={a.id}>
+            <path d={a.d} fill={`url(#${uid}-danger)`} />
+            <path d={a.d} fill="none" stroke="rgba(242, 84, 91, 0.55)" strokeWidth={1} strokeDasharray="5 3" style={nss} />
+          </g>
+        ))}
+      </g>
+      <path className="l1" d={G.PIPELINE} fill="none" stroke="rgba(245, 177, 61, 0.55)" strokeWidth={1} strokeDasharray="1 3" strokeLinecap="round" style={nss} />
+      {/* Towns */}
+      <path d={urban} fill="rgba(201, 216, 236, 0.11)" stroke="rgba(201, 216, 236, 0.28)" strokeWidth={0.7} style={nss} />
+      <path className="l2" d={urban} fill={`url(#${uid}-streets)`} />
+      {/* Coastline */}
+      <path d={geo.land} fill="none" stroke={COAST} strokeWidth={0.9} strokeLinejoin="round" style={nss} />
+      {/* Close-zoom detail */}
+      <g className="l2" fill="none" stroke="rgba(201, 216, 236, 0.55)" strokeWidth={1.1} strokeLinecap="round" style={nss}>
+        <path d={G.HARBOURS} style={nss} />
+        {G.PITS.map(([x, y, r], i) => (
+          <g key={i} stroke="rgba(214, 160, 110, 0.5)">
+            {[1, 0.66, 0.33].map((k) => (
+              <ellipse key={k} cx={x} cy={y} rx={r * k} ry={r * k * 0.72} strokeWidth={0.7} style={nss} />
+            ))}
+          </g>
+        ))}
+        {G.RUNWAYS.map((rw, i) => (
+          <g key={i} transform={`translate(${rw.x} ${rw.y}) rotate(${rw.a})`}>
+            <rect x={-rw.l / 2} y={-0.35} width={rw.l} height={0.7} fill="rgba(201, 216, 236, 0.25)" strokeWidth={0.6} style={nss} />
+          </g>
+        ))}
+      </g>
+      {/* Border */}
+      <path d={geo.border} fill="none" stroke="rgba(242, 84, 91, 0.18)" strokeWidth={6} style={nss} />
+      <path d={geo.border} fill="none" stroke="rgba(242, 84, 91, 0.9)" strokeWidth={1.4} strokeDasharray="8 3 2 3" style={nss} />
+      {/* Grid */}
+      <path d={geo.graticule} fill="none" stroke="rgba(56, 214, 245, 0.07)" strokeWidth={1} style={nss} />
+      <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={`url(#${uid}-vignette)`} pointerEvents="none" />
+    </g>
+  );
+});
+
+// ---------- Regions ----------
+
+const RegionLayer = memo(function RegionLayer({ uid, show, crisis }: { uid: string; show: boolean; crisis: RegionId | null }) {
+  const geo = G.geography();
+  if (!show && !crisis) return null;
+  return (
+    <g pointerEvents="none">
+      {show && (
+        <g clipPath={`url(#${uid}-land)`}>
+          {FIGHTING.map((r) => (
+            <g key={r}>
+              <path d={G.ringPath(G.REGION_RINGS[r])} fill={REGION_COLOR[r]} fillOpacity={0.09} />
+              <path d={G.ringPath(G.REGION_RINGS[r])} fill="none" stroke={REGION_COLOR[r]} strokeOpacity={0.55} strokeWidth={1.2} strokeDasharray="5 4" style={nss} />
+            </g>
+          ))}
+        </g>
+      )}
+      {crisis && (
+        <g className="fcm-crisis" clipPath={`url(#${uid}-reg-${crisis})`}>
+          <path d={geo.land} fill="none" stroke={ops('red')} strokeWidth={8} strokeOpacity={0.6} filter={`url(#${uid}-glow)`} />
+          <path d={geo.land} fill={ops('red')} fillOpacity={0.12} />
+          <g clipPath={`url(#${uid}-land)`}>
+            <path d={G.ringPath(G.REGION_RINGS[crisis])} fill="none" stroke={ops('red')} strokeWidth={2} strokeOpacity={0.9} style={nss} />
+          </g>
+        </g>
+      )}
+    </g>
+  );
+});
+
+// ---------- Routes ----------
+
+function busyColor(u: number | undefined, base: string): string {
+  if (u === undefined || u < 0.6) return base;
+  return u >= 0.85 ? ops('red') : ops('amber');
+}
+
+const RoutesLayer = memo(
+  function RoutesLayer({ layers, use }: { layers: MapLayers; use: Record<string, number> | undefined; sig: string }) {
+    const by = (m: string) => G.ROUTE_GEOMS.filter((g) => g.mode === m);
+    return (
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none">
+        {layers.sea &&
+          by('sea').map((g) => {
+            const u = use?.[g.key];
+            return (
+              <g key={`s-${g.key}`}>
+                {u !== undefined && u >= 0.6 && <path d={g.d} stroke={busyColor(u, '')} strokeOpacity={0.25} strokeWidth={5} style={nss} />}
+                <path d={g.d} stroke={busyColor(u, ops('cyan', 0.7))} strokeWidth={1.3} strokeDasharray="7 5" style={nss} />
+              </g>
+            );
+          })}
+        {layers.road &&
+          by('road').map((g) => {
+            const u = use?.[g.key];
+            return (
+              <g key={`r-${g.key}`}>
+                <path d={g.d} stroke="rgba(6, 11, 20, 0.85)" strokeWidth={u !== undefined && u >= 0.6 ? 4.6 : 3.6} style={nss} />
+                <path d={g.d} stroke={busyColor(u, ROAD)} strokeWidth={u !== undefined && u >= 0.6 ? 2.4 : 1.7} style={nss} />
+              </g>
+            );
+          })}
+        {layers.rail &&
+          by('rail').map((g) => {
+            const u = use?.[g.key];
+            const c = busyColor(u, RAIL);
+            const busy = u !== undefined && u >= 0.6;
+            return (
+              <g key={`t-${g.key}`}>
+                <path d={g.d} stroke="rgba(6, 11, 20, 0.8)" strokeWidth={busy ? 4.5 : 3.6} style={nss} />
+                {busy && <path d={g.d} stroke={c} strokeOpacity={0.25} strokeWidth={7} style={nss} />}
+                <path d={g.d} stroke={c} strokeWidth={busy ? 1.8 : 1.3} style={nss} />
+                <path d={g.d} stroke={c} strokeWidth={5} strokeDasharray="1 5" strokeLinecap="butt" style={nss} />
+              </g>
+            );
+          })}
+        {layers.air &&
+          by('air').map((g) => {
+            const u = use?.[g.key];
+            return <path key={`a-${g.key}`} d={g.d} stroke={busyColor(u, ops('violet', 0.7))} strokeWidth={1} strokeDasharray="2 3" style={nss} />;
+          })}
+      </g>
+    );
+  },
+  (a, b) => a.layers === b.layers && a.sig === b.sig,
+);
+
+// ---------- Labels ----------
+
+const halo = (w: number) => ({ stroke: 'rgba(6, 11, 20, 0.88)', strokeWidth: w, paintOrder: 'stroke' as const, strokeLinejoin: 'round' as const });
+
+const LabelsLayer = memo(function LabelsLayer({ S, lod, labels, regions }: { S: number; lod: number; labels: boolean; regions: boolean }) {
+  const k = uiScale(S) / S;
+  return (
+    <g pointerEvents="none">
+      {labels &&
+        G.GEO_LABELS.filter((l) => l.lod <= lod).map((l, i) => {
+          const fill =
+            l.kind === 'sea' ? 'rgba(96, 178, 226, 0.55)' : l.kind === 'water' ? 'rgba(120, 190, 235, 0.85)' : l.kind === 'nation' ? 'rgba(242, 84, 91, 0.7)' : l.kind === 'island' ? 'rgba(201, 216, 236, 0.75)' : 'rgba(201, 216, 236, 0.5)';
+          const italic = l.kind === 'sea' || l.kind === 'water' || l.kind === 'relief';
+          return (
+            <g key={i} transform={`translate(${l.at[0]} ${l.at[1]}) scale(${k})${l.rot ? ` rotate(${l.rot})` : ''}`}>
+              <text
+                textAnchor="middle"
+                fontFamily={l.kind === 'water' || l.kind === 'island' ? FONT_MONO : FONT_HEAD}
+                fontWeight={l.kind === 'water' || l.kind === 'island' ? 400 : 600}
+                fontStyle={italic ? 'italic' : undefined}
+                fontSize={l.size + (l.kind === 'sea' || l.kind === 'nation' ? 1 : 0)}
+                letterSpacing={l.spacing ? `${l.spacing}em` : undefined}
+                fill={fill}
+                {...halo(l.kind === 'water' ? 2.5 : 3)}
+              >
+                {l.text}
+              </text>
+            </g>
+          );
+        })}
+      {regions &&
+        (Object.keys(G.REGION_LABEL_AT) as RegionId[]).map((r) => (
+          <g key={r} transform={`translate(${G.REGION_LABEL_AT[r][0]} ${G.REGION_LABEL_AT[r][1]}) scale(${k})`}>
+            <text textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={14} letterSpacing="0.2em" fill={r === 'central' ? ops('dim') : REGION_COLOR[r]} fillOpacity={0.9} {...halo(3)}>
+              {REGIONS[r].name.toUpperCase()}
+            </text>
+          </g>
+        ))}
+      {/* Off-map suppliers */}
+      {G.OFF_MAP_EXITS.map((e) => {
+        const deg = (e.angle * 180) / Math.PI;
+        // Push the caption inward, away from the sheet edge the lane leaves by.
+        const side = e.at[1] <= G.FRAME.y0 + 0.5 ? 'n' : e.at[1] >= G.FRAME.y1 - 0.5 ? 's' : e.at[0] <= G.FRAME.x0 + 0.5 ? 'w' : 'e';
+        const off = side === 'w' ? [30, -14] : side === 'e' ? [-30, -14] : side === 'n' ? [22, 22] : [24, -22];
+        const anchor = side === 'e' ? 'end' : 'start';
+        return (
+          <g key={e.siteId} transform={`translate(${e.at[0]} ${e.at[1]}) scale(${k})`}>
+            <g transform={`rotate(${deg})`}>
+              <path d="M-14 0H-2M-7 -5L0 0L-7 5" fill="none" stroke={ops('violet')} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </g>
+            <text x={off[0]} y={off[1]} textAnchor={anchor} fontFamily={FONT_HEAD} fontWeight={700} fontSize={12} letterSpacing="0.12em" fill={ops('violet')} {...halo(3)}>
+              {side === 'w' ? `← ${e.nation.toUpperCase()}` : side === 'e' ? `${e.nation.toUpperCase()} →` : side === 'n' ? `↑ ${e.nation.toUpperCase()}` : `↓ ${e.nation.toUpperCase()}`}
+            </text>
+            {S >= 0.6 && (
+              <text x={off[0]} y={off[1] + 12} textAnchor={anchor} fontFamily={FONT_MONO} fontSize={9.5} fill={ops('dim')} {...halo(2.5)}>
+                {e.name}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+// ---------- Sites and cities ----------
+
+interface Box { x0: number; y0: number; x1: number; y1: number }
+const overlap = (a: Box, b: Box) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+
+interface Placed { x: number; y: number; anchor: 'start' | 'middle' | 'end' }
+
+const cityDot = (pop: number) => 1.8 + Math.sqrt(pop) / 12;
+const citySize = (pop: number) => 10.5 + 4.5 * Math.max(0, Math.min(1, Math.log(pop / 30) / Math.log(1240 / 30)));
+
+function placeLabels(S: number, m: number, siteIds: string[]): { cities: Placed[]; sites: Record<string, Placed> } {
+  const taken: Box[] = [];
+  for (const s of SITES) {
+    const [x, y] = G.SITE_POS[s.id];
+    taken.push({ x0: x * S - m / 2, y0: y * S - m / 2, x1: x * S + m / 2, y1: y * S + m / 2 });
+  }
+  const pick = (cx: number, cy: number, cands: (Placed & { box: Box })[], force: boolean): Placed | null => {
+    let best: (Placed & { box: Box }) | null = null;
+    let bestScore = Infinity;
+    for (const c of cands) {
+      const b = { x0: c.box.x0 + cx, y0: c.box.y0 + cy, x1: c.box.x1 + cx, y1: c.box.y1 + cy };
+      let score = 0;
+      for (const t of taken) score += overlap(b, t);
+      if (score === 0) {
+        best = c;
+        bestScore = 0;
+        break;
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    if (!best || (bestScore > 0 && !force)) return null;
+    taken.push({ x0: best.box.x0 + cx, y0: best.box.y0 + cy, x1: best.box.x1 + cx, y1: best.box.y1 + cy });
+    return { x: best.x, y: best.y, anchor: best.anchor };
+  };
+  const u = uiScale(S);
+  const cities = CITIES.map((c) => {
+    if (!cityLabelled(c.pop, S)) return { x: 0, y: 0, anchor: 'start' as const };
+    const fs = citySize(c.pop) * u;
+    const w = c.name.length * fs * (c.pop >= 200 ? 0.66 : 0.52);
+    const r = (cityDot(c.pop) + (c.capital ? 3 : 0)) * u;
+    const h = fs * 0.8;
+    return pick(c.x * S, c.y * S, [
+      { x: r + 4, y: fs * 0.34, anchor: 'start', box: { x0: r + 3, y0: -h / 2 - 1, x1: r + 5 + w, y1: h / 2 + 1 } },
+      { x: -r - 4, y: fs * 0.34, anchor: 'end', box: { x0: -r - 5 - w, y0: -h / 2 - 1, x1: -r - 3, y1: h / 2 + 1 } },
+      { x: 0, y: -r - 4, anchor: 'middle', box: { x0: -w / 2, y0: -r - 4 - h, x1: w / 2, y1: -r - 3 } },
+      { x: 0, y: r + 4 + h, anchor: 'middle', box: { x0: -w / 2, y0: r + 3, x1: w / 2, y1: r + 5 + h } },
+    ], true) as Placed;
+  });
+  const sites: Record<string, Placed> = {};
+  for (const id of siteIds) {
+    const s = SITE_BY_ID[id];
+    const [x, y] = G.SITE_POS[id];
+    const w = s.name.length * 6.1;
+    const g = m / 2 + 4;
+    const p = pick(x * S, y * S, [
+      { x: g, y: 3.5, anchor: 'start', box: { x0: g - 1, y0: -6, x1: g + w + 1, y1: 6 } },
+      { x: -g, y: 3.5, anchor: 'end', box: { x0: -g - w - 1, y0: -6, x1: -g + 1, y1: 6 } },
+      { x: 0, y: g + 9, anchor: 'middle', box: { x0: -w / 2, y0: g, x1: w / 2, y1: g + 12 } },
+      { x: 0, y: -g - 3, anchor: 'middle', box: { x0: -w / 2, y0: -g - 12, x1: w / 2, y1: -g } },
+    ], siteIds.indexOf(id) < 3);
+    if (p) sites[id] = p;
+  }
+  return { cities, sites };
+}
+
+const CitiesLayer = memo(function CitiesLayer({ S, placed }: { S: number; placed: Placed[] }) {
+  const u = uiScale(S);
+  const k = u / S;
+  return (
+    <g pointerEvents="none">
+      {CITIES.map((c, i) => {
+        const r = cityDot(c.pop);
+        const fs = citySize(c.pop);
+        const p = placed[i];
+        const big = c.pop >= 200;
+        return (
+          <g key={c.name} transform={`translate(${c.x} ${c.y}) scale(${k})`}>
+            {c.capital && (
+              <>
+                <circle r={r + 3.2} fill="none" stroke="rgba(6, 11, 20, 0.9)" strokeWidth={3} />
+                <circle r={r + 3.2} fill="none" stroke="#e8f0fa" strokeWidth={1.2} />
+              </>
+            )}
+            <circle r={r} fill={c.capital ? ops('amber') : '#dce6f2'} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.3} />
+            {cityLabelled(c.pop, S) && <text
+              x={p.x / u}
+              y={p.y / u}
+              textAnchor={p.anchor}
+              fontFamily={FONT_HEAD}
+              fontWeight={big ? 700 : 600}
+              fontSize={fs}
+              letterSpacing={big ? '0.08em' : '0.02em'}
+              fill={c.capital ? '#f4f8fd' : '#d4dfec'}
+              {...halo(3.2)}
+            >
+              {big ? c.name.toUpperCase() : c.name}
+            </text>}
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+interface SitesLayerProps {
+  S: number;
+  markers: Record<string, MapMarker>;
+  selected: string | null;
+  focused: string | null;
+  hovered: string | null;
+  labelIds: Record<string, Placed>;
+  onActivate: (id: string, e: ReactMouseEvent | ReactKeyboardEvent) => void;
+  onFocusSite: (id: string | null) => void;
+  onHover: (id: string | null) => void;
+}
+
+const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, onActivate, onFocusSite, onHover }: SitesLayerProps) {
+  const k = 1 / S;
+  const m = markerPx(S);
+  const h = m / 2;
+  const order = SITES.slice().sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
+  return (
+    <g>
+      {order.map((s) => {
+        const [x, y] = G.SITE_POS[s.id];
+        const mk = markers[s.id];
+        const col = mk?.tone ? TONE_COLOR[mk.tone] : OWNER_COLOR[s.owner];
+        const sel = s.id === selected;
+        const body =
+          s.owner === 'state' ? (
+            <rect className="fcm-mbody" x={-h} y={-h} width={m} height={m} rx={3.5} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+          ) : s.owner === 'foreign' ? (
+            <path className="fcm-mbody" d={`M0 ${-h - 2}L${h + 2} 0L0 ${h + 2}L${-h - 2} 0Z`} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+          ) : (
+            <circle className="fcm-mbody" r={h + 0.5} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+          );
+        return (
+          <g
+            key={s.id}
+            className="fcm-marker"
+            transform={`translate(${x} ${y}) scale(${k})`}
+            tabIndex={0}
+            role="button"
+            aria-label={`${s.name}, ${KIND_LABEL[s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
+            aria-pressed={sel}
+            onClick={(e) => onActivate(s.id, e)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onActivate(s.id, e);
+              }
+            }}
+            onFocus={() => onFocusSite(s.id)}
+            onBlur={() => onFocusSite(null)}
+            onPointerEnter={() => onHover(s.id)}
+            onPointerLeave={() => onHover(null)}
+          >
+            <circle r={h + 6} fill="transparent" />
+            {mk?.pulse && <circle className="fcm-pulse" r={h + 1} fill="none" stroke={col} strokeWidth={2} />}
+            {sel && (
+              <g stroke={ops('cyan')} strokeWidth={2} fill="none" strokeLinecap="round">
+                <circle r={h + 7} stroke={ops('cyan', 0.25)} strokeWidth={6} />
+                <path d={`M${-h - 6} ${-h + 1}V${-h - 6}H${-h + 1}M${h - 1} ${-h - 6}H${h + 6}V${-h + 1}M${h + 6} ${h - 1}V${h + 6}H${h - 1}M${-h + 1} ${h + 6}H${-h - 6}V${h - 1}`} />
+              </g>
+            )}
+            {focused === s.id && !sel && <circle r={h + 5} fill="none" stroke={ops('text')} strokeWidth={1.5} strokeDasharray="3 2" />}
+            <g filter={undefined}>
+              {s.owner === 'state' ? (
+                <rect x={-h - 1.5} y={-h - 1.5} width={m + 3} height={m + 3} rx={4.5} fill="rgba(6, 11, 20, 0.6)" />
+              ) : (
+                <circle r={h + 2.5} fill="rgba(6, 11, 20, 0.6)" />
+              )}
+              {body}
+            </g>
+            <SiteIcon kind={s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
+            {mk?.badge && (
+              <g transform={`translate(${h - 2} ${-h - 3})`}>
+                <rect x={0} y={-6.5} width={8 + mk.badge.length * 5.6} height={13} rx={6.5} fill={col} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.2} />
+                <text x={4 + mk.badge.length * 2.8} y={3.2} textAnchor="middle" fontFamily={FONT_MONO} fontWeight={700} fontSize={9} fill="#06111f">
+                  {mk.badge}
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })}
+      <g pointerEvents="none">
+        {Object.entries(labelIds).map(([id, p]) => {
+          const s = SITE_BY_ID[id];
+          const [x, y] = G.SITE_POS[id];
+          const hot = id === selected || id === hovered || id === focused;
+          return (
+            <g key={id} transform={`translate(${x} ${y}) scale(${k})`}>
+              <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={10} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
+                {s.name}
+              </text>
+              {hot && (
+                <text x={p.x} y={p.y + 11} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={8.5} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
+                  {`${KIND_LABEL[s.kind].toUpperCase()} · ${REGIONS[s.region].name.toUpperCase()}`}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </g>
+    </g>
+  );
+});
+
+// ---------- Shipments ----------
+
+interface Leg { pts: G.Pt[]; cum: number[]; len: number; mode: string }
+const legCache = new Map<string, { legs: Leg[]; total: number }>();
+
+function legsFor(path: string[], mode: string): { legs: Leg[]; total: number } {
+  const key = `${mode}:${path.join('>')}`;
+  const hit = legCache.get(key);
+  if (hit) return hit;
+  const legs: Leg[] = [];
+  let prev = mode;
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const gs = G.GEOMS_BY_KEY.get(ROUTE_KEY(a, b));
+    const g = gs?.find((x) => x.mode === prev) ?? gs?.[0];
+    let pts: G.Pt[];
+    let m = prev;
+    if (g) {
+      pts = g.a === a ? g.pts : g.pts.slice().reverse();
+      m = g.mode;
+    } else {
+      const A = SITE_BY_ID[a];
+      const B = SITE_BY_ID[b];
+      pts = A && B ? [[A.x, A.y], [B.x, B.y]] : [];
+    }
+    if (pts.length < 2) continue;
+    const cum = [0];
+    for (let j = 1; j < pts.length; j++) cum.push(cum[j - 1] + Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]));
+    legs.push({ pts, cum, len: cum[cum.length - 1], mode: m });
+    prev = m;
+  }
+  const out = { legs, total: legs.reduce((s, l) => s + l.len, 0) };
+  if (legCache.size > 500) legCache.clear();
+  legCache.set(key, out);
+  return out;
+}
+
+function shipPoint(legs: Leg[], s: number): { p: G.Pt; mode: string } | null {
+  if (!legs.length) return null;
+  let rest = Math.max(0, s);
+  for (const l of legs) {
+    if (rest <= l.len) return { p: G.pointAt(l, rest), mode: l.mode };
+    rest -= l.len;
+  }
+  const last = legs[legs.length - 1];
+  return { p: last.pts[last.pts.length - 1], mode: last.mode };
+}
+
+const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments }: { S: number; shipments: MapShipment[] }) {
+  const k = 1 / S;
+  return (
+    <g pointerEvents="none">
+      {shipments.map((sh) => {
+        const { legs, total } = legsFor(sh.path, sh.mode);
+        const at = Math.max(0, Math.min(1, sh.progress)) * total;
+        const head = shipPoint(legs, at);
+        if (!head) return null;
+        const color = sh.color ?? MODE_COLOR[head.mode] ?? ops('text');
+        const trail = [at - 14 * k * 2, at - 7 * k * 2, at].map((s) => G.clampToFrame(shipPoint(legs, s)!.p));
+        const p = G.clampToFrame(head.p);
+        return (
+          <g key={sh.id}>
+            <path d={G.linePath(trail)} fill="none" stroke={color} strokeOpacity={0.45} strokeWidth={2.5 * k} strokeLinecap="round" />
+            <circle cx={p[0]} cy={p[1]} r={3.6 * k} fill={color} stroke="rgba(6, 11, 20, 0.95)" strokeWidth={1.3 * k} />
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+// ---------- Screen furniture ----------
+
+function niceKm(target: number): number {
+  for (const v of [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500]) if (v >= target) return v;
+  return 500;
+}
+
+const Furniture = memo(function Furniture({ view, size }: { view: View; size: Size }) {
+  const { S, tx, ty } = view;
+  const ticks: { x?: number; y?: number; v: number }[] = [];
+  const step = S < 0.6 ? 200 : S < 3 ? 100 : S < 6 ? 50 : 25;
+  for (let v = 0; v <= G.FRAME.x1; v += step) {
+    const x = v * S + tx;
+    if (x > 34 && x < size.w - 60) ticks.push({ x, v });
+  }
+  for (let v = 0; v <= G.FRAME.y1; v += step) {
+    const y = v * S + ty;
+    if (y > 64 && y < size.h - 70) ticks.push({ y, v });
+  }
+  const km = niceKm(90 / S);
+  const bar = km * S;
+  return (
+    <g pointerEvents="none" fontFamily={FONT_MONO}>
+      {ticks.map((t, i) =>
+        t.x !== undefined ? (
+          <g key={i}>
+            <line x1={t.x} x2={t.x} y1={0} y2={5} stroke={ops('cyan', 0.45)} />
+            <text x={t.x + 3} y={13} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
+              {t.v}
+            </text>
+          </g>
+        ) : (
+          <g key={i}>
+            <line x1={0} x2={5} y1={t.y} y2={t.y} stroke={ops('cyan', 0.45)} />
+            <text x={7} y={t.y! - 3} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
+              {t.v}
+            </text>
+          </g>
+        ),
+      )}
+      <g transform={`translate(16 ${size.h - 22})`}>
+        {[0, 1, 2, 3].map((i) => (
+          <rect key={i} x={(bar / 4) * i} y={0} width={bar / 4} height={4} fill={i % 2 ? 'rgba(6, 11, 20, 0.9)' : ops('text', 0.9)} stroke={ops('text', 0.9)} strokeWidth={0.8} />
+        ))}
+        <text x={0} y={-5} fontSize={9} fill={ops('dim')} {...halo(2.5)}>
+          0
+        </text>
+        <text x={bar} y={-5} fontSize={9} textAnchor="middle" fill={ops('text')} {...halo(2.5)}>
+          {km} km
+        </text>
+      </g>
+      <g transform={`translate(${Math.max(bar + 52, 120)} ${size.h - 30})`}>
+        <circle r={13} fill="rgba(6, 11, 20, 0.7)" stroke={ops('cyan', 0.4)} />
+        <path d="M0 -10L4 3L0 0.5L-4 3Z" fill={ops('cyan')} />
+        <path d="M0 10L4 3L0 0.5L-4 3Z" fill="none" stroke={ops('cyan', 0.6)} strokeWidth={0.8} />
+        <text y={-16} textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={11} fill={ops('cyan')} {...halo(2.5)}>
+          N
+        </text>
+      </g>
+    </g>
+  );
+});
+
+// ---------- The map ----------
+
+export default function MapView(props: MapViewProps): JSX.Element {
+  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560 } = props;
+  const uid = `fcm${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const readoutRef = useRef<HTMLSpanElement>(null);
+  const [size, setSize] = useState<Size>({ w: 0, h: 0 });
+  const [view, setView] = useState<View>({ S: 1, tx: 0, ty: 0 });
+  const viewRef = useRef(view);
+  const sizeRef = useRef(size);
+  const [relief, setRelief] = useState<string | null>(() => G.cachedRelief());
+  const [focused, setFocused] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  const apply = useCallback((v: View) => {
+    const c = clampView(v, sizeRef.current);
+    viewRef.current = c;
+    setView(c);
+  }, []);
+
+  // Size and refit.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      const next = { w: Math.round(r.width), h: Math.round(r.height) };
+      const prev = sizeRef.current;
+      if (next.w === prev.w && next.h === prev.h) return;
+      sizeRef.current = next;
+      setSize(next);
+      if (prev.w === 0 || prev.h === 0) {
+        apply(fitView(next));
+      } else {
+        // Keep the centre and relative zoom.
+        const v = viewRef.current;
+        const z = v.S / fitScale(prev);
+        const cx = (prev.w / 2 - v.tx) / v.S;
+        const cy = (prev.h / 2 - v.ty) / v.S;
+        const S = fitScale(next) * z;
+        apply({ S, tx: next.w / 2 - cx * S, ty: next.h / 2 - cy * S });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [apply]);
+
+  // Relief is built after first paint.
+  useEffect(() => {
+    if (relief) return;
+    let live = true;
+    const t = window.setTimeout(() => {
+      G.reliefImage().then((url) => {
+        if (live) setRelief(url);
+      });
+    }, 30);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [relief]);
+
+  // Animated moves for buttons and keyboard.
+  const anim = useRef(0);
+  const animateTo = useCallback(
+    (target: View, ms = 220) => {
+      cancelAnimationFrame(anim.current);
+      const from = viewRef.current;
+      const to = clampView(target, sizeRef.current);
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / ms);
+        const e = 1 - Math.pow(1 - p, 3);
+        const S = from.S * Math.pow(to.S / from.S, e);
+        // Interpolate the screen centre in world space so zooms feel anchored.
+        const { w, h } = sizeRef.current;
+        const fx = (w / 2 - from.tx) / from.S;
+        const fy = (h / 2 - from.ty) / from.S;
+        const gx = (w / 2 - to.tx) / to.S;
+        const gy = (h / 2 - to.ty) / to.S;
+        const cx = fx + (gx - fx) * e;
+        const cy = fy + (gy - fy) * e;
+        const v = { S, tx: w / 2 - cx * S, ty: h / 2 - cy * S };
+        viewRef.current = v;
+        setView(v);
+        if (p < 1) anim.current = requestAnimationFrame(step);
+        else apply(to);
+      };
+      anim.current = requestAnimationFrame(step);
+    },
+    [apply],
+  );
+  useEffect(() => () => cancelAnimationFrame(anim.current), []);
+
+  const zoomBy = useCallback((k: number) => {
+    const { w, h } = sizeRef.current;
+    animateTo(zoomAbout(viewRef.current, w / 2, h / 2, k));
+  }, [animateTo]);
+  const reset = useCallback(() => animateTo(fitView(sizeRef.current), 300), [animateTo]);
+
+  // Wheel zoom toward the cursor (non-passive so the page does not scroll).
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cancelAnimationFrame(anim.current);
+      const r = el.getBoundingClientRect();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+      const k = Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0018));
+      apply(zoomAbout(viewRef.current, e.clientX - r.left, e.clientY - r.top, k));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [apply, size.w > 0]);
+
+  // Drag to pan, two pointers to pinch.
+  const ptrs = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<{ v: View; x: number; y: number; d: number } | null>(null);
+  const moved = useRef(false);
+  const captured = useRef(new Set<number>());
+
+  const local = (e: { clientX: number; clientY: number }) => {
+    const r = svgRef.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  const startGesture = () => {
+    const ps = [...ptrs.current.values()];
+    if (ps.length === 0) {
+      gesture.current = null;
+      return;
+    }
+    const x = ps.reduce((s, p) => s + p.x, 0) / ps.length;
+    const y = ps.reduce((s, p) => s + p.y, 0) / ps.length;
+    const d = ps.length > 1 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0;
+    gesture.current = { v: viewRef.current, x, y, d };
+  };
+  const onPointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    cancelAnimationFrame(anim.current);
+    if (ptrs.current.size === 0) moved.current = false;
+    ptrs.current.set(e.pointerId, local(e));
+    startGesture();
+  };
+  const onPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
+    const p = local(e);
+    const v = viewRef.current;
+    if (readoutRef.current) {
+      const wx = (p.x - v.tx) / v.S;
+      const wy = (p.y - v.ty) / v.S;
+      readoutRef.current.textContent = G.inFrame(wx, wy) ? `E ${wx.toFixed(0).padStart(3, '0')} · S ${Math.max(0, wy).toFixed(0).padStart(3, '0')} km` : 'off sheet';
+    }
+    if (!ptrs.current.has(e.pointerId)) return;
+    ptrs.current.set(e.pointerId, p);
+    const g = gesture.current;
+    if (!g) return;
+    const ps = [...ptrs.current.values()];
+    const x = ps.reduce((s, q) => s + q.x, 0) / ps.length;
+    const y = ps.reduce((s, q) => s + q.y, 0) / ps.length;
+    if (!moved.current && Math.hypot(x - g.x, y - g.y) < 4 && ps.length < 2) return;
+    if (!moved.current) {
+      moved.current = true;
+      setDragging(true);
+    }
+    for (const id of ptrs.current.keys()) {
+      if (!captured.current.has(id)) {
+        try {
+          svgRef.current?.setPointerCapture(id);
+          captured.current.add(id);
+        } catch {
+          // Pointer already gone.
+        }
+      }
+    }
+    let k = 1;
+    if (ps.length > 1 && g.d > 0) k = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) / g.d;
+    const S = g.v.S * k;
+    const wx = (g.x - g.v.tx) / g.v.S;
+    const wy = (g.y - g.v.ty) / g.v.S;
+    apply({ S, tx: x - wx * S, ty: y - wy * S });
+  };
+  const onPointerEnd = (e: ReactPointerEvent<SVGSVGElement>) => {
+    ptrs.current.delete(e.pointerId);
+    if (captured.current.has(e.pointerId)) {
+      captured.current.delete(e.pointerId);
+      try {
+        svgRef.current?.releasePointerCapture(e.pointerId);
+      } catch {
+        // Already released.
+      }
+    }
+    if (ptrs.current.size === 0) setDragging(false);
+    startGesture();
+  };
+  const onBackgroundClick = () => {
+    if (moved.current) return;
+    onSelectRef.current(null);
+  };
+  const onDoubleClick = (e: ReactMouseEvent<SVGSVGElement>) => {
+    const p = local(e);
+    animateTo(zoomAbout(viewRef.current, p.x, p.y, 1.8));
+  };
+
+  const onActivate = useCallback((id: string, e: ReactMouseEvent | ReactKeyboardEvent) => {
+    e.stopPropagation();
+    if ('button' in e && moved.current) return;
+    onSelectRef.current(id);
+  }, []);
+  const onFocusSite = useCallback(
+    (id: string | null) => {
+      setFocused(id);
+      if (!id) return;
+      // Bring a keyboard-focused marker into view.
+      const [x, y] = G.SITE_POS[id];
+      const v = viewRef.current;
+      const { w, h } = sizeRef.current;
+      const sx = x * v.S + v.tx;
+      const sy = y * v.S + v.ty;
+      if (sx < 40 || sy < 40 || sx > w - 40 || sy > h - 40) animateTo({ S: v.S, tx: w / 2 - x * v.S, ty: h / 2 - y * v.S });
+    },
+    [animateTo],
+  );
+  const onHover = useCallback((id: string | null) => setHovered(id), []);
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const v = viewRef.current;
+    const pan = (dx: number, dy: number) => animateTo({ S: v.S, tx: v.tx + dx, ty: v.ty + dy }, 140);
+    switch (e.key) {
+      case 'ArrowLeft': pan(80, 0); break;
+      case 'ArrowRight': pan(-80, 0); break;
+      case 'ArrowUp': pan(0, 80); break;
+      case 'ArrowDown': pan(0, -80); break;
+      case '+': case '=': zoomBy(1.6); break;
+      case '-': case '_': zoomBy(1 / 1.6); break;
+      case '0': reset(); break;
+      case 'Escape': onSelectRef.current(null); break;
+      default: return;
+    }
+    e.preventDefault();
+  };
+
+  const lod = lodOf(view.S);
+  const S = view.S;
+  const m = markerPx(S);
+
+  // Labels to show: hot sites always, the rest from medium zoom.
+  const labelOrder = useMemo(() => {
+    const hot = [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]);
+    if (!layers.labels) return hot;
+    if (lod < 1) return hot;
+    const rank = (s: SiteDef) => (s.owner === 'state' ? (s.kind === 'arsenal' ? 0 : s.kind === 'depot' ? 1 : 2) : 3);
+    const rest = SITES.filter((s) => !hot.includes(s.id)).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
+    return [...hot, ...rest];
+  }, [selected, focused, hovered, layers.labels, lod]);
+  const placement = useMemo(() => placeLabels(S, m, labelOrder), [S, m, labelOrder]);
+
+  const useSig = routeUse ? Object.entries(routeUse).map(([k, v]) => `${k}:${v >= 0.85 ? 2 : v >= 0.6 ? 1 : 0}`).join(',') : '';
+
+  return (
+    <div
+      ref={wrapRef}
+      className="relative w-full select-none overflow-hidden rounded-md border border-ops-line bg-[#040912] outline-none focus-visible:ring-1 focus-visible:ring-ops-cyan/60"
+      style={{ height }}
+      tabIndex={0}
+      role="region"
+      aria-label="Map of the Commonwealth of Aldmere. Arrow keys pan, plus and minus zoom, 0 resets, Tab moves between sites."
+      onKeyDown={onKeyDown}
+    >
+      <style>{LOD_CSS}</style>
+      {size.w > 0 && (
+        <svg
+          ref={svgRef}
+          className="fcm absolute inset-0 block"
+          data-lod={lod}
+          width={size.w}
+          height={size.h}
+          style={{ touchAction: 'none', cursor: dragging ? 'grabbing' : 'grab' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onPointerLeave={() => {
+            if (readoutRef.current) readoutRef.current.textContent = '';
+          }}
+          onClick={onBackgroundClick}
+          onDoubleClick={onDoubleClick}
+        >
+          <Defs uid={uid} />
+          <g transform={`translate(${view.tx} ${view.ty}) scale(${S})`}>
+            <g clipPath={`url(#${uid}-frame)`}>
+              <StaticGeo uid={uid} terrain={layers.terrain} relief={relief} />
+              <RegionLayer uid={uid} show={layers.regions} crisis={crisisRegion} />
+              <RoutesLayer layers={layers} use={routeUse} sig={useSig} />
+            </g>
+            <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
+            <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
+            <LabelsLayer S={S} lod={lod} labels={layers.labels} regions={layers.regions} />
+            <CitiesLayer S={S} placed={placement.cities} />
+            {layers.flows && <ShipmentsLayer S={S} shipments={shipments} />}
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={placement.sites} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+          </g>
+          <Furniture view={view} size={size} />
+        </svg>
+      )}
+      <div className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg/75 px-2.5 py-1.5 backdrop-blur-sm">
+        <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">Commonwealth of Aldmere</div>
+        <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
+      </div>
+      <div className="absolute right-3 top-3 flex flex-col gap-1">
+        <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in">
+          +
+        </button>
+        <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1 / 1.6)} aria-label="Zoom out" title="Zoom out">
+          −
+        </button>
+        <button type="button" className="btn h-7 w-7 px-0 text-[12px]" onClick={reset} aria-label="Reset view" title="Reset view">
+          ⟲
+        </button>
+      </div>
+      <div className="pointer-events-none absolute bottom-2 right-3 text-[9.5px] tracking-wider text-ops-dim">
+        <span ref={readoutRef} />
+        <span className="ml-2 text-ops-dim/70">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Layer toggles and legend ----------
+
+const LAYER_LABEL: [keyof MapLayers, string, string | null][] = [
+  ['terrain', 'Terrain', null],
+  ['labels', 'Labels', null],
+  ['rail', 'Rail', RAIL],
+  ['road', 'Road', ROAD],
+  ['sea', 'Sea', ops('cyan')],
+  ['air', 'Air', ops('violet')],
+  ['flows', 'Flows', ops('amber')],
+  ['regions', 'Regions', ops('blue')],
+];
+
+export function MapLayerToggles({ layers, onChange, className = '' }: { layers: MapLayers; onChange: (next: MapLayers) => void; className?: string }) {
+  return (
+    <div className={`flex flex-wrap gap-1 ${className}`} role="group" aria-label="Map layers">
+      {LAYER_LABEL.map(([k, label, c]) => (
+        <button key={k} type="button" className={`btn px-2 py-0.5 text-[10px] ${layers[k] ? 'btn-active' : ''}`} aria-pressed={layers[k]} onClick={() => onChange({ ...layers, [k]: !layers[k] })}>
+          {c && <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c, opacity: layers[k] ? 1 : 0.4 }} />}
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RouteSwatch({ mode }: { mode: 'rail' | 'road' | 'sea' | 'air' }) {
+  return (
+    <svg width={34} height={10} aria-hidden="true">
+      {mode === 'rail' && (
+        <>
+          <path d="M2 5H32" stroke="rgba(6, 11, 20, 0.8)" strokeWidth={3.6} />
+          <path d="M2 5H32" stroke={RAIL} strokeWidth={1.3} />
+          <path d="M2 5H32" stroke={RAIL} strokeWidth={5} strokeDasharray="1 5" />
+        </>
+      )}
+      {mode === 'road' && (
+        <>
+          <path d="M2 5H32" stroke="rgba(6, 11, 20, 0.9)" strokeWidth={3.6} strokeLinecap="round" />
+          <path d="M2 5H32" stroke={ROAD} strokeWidth={1.7} strokeLinecap="round" />
+        </>
+      )}
+      {mode === 'sea' && <path d="M2 5H32" stroke={ops('cyan', 0.75)} strokeWidth={1.3} strokeDasharray="7 5" />}
+      {mode === 'air' && <path d="M2 8Q17 0 32 8" fill="none" stroke={ops('violet', 0.8)} strokeWidth={1} strokeDasharray="2 3" />}
+    </svg>
+  );
+}
+
+export function MapLegend({ className = 'panel p-3' }: { className?: string }) {
+  return (
+    <div className={`text-[11px] ${className}`}>
+      <div className="label mb-1.5">Sites</div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3">
+        {SITE_KINDS.map((k) => (
+          <div key={k} className="flex items-center gap-1.5 text-ops-text">
+            <SiteIconSvg kind={k} size={16} className="shrink-0 text-ops-cyan" />
+            <span className="truncate">{KIND_LABEL[k]}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div>
+          <div className="label mb-1.5">Transport</div>
+          {(['rail', 'road', 'sea', 'air'] as const).map((m) => (
+            <div key={m} className="flex items-center gap-2 text-ops-text">
+              <RouteSwatch mode={m} />
+              <span className="capitalize">{m}</span>
+            </div>
+          ))}
+          <div className="mt-1 flex items-center gap-2 text-ops-dim">
+            <span className="inline-block h-1 w-[34px] rounded bg-ops-amber" /> busy
+            <span className="inline-block h-1 w-3 rounded bg-ops-red" /> jammed
+          </div>
+        </div>
+        <div>
+          <div className="label mb-1.5">Status</div>
+          {(
+            [
+              ['ok', 'Running'],
+              ['warn', 'Strained'],
+              ['bad', 'Down'],
+              ['idle', 'Idle'],
+            ] as const
+          ).map(([t, l]) => (
+            <div key={t} className="flex items-center gap-2 text-ops-text">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border" style={{ borderColor: TONE_COLOR[t], background: `color-mix(in srgb, ${TONE_COLOR[t]} 25%, transparent)` }} />
+              {l}
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="label mb-1.5">Owner</div>
+          <div className="flex items-center gap-2 text-ops-text">
+            <svg width={12} height={12} aria-hidden="true"><rect x={1} y={1} width={10} height={10} rx={2} fill="none" stroke={OWNER_COLOR.state} strokeWidth={1.5} /></svg>
+            State
+          </div>
+          <div className="flex items-center gap-2 text-ops-text">
+            <svg width={12} height={12} aria-hidden="true"><circle cx={6} cy={6} r={5} fill="none" stroke={OWNER_COLOR.private} strokeWidth={1.5} /></svg>
+            Private
+          </div>
+          <div className="flex items-center gap-2 text-ops-text">
+            <svg width={12} height={12} aria-hidden="true"><path d="M6 0.8L11.2 6L6 11.2L0.8 6Z" fill="none" stroke={OWNER_COLOR.foreign} strokeWidth={1.5} /></svg>
+            Foreign
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-ops-text">
+            <svg width={12} height={12} aria-hidden="true"><circle cx={6} cy={6} r={3} fill={ops('amber')} /><circle cx={6} cy={6} r={5.2} fill="none" stroke="#e8f0fa" /></svg>
+            Capital
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

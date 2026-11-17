@@ -29,6 +29,8 @@ export interface ProcessState {
   lastLimit: MaterialId | 'capacity' | 'idle' | 'crew' | 'damaged' | 'demand' | null;
   /** Expansion steps added (each +25% of the original). */
   expansions: number;
+  /** New capacity still ramping up: it never drags down what is already running. */
+  ramp?: { cap: number; maturity: number }[];
 }
 
 export interface SiteState {
@@ -152,7 +154,8 @@ export interface SimState {
   routeLoad: Record<string, number>;
   crisis: Crisis | null;
   policy: Policy;
-  lines: Record<LineId, { unlocked: boolean }>;
+  /** since: the day a line was unlocked (new lines get a year's grace before they count). */
+  lines: Record<LineId, { unlocked: boolean; since?: number }>;
   feed: FeedItem[];
   /** Running totals for the month in progress. */
   month: MonthReport;

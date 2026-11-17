@@ -7,6 +7,7 @@ import {
   baseDailyDraw,
   crewNeed,
   inbound,
+  inGrace,
   inputRates,
   isLine,
   lotQty,
@@ -99,7 +100,9 @@ function produce(s: SimState): void {
       let limit: typeof p.lastLimit = site.status !== 'active' ? 'damaged' : 'capacity';
       if (def.owner === 'state' && crewNeed(site) > site.workers * 1.02) limit = 'crew';
       // Private producers stop when nobody is buying.
-      if (def.owner !== 'state' && !isLine(rec.output) && (site.stock[rec.output] ?? 0) > p.capacity * MAX_OUTPUT_DAYS) {
+      // Unless a by-product (gallium from the smelter) is still wanted.
+      const extraWanted = Object.entries(rec.extra ?? {}).some(([m, q]) => (site.stock[m as MaterialId] ?? 0) < p.capacity * (q ?? 0) * MAX_OUTPUT_DAYS);
+      if (def.owner !== 'state' && !isLine(rec.output) && !extraWanted && (site.stock[rec.output] ?? 0) > p.capacity * MAX_OUTPUT_DAYS) {
         want = 0;
         limit = 'demand';
       }
@@ -168,7 +171,7 @@ function requests(s: SimState): Request[] {
         // Every launcher needs a few ready rounds, however rarely it fires.
         const target = Math.max(rate * s.policy.baseDays, MIN_BASE_ROUNDS[line] ?? 4);
         const have = lotQty(site.lots[line]) + inbound(s, site.id, line);
-        if (have < target * 0.6) out.push({ to: site.id, material: line, qty: target - have, state: true });
+        if (have < target * 0.6) out.push({ to: site.id, material: line, qty: Math.min(target - have, Math.max(rate * 7, MIN_BASE_ROUNDS[line] ?? 4)), state: true });
       }
     }
     if (def.kind === 'depot' && site.id !== 'depotCentral') {
@@ -178,7 +181,8 @@ function requests(s: SimState): Request[] {
         if (rate <= 0) continue;
         const target = Math.max(rate * s.policy.depotDays[region], (MIN_BASE_ROUNDS[line] ?? 4) * 2);
         const have = lotQty(site.lots[line]) + inbound(s, site.id, line);
-        if (have < target * 0.7) out.push({ to: site.id, material: line, qty: target - have, state: true });
+        // Restock in daily slices so a big target does not jam the railways.
+        if (have < target * 0.7) out.push({ to: site.id, material: line, qty: Math.min(target - have, rate * 7), state: true });
       }
     }
     if (site.id === 'depotCentral') {
@@ -274,7 +278,13 @@ function logistics(s: SimState): void {
     else site.stock[sh.material] = (site.stock[sh.material] ?? 0) + sh.qty;
   }
   // Requests: your arsenals and depots first (contracts give priority), then private industry.
-  const reqs = requests(s).sort((a, b) => Number(b.state) - Number(a.state));
+  // Shuffle so no site always gets first pick of scarce parts, then serve your sites before private industry.
+  const all = requests(s);
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(rand(s) * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  const reqs = all.sort((a, b) => Number(b.state) - Number(a.state));
   // Contracted supply is reserved for your sites first.
   const reserved: Record<string, number> = {};
   for (const c of s.contracts) if (c.endDay > s.day) reserved[`${c.site}|${c.material}`] = c.perDay * 3;
@@ -399,7 +409,7 @@ function fight(s: SimState): DayFight {
         if (got >= want) break;
       }
       s.month.fired[line] = (s.month.fired[line] ?? 0) + got;
-      if (want > got) landShort += (want - got) / want;
+      if (want > got && !inGrace(s, line)) landShort += (want - got) / want;
     }
   }
   return { leakSeverity, landShort };
@@ -512,7 +522,15 @@ function world(s: SimState): void {
         feed(s, 'good', `${def.name} is qualified to supply your arsenals.`, site.id, true);
       }
     }
-    for (const p of site.processes) if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + (0.08 * DIFF[s.difficulty].ramp) / DAYS_PER_MONTH);
+    for (const p of site.processes) {
+      const step = (0.08 * DIFF[s.difficulty].ramp) / DAYS_PER_MONTH;
+      if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + step);
+      if (p.ramp?.length) {
+        for (const r of p.ramp) r.maturity = Math.min(1, r.maturity + step);
+        for (const r of p.ramp.filter((x) => x.maturity >= 1)) p.capacity += r.cap;
+        p.ramp = p.ramp.filter((x) => x.maturity < 1);
+      }
+    }
     if (site.trainees.length) {
       for (const t of site.trainees) t.days -= 1 / (1 - 0.15 * skillOf(s, 'labor'));
       const done = site.trainees.filter((t) => t.days <= 0).reduce((a, t) => a + t.count, 0);
@@ -553,9 +571,11 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   expireDecisions(s, feed);
   strategyMonth(s, feed, { readiness: ready, excessLeaks: Math.max(0, fightTotals.leakSeverity - 2.5), burned: s.policy.demilMethod === 'burn' ? s.month.demilled : 0 });
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
-  let dc = (ready - 0.75) * 8;
+  const expect = { easy: 0.62, normal: 0.7, hard: 0.76 }[s.difficulty];
+  let dc = (ready - expect) * 8;
   dc -= Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5);
-  dc -= fightTotals.landShort * 0.15;
+  // landShort sums each day's shortfall fraction: average it over the month.
+  dc -= (fightTotals.landShort / DAYS_PER_MONTH) * 4;
   if (s.treasury < 0) dc -= 1 + -s.treasury / 400;
   s.confidence = clamp(s.confidence + dc);
   s.month.readiness = Math.round(ready * 100) / 100;
