@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.0.0: the network
+
+A full rebuild: from a monthly turn game to a real-time management game.
+
+### Cradle to grave
+- **The whole chain is simulated:** extraction, processing, chips and optics, components, integration, acceptance,
+  storage, issue to bases, firing, ageing, surveillance testing, refurbishment, and demilitarization by burning or
+  recycling.
+- **Size:** 49 materials and 65 fictional sites, with recipes and bills of materials scaled from public reference
+  figures.
+
+### Logistics
+- **Transport network:** rail, road, sea and air links, each with a daily tonnage limit and transit time.
+- **Pull-based resupply** through central and regional depots to the bases, with targets you set.
+
+### Play
+- **Pausable real time:** 1× to 8×, step a day or a week, and auto-pause on important events.
+- **A detailed vector map** with an icon for every kind of site, pan and zoom, and layers.
+- **Panels:** watch list, site inspector, materials explorer, stockpile lifecycle, logistics, fight, Board (research,
+  staff, Committee, decisions, objectives), money, feed and guide.
+- **An aging war reserve:** much of it retires during your term.
+
 ## 1.0.0: the full game
 
 ### Factory floor
