@@ -4,6 +4,8 @@ import {
   FACILITIES,
   FACILITY_IDS,
   FAI_MONTHS,
+  INVEST_STEP,
+  tier2For,
   NEW_TRANCHE_MATURITY,
   CAMPUSES,
   COMPONENTS,
@@ -102,8 +104,9 @@ export function supplierCap(state: GameState, sid: string): number {
   const def = SUPPLIERS[sid];
   const st = state.suppliers[sid];
   if (!st.qualified || st.bankrupt || st.embargoMonths > 0) return 0;
-  const congestion = st.congestionMonths > 0 ? 0.5 : 1;
-  return def.baseCap * DIFFICULTY[state.difficulty].capMult * st.capFactor * congestion;
+  const t = tier2For(def.component);
+  const feed = t && DIFFICULTY[state.difficulty].shortages ? state.tier2[t].availability : 1;
+  return def.baseCap * (1 + INVEST_STEP * st.capBonus) * DIFFICULTY[state.difficulty].capMult * st.capFactor * feed;
 }
 
 export const componentCap = (state: GameState, c: ComponentId) =>

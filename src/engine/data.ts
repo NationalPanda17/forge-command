@@ -21,6 +21,8 @@ import type {
   FacilityDef,
   FacilityId,
   StageDef,
+  Tier2Def,
+  Tier2Id,
 } from './types';
 
 export const HOME_NATION = 'Commonwealth of Aldmere';
@@ -300,7 +302,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyRules> = {
   hard: {
     label: 'Hard', blurb: 'Tighter supply, slow ramp-up, frequent events and sabotage, no advisor, and an adaptive opponent with unreliable intel.',
     shortages: true, rampPerMonth: 0.05, capMult: 0.92, shockChance: 0.035, eventRate: 1.5, crisisChance: 0.11,
-    appropriation: 140, startTreasury: 450, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
+    appropriation: 146, startTreasury: 450, trainingMonths: 6, buildMonths: 12, qualifyMult: 1.25,
     advisor: 'none', adaptive: true, intelError: 0.3, sabotage: true,
   },
 };
@@ -415,6 +417,31 @@ export const FACILITIES: Record<FacilityId, FacilityDef> = {
   },
 };
 export const FACILITY_IDS = Object.keys(FACILITIES) as FacilityId[];
+
+// ---------- Deep supply chain ----------
+
+/** What your suppliers buy: feedstock markets. */
+export const TIER2: Record<Tier2Id, Tier2Def> = {
+  perchlorate: { id: 'perchlorate', name: 'Ammonium perchlorate', feeds: ['srm'], source: 'Cinder Flats Chemical, the only domestic oxidizer plant', blurb: 'The oxidizer in nearly every solid rocket motor. One plant, one point of failure.' },
+  nitro: { id: 'nitro', name: 'Nitrocellulose & nitramines', feeds: ['energetics'], source: 'Varn River Cellulose and imported cotton linters', blurb: 'Base chemicals for explosive fill and gun propellant.' },
+  steel: { id: 'steel', name: 'Forging billet', feeds: ['shellBodies'], source: 'Domestic steel mills', blurb: 'High-fragmentation steel bar for shell bodies.' },
+  wafers: { id: 'wafers', name: 'Semiconductor wafers', feeds: ['microelectronics', 'rfSeeker'], source: 'A world market dominated by a few foundries', blurb: 'Every guidance board and radar seeker starts as a wafer somewhere else.' },
+  ore: { id: 'ore', name: 'Gallium & germanium concentrates', feeds: ['criticalMaterials'], source: 'Zinc and aluminium smelter by-products, mostly in the Karsk Federation', blurb: 'Recovered in tiny amounts from other metals: supply follows someone else\'s smelters.' },
+  optics: { id: 'optics', name: 'Optical glass & IR crystals', feeds: ['irSeeker'], source: 'Specialist glassworks in the Corvane Union', blurb: 'Germanium windows and lenses for infrared seekers.' },
+};
+export const TIER2_IDS = Object.keys(TIER2) as Tier2Id[];
+export const tier2For = (c: ComponentId): Tier2Id | null => TIER2_IDS.find((t) => TIER2[t].feeds.includes(c)) ?? null;
+
+/** Months a shipment takes from each supplier nation. */
+export const LEAD_TIME: Record<NationId, number> = { aldmere: 0, corvane: 1, ostrel: 2, karsk: 2 };
+/** Components that age: stock beyond this many months of baseline need loses a share each month. */
+export const SHELF_LIFE: Partial<Record<ComponentId, { months: number; loss: number }>> = {
+  srm: { months: 6, loss: 0.04 },
+  energetics: { months: 6, loss: 0.04 },
+};
+export const INVEST_STEP = 0.3;
+export const MAX_INVEST = 2;
+export const INVEST_MONTHS = 8;
 /** Months at the start with no supply shocks or random events. */
 export const GRACE_MONTHS = 3;
 /** Months of baseline need held in stock at the start (critical materials are a strategic stockpile). */

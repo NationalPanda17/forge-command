@@ -20,6 +20,8 @@ import {
   DEBOTTLENECK_MONTHS,
   MAX_DEBOTTLENECK,
   FACILITIES,
+  INVEST_MONTHS,
+  MAX_INVEST,
 } from './data';
 import { resolveDecision } from './events';
 import { acceptTender } from './partners';
@@ -34,8 +36,10 @@ export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIE
 export const qualifyMonths = (state: GameState, sid: string) => Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult));
 export const reworkCost = (state: GameState, id: LineId) =>
   state.lines[id].quarantine.reduce((s, q) => s + q.qty, 0) * LINES[id].unitCost * REWORK_COST_SHARE;
-export const contractPrice = (sid: string, months: 12 | 24 | 36) =>
-  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months];
+/** Contracts lock today's market price for their whole term. */
+export const contractPrice = (state: GameState, sid: string, months: 12 | 24 | 36) =>
+  COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * CONTRACT_DISCOUNT[months] * state.components[SUPPLIERS[sid].component].priceIndex;
+export const investCost = (sid: string) => Math.max(10, Math.round(SUPPLIERS[sid].baseCap * COMPONENTS[SUPPLIERS[sid].component].price * SUPPLIERS[sid].priceMult * 8));
 export const cancelPenalty = (state: GameState, component: keyof GameState['components'], contract: number) => {
   const k = state.components[component].contracts.find((x) => x.id === contract);
   return k ? k.qtyPerMonth * k.monthsLeft * k.unitPrice * CANCEL_PENALTY : 0;
@@ -128,6 +132,15 @@ export function validateAction(state: GameState, a: Action): string | null {
       if (st.qualified) return 'Already qualified.';
       if (st.qualifyingMonths !== null) return 'Qualification already under way.';
       return funds(state, qualifyCost(state, a.supplier));
+    }
+    case 'investSupplier': {
+      const st = state.suppliers[a.supplier];
+      if (!st) return 'Unknown supplier.';
+      if (st.bankrupt) return 'That supplier is bankrupt.';
+      if (!st.qualified) return 'Qualify this supplier first.';
+      if (st.investingMonths !== null) return 'An expansion is already being built there.';
+      if (st.capBonus >= MAX_INVEST) return 'This supplier cannot grow any further.';
+      return funds(state, investCost(a.supplier));
     }
     case 'acceptTender':
     case 'declineTender':
@@ -251,7 +264,7 @@ export function applyAction(state: GameState, a: Action): GameState {
         qtyPerMonth: Math.round(a.qtyPerMonth * 100) / 100,
         monthsLeft: a.months,
         months: a.months,
-        unitPrice: contractPrice(a.supplier, a.months),
+        unitPrice: contractPrice(s, a.supplier, a.months),
         backlog: 0,
       });
       break;
@@ -265,6 +278,11 @@ export function applyAction(state: GameState, a: Action): GameState {
     case 'qualifySupplier':
       charge(s, qualifyCost(s, a.supplier));
       s.suppliers[a.supplier].qualifyingMonths = qualifyMonths(s, a.supplier);
+      break;
+    case 'investSupplier':
+      charge(s, investCost(a.supplier));
+      s.suppliers[a.supplier].investingMonths = INVEST_MONTHS;
+      s.suppliers[a.supplier].health = Math.min(100, s.suppliers[a.supplier].health + 20);
       break;
     case 'acceptTender':
       acceptTender(s, a.tender);

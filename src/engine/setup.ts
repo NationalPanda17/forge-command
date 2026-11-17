@@ -4,6 +4,8 @@ import {
   STAGES,
   START_WIP_MONTHS,
   TEST_CELLS,
+  TIER2_IDS,
+  LEAD_TIME,
   START_STOCK_MONTHS,
   CAMPUSES,
   CAMPUS_IDS,
@@ -32,6 +34,8 @@ import type {
   Difficulty,
   FacilityId,
   FacilityState,
+  Tier2Id,
+  Tier2State,
   GameState,
   Ledger,
   LineId,
@@ -67,6 +71,16 @@ export function baselineNeed(c: ComponentId): number {
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Foreign contracts start with shipments already on the water, so there is no gap at the start. */
+export function seedPipeline(state: GameState): void {
+  for (const c of COMPONENT_IDS) {
+    for (const k of state.components[c].contracts) {
+      const lead = LEAD_TIME[SUPPLIERS[k.supplier].nation];
+      for (let m = 0; m < lead; m++) state.shipments.push({ id: state.nextId++, component: c, supplier: k.supplier, qty: k.qtyPerMonth, arrive: m });
+    }
+  }
+}
 
 export const emptyFacility = (id: FacilityId): FacilityState => ({ id, status: 'none', monthsLeft: 0, tranches: [], run: 'normal', lastOutput: 0, lastLimit: null });
 
@@ -106,7 +120,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 3,
+    version: 4,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
@@ -121,6 +135,8 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     suppliers,
     components,
     reserves,
+    tier2: Object.fromEntries(TIER2_IDS.map((t) => [t, { id: t, availability: 1, priceIndex: 1, disruptionMonths: 0 }])) as Record<Tier2Id, Tier2State>,
+    shipments: [],
     facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
@@ -153,6 +169,8 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
       congestionMonths: 0,
       bankrupt: false,
       lastDelivered: 0,
+      capBonus: 0,
+      investingMonths: null,
     };
   }
 
@@ -204,6 +222,9 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
       lastUsed: 0,
       lastShort: 0,
       lastSubstituted: 0,
+      priceIndex: 1,
+      lastAged: 0,
+      lastLost: 0,
     };
   }
 
@@ -222,6 +243,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     suppliers[sc.shock.supplier].shockMonths = sc.shock.months;
   }
 
+  seedPipeline(state);
   spawnTender(state);
   state.forecast = computeForecast(state);
   return state;

@@ -11,6 +11,7 @@ import {
   newGame,
   playTurn,
   serialize,
+  SAVE_VERSION,
   stageCaps,
   validateAction,
   type Action,
@@ -152,7 +153,7 @@ describe('save migration', () => {
     }
     const up = deserialize(JSON.stringify(old));
     expect(up).not.toBeNull();
-    expect(up!.version).toBe(3);
+    expect(up!.version).toBe(SAVE_VERSION);
     expect(up!.facilities.motorWorks.status).toBe('none');
     // And it keeps playing.
     const next = endTurn(up!);

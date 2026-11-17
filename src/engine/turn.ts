@@ -2,30 +2,25 @@
 import {
   CAMPUSES,
   CAMPUS_IDS,
-  COMPONENTS,
-  COMPONENT_IDS,
   CRISES,
   DIFFICULTY,
   EXPAND_STEP,
-  GRACE_MONTHS,
   LINES,
   LINE_IDS,
   SCENARIOS,
-  SPOT_PREMIUM,
   STAGES,
-  SUPPLIERS,
   UPGRADE,
   WEAR_DELTA,
   linesAt,
-  suppliersOf,
 } from './data';
 import { applyAction } from './actions';
 import { adaptOpponent, computeForecast, resolveDemand } from './demand';
 import { runFacilities, runFactory } from './factory';
-import { applyFallbacks, goBankrupt, rollEvents } from './events';
+import { runMarkets, runSupply } from './supply';
+import { applyFallbacks, rollEvents } from './events';
 import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
-import { lineOverhead, newTranche, readiness, storageCost, supplierCap, wageBill } from './selectors';
+import { lineOverhead, newTranche, readiness, storageCost, wageBill } from './selectors';
 import { emptyLedger } from './setup';
 import type { Action, GameState, MonthReport, YearReview } from './types';
 
@@ -118,90 +113,6 @@ function advanceProjects(s: GameState, messages: Messages): void {
   }
 }
 
-/** Suppliers drift, stumble and deliver. Returns component spend. */
-function runSupply(s: GameState, messages: Messages): number {
-  const rules = DIFFICULTY[s.difficulty];
-  let spend = 0;
-  for (const c of COMPONENT_IDS) {
-    const cs = s.components[c];
-    const sids = suppliersOf(c);
-    for (const sid of sids) {
-      const st = s.suppliers[sid];
-      const def = SUPPLIERS[sid];
-      st.lastDelivered = 0;
-      if (st.qualifyingMonths !== null) {
-        st.qualifyingMonths--;
-        if (st.qualifyingMonths <= 0) {
-          st.qualifyingMonths = null;
-          st.qualified = true;
-          messages.push({ tone: 'good', text: `${def.name} is qualified for ${COMPONENTS[c].name.toLowerCase()}. You can contract with it now.` });
-        }
-      }
-      if (!st.qualified || st.bankrupt) continue;
-      const busy = cs.contracts.some((k) => k.supplier === sid && k.monthsLeft > 0);
-      st.health = clamp(st.health + randRange(s, -2.5, 2) + (busy ? 1 : -0.4));
-      if (!rules.shortages) st.health = Math.max(st.health, 40);
-      if (st.health <= 0) {
-        goBankrupt(s, sid, messages);
-        continue;
-      }
-      if (!rules.shortages) {
-        st.capFactor = 1;
-        st.shockMonths = 0;
-      } else if (st.shockMonths > 0) {
-        st.shockMonths--;
-      } else if (s.month >= GRACE_MONTHS && rand(s) < rules.shockChance) {
-        st.capFactor = round2(randRange(s, 0.4, 0.7));
-        st.shockMonths = randInt(s, 2, 5) - 1;
-        messages.push({ tone: 'bad', text: `Shortage: ${def.name} can only deliver ${Math.round(st.capFactor * 100)}% of its ${COMPONENTS[c].name.toLowerCase()} for a while.` });
-      } else {
-        if (st.capFactor < 0.9) messages.push({ tone: 'good', text: `${def.name} is back to normal deliveries.` });
-        st.capFactor = round2(randRange(s, 0.94, 1.04));
-      }
-    }
-    const capLeft: Record<string, number> = Object.fromEntries(sids.map((sid) => [sid, supplierCap(s, sid)]));
-    let delivered = 0;
-    for (const k of cs.contracts) {
-      if (k.monthsLeft > 0) {
-        spend += k.qtyPerMonth * k.unitPrice;
-        k.backlog += k.qtyPerMonth;
-        k.monthsLeft--;
-      }
-      const d = Math.min(k.backlog, capLeft[k.supplier] ?? 0);
-      k.backlog = round2(k.backlog - d);
-      capLeft[k.supplier] -= d;
-      s.suppliers[k.supplier].lastDelivered += d;
-      delivered += d;
-    }
-    cs.contracts = cs.contracts.filter((k) => k.monthsLeft > 0 || k.backlog > 0.01);
-    let spot = cs.spotOrder;
-    for (const sid of [...sids].sort((a, b) => SUPPLIERS[a].priceMult - SUPPLIERS[b].priceMult)) {
-      if (spot <= 0) break;
-      const d = Math.min(spot, capLeft[sid]);
-      if (d <= 0) continue;
-      spot -= d;
-      capLeft[sid] -= d;
-      spend += d * COMPONENTS[c].price * SUPPLIERS[sid].priceMult * SPOT_PREMIUM;
-      s.suppliers[sid].lastDelivered += d;
-      delivered += d;
-    }
-    cs.stock += delivered;
-    cs.lastDelivered = round2(delivered);
-    cs.lastUsed = 0;
-    cs.lastShort = 0;
-    cs.lastSubstituted = 0;
-    for (const sid of sids) {
-      const st = s.suppliers[sid];
-      if (st.embargoMonths > 0) {
-        st.embargoMonths--;
-        if (st.embargoMonths === 0) messages.push({ tone: 'good', text: `Export restriction on ${SUPPLIERS[sid].name} lifted.` });
-      }
-      if (st.congestionMonths > 0) st.congestionMonths--;
-    }
-  }
-  return spend;
-}
-
 /** Lines age: wear, first-article inspection, ramp-up, quarantine clocks. */
 function ageLines(s: GameState, messages: Messages): void {
   const rules = DIFFICULTY[s.difficulty];
@@ -281,6 +192,7 @@ export function endTurn(state: GameState): GameState {
   rollEvents(s, messages);
   advanceProjects(s, messages);
 
+  runMarkets(s, messages);
   ledger.components = runSupply(s, messages);
   accruePartnerQuotas(s);
   const plants = runFacilities(s, messages);
@@ -330,7 +242,7 @@ export function endTurn(state: GameState): GameState {
   dc -= Math.min(10, Math.max(0, demand.leakSeverity - expectedLeaks) * 0.4);
   dc -= demand.landShortfall * 4;
   if (s.treasury < 0) {
-    dc -= 2 + -s.treasury / 250;
+    dc -= 1 + -s.treasury / 400;
     messages.push({ tone: 'bad', text: 'The Board is over budget. The Committee is watching.' });
   }
   s.confidence = clamp(s.confidence + dc);

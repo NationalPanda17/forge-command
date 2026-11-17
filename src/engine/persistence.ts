@@ -1,8 +1,8 @@
-import { CAMPUS_IDS, COMPONENT_IDS, FACILITY_IDS, LINE_IDS, STAGES, SUPPLIER_IDS, TEST_CELLS } from './data';
-import { emptyFacility } from './setup';
+import { CAMPUS_IDS, COMPONENT_IDS, FACILITY_IDS, LINE_IDS, STAGES, SUPPLIER_IDS, TEST_CELLS, TIER2_IDS } from './data';
+import { emptyFacility, seedPipeline } from './setup';
 import type { GameState } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -31,6 +31,29 @@ export function migrate(raw: any): GameState | null {
     }
     raw.facilities ??= Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)]));
     raw.version = 3;
+  }
+  if (raw.version === 3) {
+    for (const c of COMPONENT_IDS) {
+      const cs = raw.components?.[c];
+      if (!cs) return null;
+      cs.priceIndex ??= 1;
+      cs.lastAged ??= 0;
+      cs.lastLost ??= 0;
+    }
+    for (const sid of SUPPLIER_IDS) {
+      const st = raw.suppliers?.[sid];
+      if (!st) return null;
+      st.capBonus ??= 0;
+      st.investingMonths ??= null;
+    }
+    raw.tier2 ??= Object.fromEntries(TIER2_IDS.map((t) => [t, { id: t, availability: 1, priceIndex: 1, disruptionMonths: 0 }]));
+    if (!raw.shipments) {
+      raw.shipments = [];
+      const month = raw.month;
+      seedPipeline(raw);
+      for (const sh of raw.shipments) sh.arrive += month;
+    }
+    raw.version = 4;
   }
   return raw.version === SAVE_VERSION ? (raw as GameState) : null;
 }

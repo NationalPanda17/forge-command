@@ -118,7 +118,11 @@ const SECTIONS: { id: string; title: string; body: () => ReactNode }[] = [
         <Li>Spot buys fill after contracts at a 30% premium, from the cheapest supplier with room.</Li>
         <Li>Suppliers have financial health. Distressed ones ask for bailouts, and bankrupt ones take their contracts with them. Foreign suppliers can be hit by export bans and port congestion.</Li>
         <Li>Substitutes keep starved lines running with lower-grade parts. Degraded interceptors are about 15% less likely to stop their target.</Li>
-        <Li>Stock costs 0.5% of its value a month to store.</Li>
+        <Li>Stock costs 0.5% of its value a month to store. Rocket motors and energetics beyond six months of need slowly age out.</Li>
+        <Li><b>Feedstock markets:</b> your suppliers depend on ammonium perchlorate, nitrocellulose, billet steel, wafers, gallium concentrates and optical crystals. A disruption there cuts what every supplier of the affected parts can ship, and drives prices up.</Li>
+        <Li><b>Prices:</b> spot buys pay today's market price. Contracts lock the price on the day you sign, so long contracts are also a hedge.</Li>
+        <Li><b>Shipping:</b> parts from the Corvane Union take a month to arrive, from Ostrel and Karsk two. Port congestion adds a month, and now and then a shipment is lost at sea, more often during air campaigns over the strait.</Li>
+        <Li><b>Supplier investment:</b> pay for a qualified supplier to expand by 30% (twice at most). It takes eight months and steadies the supplier's finances.</Li>
       </ul>
     ),
   },

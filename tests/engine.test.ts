@@ -239,6 +239,7 @@ describe('supply chain', () => {
     let s = structuredClone(newGame({ seed: 21 }));
     s.components.irSeeker.contracts = [];
     s.components.irSeeker.stock = 30;
+    s.shipments = s.shipments.filter((sh) => sh.component !== 'irSeeker');
     s = applyAction(s, { type: 'setPriority', line: 'stinger', priority: 'high' });
     const after = endTurn(s);
     expect(after.lines.stinger.stages[1].limit).not.toBe('parts');

@@ -92,7 +92,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
         hit++;
       }
     }
-    if (hit) messages.push({ tone: 'warn', text: `Port congestion at Halvard Docks: foreign deliveries arrive at half rate for ${months} months.` });
+    if (hit) messages.push({ tone: 'warn', text: `Port congestion at Halvard Docks: shipments from abroad take an extra month for the next ${months} months.` });
   }
 
   // A defective lot of components is quarantined.

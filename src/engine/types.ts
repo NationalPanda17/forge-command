@@ -22,6 +22,7 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type Tier2Id = 'perchlorate' | 'nitro' | 'steel' | 'wafers' | 'ore' | 'optics';
 export type FacilityId = 'motorWorks' | 'arsenalForge' | 'opticsLab';
 
 // ---------- Static catalog ----------
@@ -171,6 +172,32 @@ export interface FacilityDef {
   blurb: string;
 }
 
+export interface Tier2Def {
+  id: Tier2Id;
+  name: string;
+  feeds: ComponentId[];
+  source: string;
+  blurb: string;
+}
+
+export interface Tier2State {
+  id: Tier2Id;
+  /** Share of normal feedstock reaching suppliers, 0.3..1.05. */
+  availability: number;
+  /** Market price relative to normal. */
+  priceIndex: number;
+  disruptionMonths: number;
+}
+
+export interface Shipment {
+  id: number;
+  component: ComponentId;
+  supplier: string;
+  qty: number;
+  /** Month it reaches your stock. */
+  arrive: number;
+}
+
 export interface FacilityState {
   id: FacilityId;
   status: 'none' | 'building' | 'running';
@@ -259,6 +286,9 @@ export interface SupplierState {
   congestionMonths: number;
   bankrupt: boolean;
   lastDelivered: number;
+  /** Expansion levels you paid for (+30% each). */
+  capBonus: number;
+  investingMonths: number | null;
 }
 
 export interface Contract {
@@ -280,6 +310,12 @@ export interface ComponentState {
   lastUsed: number;
   lastShort: number;
   lastSubstituted: number;
+  /** Market price relative to normal: spot buys and new contracts pay it. */
+  priceIndex: number;
+  /** Stock lost to age last month. */
+  lastAged: number;
+  /** Stock lost in transit last month. */
+  lastLost: number;
 }
 
 export interface ReserveState {
@@ -409,7 +445,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 3;
+  version: 4;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -425,6 +461,8 @@ export interface GameState {
   components: Record<ComponentId, ComponentState>;
   reserves: Record<LineId, ReserveState>;
   facilities: Record<FacilityId, FacilityState>;
+  tier2: Record<Tier2Id, Tier2State>;
+  shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;
   partnerContracts: PartnerContract[];
   tenders: Tender[];
@@ -469,6 +507,7 @@ export type Action =
   | { type: 'signContract'; component: ComponentId; supplier: string; qtyPerMonth: number; months: 12 | 24 | 36 }
   | { type: 'cancelContract'; component: ComponentId; contract: number }
   | { type: 'qualifySupplier'; supplier: string }
+  | { type: 'investSupplier'; supplier: string }
   | { type: 'acceptTender'; tender: number }
   | { type: 'declineTender'; tender: number }
   | { type: 'resolveDecision'; decision: number; option: string }
