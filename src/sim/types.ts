@@ -95,6 +95,8 @@ export interface Settings {
   events: number;
   /** No end date. */
   endless: boolean;
+  /** The Committee can dismiss you. */
+  dismissal: boolean;
 }
 
 export interface Headline {
@@ -279,8 +281,8 @@ export interface SimState {
   settings: Settings;
   /** The Courier: one edition a month, newest last. */
   news: NewsEdition[];
-  /** Set for weekly challenge runs. */
-  challenge: { week: string } | null;
+  /** A scored campaign, or a sandbox where you set the rules as you go. */
+  mode: 'campaign' | 'sandbox';
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

@@ -31,35 +31,54 @@ export function saveSim(s: SimState): void {
 export function useSim(initial: SimState, autoPause: boolean) {
   const [state, setState] = useState(initial);
   const [speed, setSpeed] = useState<Speed>(0);
-  const acc = useRef(0);
-  const last = useRef(performance.now());
+  /** t: continuous simulated time in days. committed: the last day React has drawn. */
+  const sim = useRef({ t: initial.day, committed: initial.day, pending: false });
 
   useEffect(() => setState(initial), [initial]);
 
+  // Each new state: the simulation has caught up with the clock.
+  useEffect(() => {
+    const c = sim.current;
+    c.committed = state.day;
+    c.pending = false;
+    if (c.t < state.day || c.t > state.day + 1) c.t = state.day;
+  }, [state]);
+
   useEffect(() => {
     if (speed === 0) return;
-    last.current = performance.now();
-    const id = window.setInterval(() => {
-      const now = performance.now();
-      acc.current += ((now - last.current) / 1000) * speed;
-      last.current = now;
-      const days = Math.floor(acc.current);
-      if (days < 1) return;
-      acc.current -= days;
-      setState((s) => {
-        const next = advanceDays(s, Math.min(days, 8));
-        if (next.over || (autoPause && next.alert)) setSpeed(0);
-        if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) saveSim(next);
-        return next;
-      });
-    }, 50);
-    return () => window.clearInterval(id);
+    let raf = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      const c = sim.current;
+      const dt = Math.min(0.25, (now - last) / 1000);
+      last = now;
+      // Time flows smoothly; it never runs more than a couple of days ahead of the simulation.
+      c.t = Math.min(c.t + dt * speed, c.committed + 2);
+      const due = Math.floor(c.t) - c.committed;
+      if (due >= 1 && !c.pending) {
+        c.pending = true;
+        setState((s) => {
+          const next = advanceDays(s, Math.min(due, 8));
+          if (next.over || (autoPause && next.alert)) setSpeed(0);
+          if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) saveSim(next);
+          return next;
+        });
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, [speed, autoPause]);
 
   const act = useCallback((a: SimAction) => setState((s) => apply(s, a)), []);
   const step = useCallback((days: number) => setState((s) => advanceDays(s, days)), []);
+  /** Continuous simulated time for drawing: today plus how far through it we are. */
+  const clock = useCallback(() => {
+    const c = sim.current;
+    return Math.min(c.t, c.committed + 0.999);
+  }, []);
 
-  return { state, setState, speed, setSpeed, act, step };
+  return { state, setState, speed, setSpeed, act, step, clock };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

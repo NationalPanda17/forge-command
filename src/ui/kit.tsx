@@ -20,7 +20,7 @@ export function Bar({ ratio, tone, className = '', title }: { ratio: number; ton
   const r = Math.max(0, Math.min(1, ratio));
   return (
     <div className={`bar ${className}`} title={title} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r * 100)}>
-      <span className={tone ?? toneFor(ratio)} style={{ width: `${r * 100}%` }} />
+      <span className={`transition-[width] duration-700 ease-out motion-reduce:transition-none ${tone ?? toneFor(ratio)}`} style={{ width: `${r * 100}%` }} />
     </div>
   );
 }

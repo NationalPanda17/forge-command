@@ -8,7 +8,9 @@ import { CONTRACT_DISCOUNT, TENDER_COST, bidders, makeTender, priceNow } from '.
 import { buildBlock, projectName, startProject } from './build';
 import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
-import type { Project } from './types';
+import type { Project, Settings } from './types';
+import { CRISES } from './fight';
+import type { RegionId } from './world';
 export { CONTRACT_DISCOUNT };
 
 export type SimAction =
@@ -31,7 +33,18 @@ export type SimAction =
   | { type: 'tutorial'; step: number }
   | { type: 'build'; kind: Project['kind']; target: string; process?: number }
   | { type: 'safety'; site: string }
-  | { type: 'apprentices'; site: string; perMonth: number };
+  | { type: 'apprentices'; site: string; perMonth: number }
+  | { type: 'sandbox'; op: SandboxOp };
+
+/** Sandbox controls: change the rules and the world as you play. */
+export type SandboxOp =
+  | { kind: 'rules'; settings: Partial<Settings> }
+  | { kind: 'money'; amount: number }
+  | { kind: 'crisis'; region: RegionId }
+  | { kind: 'endCrisis' }
+  | { kind: 'disrupt'; site: string }
+  | { kind: 'calm' }
+  | { kind: 'finishResearch' };
 
 const HIRE_COST = 0.015;
 export const TRAINING_DAYS = 90;
@@ -139,6 +152,15 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'apprentices':
       if (def!.owner !== 'state' || !def!.crew) return 'Only your own plants.';
       return a.perMonth >= 0 && a.perMonth <= 60 ? null : 'Between 0 and 60 a month.';
+    case 'sandbox': {
+      if (s.mode !== 'sandbox') return 'Only in a sandbox game.';
+      const op = a.op;
+      if (op.kind === 'crisis') return s.crisis ? 'A crisis is already on.' : CRISES.some((c) => c.region === op.region) ? null : 'No crisis fits that region.';
+      if (op.kind === 'endCrisis') return s.crisis ? null : 'No crisis to end.';
+      if (op.kind === 'disrupt') return s.sites[op.site]?.processes.length ? null : 'That site makes nothing.';
+      if (op.kind === 'finishResearch') return s.strategy.research.active ? null : 'Nothing is being researched.';
+      return null;
+    }
   }
 }
 
@@ -260,6 +282,41 @@ export function apply(state: SimState, a: SimAction): SimState {
     case 'apprentices':
       s.sites[a.site].apprentices = Math.round(a.perMonth);
       break;
+    case 'sandbox': {
+      const op = a.op;
+      if (op.kind === 'rules') {
+        s.settings = { ...s.settings, ...op.settings };
+        if (op.settings.endless === false) s.days = Math.max(s.day + 30, 48 * DAYS_PER_MONTH);
+        if (op.settings.endless) s.days = 100 * 360;
+      } else if (op.kind === 'money') {
+        s.treasury += op.amount;
+        s.month.income.appropriation += op.amount;
+        feed(s, 'info', `Sandbox: $${op.amount}M added to the treasury.`);
+      } else if (op.kind === 'crisis') {
+        const c = CRISES.find((x) => x.region === op.region)!;
+        s.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'active', days: 180, intensity: 1.1, mix: { ...c.mix } };
+        feed(s, 'bad', `Sandbox: the ${c.name} begins.`, undefined, true);
+      } else if (op.kind === 'endCrisis') {
+        feed(s, 'good', `Sandbox: the ${s.crisis!.name} is called off.`);
+        s.supplemented = s.supplemented.filter((x) => x !== s.crisis!.id);
+        s.crisis = null;
+      } else if (op.kind === 'disrupt') {
+        const site = s.sites[op.site];
+        site.disruptionDays = 45;
+        site.disruptionFactor = 0.3;
+        feed(s, 'bad', `Sandbox: ${SITE_BY_ID[op.site].name} is disrupted for six weeks.`, op.site, true);
+      } else if (op.kind === 'calm') {
+        for (const site of Object.values(s.sites)) {
+          site.disruptionDays = 0;
+          site.disruptionFactor = 1;
+          site.embargoDays = 0;
+        }
+        feed(s, 'good', 'Sandbox: every disruption and export ban is lifted.');
+      } else if (op.kind === 'finishResearch') {
+        s.strategy.research.active!.days = 1;
+      }
+      break;
+    }
     case 'setPolicy':
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };
       break;

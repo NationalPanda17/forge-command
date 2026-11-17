@@ -4,6 +4,7 @@ import { seasonOf } from '../sim/living';
 import MarketsPanel from './MarketsPanel';
 import BuildPanel from './BuildPanel';
 import NewsPanel from './NewsPanel';
+import SandboxPanel from './SandboxPanel';
 import { sfx, setSoundEnabled } from '../ui/sound';
 import { loadAudioPrefs, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
@@ -25,7 +26,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -63,7 +64,7 @@ function markersFor(s: SimState): Record<string, MapMarker> {
 }
 
 export default function Shell({ initial, onMenu, autoPause }: { initial: SimState; onMenu: (s: SimState) => void; autoPause: boolean }) {
-  const { state, speed, setSpeed, act, step } = useSim(initial, autoPause);
+  const { state, speed, setSpeed, act, step, clock } = useSim(initial, autoPause);
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
   const [panel, setPanel] = useState<PanelId>('watch');
@@ -158,6 +159,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         id: sh.id,
         path: sh.path,
         progress: Math.min(1, Math.max(0, (state.day - sh.depart) / Math.max(1, sh.arrive - sh.depart))),
+        depart: sh.depart,
+        arrive: sh.arrive,
         mode: sh.modes[0] ?? 'road',
       })),
     [state],
@@ -179,6 +182,11 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         <button type="button" className="font-sans text-lg font-bold tracking-[0.2em] text-ops-amber" onClick={() => onMenu(state)} title="Main menu">
           FORGE COMMAND
         </button>
+        {state.mode === 'sandbox' && (
+          <button type="button" onClick={() => setPanel('sandbox')} className="rounded border border-ops-amber/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ops-amber">
+            Sandbox
+          </button>
+        )}
         <div>
           <div className="label">Date</div>
           <div className="text-white">{dateLabel(state.day)}</div>
@@ -278,6 +286,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             showPlans={panel === 'build'}
             highlight={highlight}
             ripples={ripples}
+            clock={clock}
           />
           <div className="border-t border-ops-line/60 px-2 py-1">
             <MapLegend />
@@ -285,7 +294,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         </div>
         <aside className="panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
           <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 py-1" aria-label="Panels">
-            {PANELS.map((p) => (
+            {(state.mode === 'sandbox' ? [{ id: 'sandbox' as PanelId, label: 'Sandbox' }, ...PANELS] : PANELS).map((p) => (
               <button
                 key={p.id}
                 type="button"
@@ -304,6 +313,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
             {panel === 'build' && <BuildPanel state={state} act={act} onHighlight={setHighlight} onSite={select} />}
             {panel === 'news' && <NewsPanel state={state} />}
+            {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
             {panel === 'site' && (selected ? <SitePanel state={state} siteId={selected} act={act} onMaterial={showMaterial} /> : <p className="p-3 text-[11px] text-ops-dim">Click any site on the map.</p>)}
             {panel === 'material' && <MaterialPanel state={state} material={material} onMaterial={showMaterial} onSite={select} />}
             {panel === 'stockpile' && <StockpilePanel state={state} act={act} onMaterial={showMaterial} />}

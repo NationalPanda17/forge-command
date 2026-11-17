@@ -9,7 +9,19 @@ import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRS
 // ---------- Public types ----------
 
 export interface MapMarker { tone?: 'ok' | 'warn' | 'bad' | 'idle'; badge?: string; pulse?: boolean }
-export interface MapShipment { id: number; path: string[]; /* site ids */ progress: number; /* 0..1 along the whole path */ mode: string; /* first-leg mode */ color?: string }
+export interface MapShipment {
+  id: number;
+  /** Site ids along the way. */
+  path: string[];
+  /** 0..1 along the whole path, used when there is no clock. */
+  progress: number;
+  /** With a clock, position follows depart and arrive days continuously. */
+  depart?: number;
+  arrive?: number;
+  /** First-leg mode. */
+  mode: string;
+  color?: string;
+}
 export interface MapLayers { terrain: boolean; labels: boolean; rail: boolean; road: boolean; sea: boolean; air: boolean; flows: boolean; regions: boolean }
 /** What the player has built or is building, for drawing. */
 export interface MapNetwork {
@@ -38,6 +50,8 @@ export interface MapViewProps {
   /** A route key or candidate link id to pick out. */
   highlight?: string | null;
   ripples?: MapRipple[];
+  /** Continuous simulated time in days, for smooth movement between days. */
+  clock?: () => number;
 }
 
 export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false };
@@ -643,13 +657,31 @@ function shipPoint(legs: Leg[], s: number): { p: G.Pt; mode: string } | null {
   return { p: last.pts[last.pts.length - 1], mode: last.mode };
 }
 
-const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments }: { S: number; shipments: MapShipment[] }) {
+const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock }: { S: number; shipments: MapShipment[]; clock?: () => number }) {
   const k = 1 / S;
+  // Redraw every frame while time is moving, so shipments glide instead of hopping a day at a time.
+  const [now, setNow] = useState(() => clock?.() ?? 0);
+  useEffect(() => {
+    if (!clock) return;
+    let raf = 0;
+    let prev = -1;
+    const loop = () => {
+      const t = clock();
+      if (Math.abs(t - prev) > 1e-4) {
+        prev = t;
+        setNow(t);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [clock]);
   return (
     <g pointerEvents="none">
       {shipments.map((sh) => {
         const { legs, total } = legsFor(sh.path, sh.mode);
-        const at = Math.max(0, Math.min(1, sh.progress)) * total;
+        const prog = clock && sh.depart !== undefined && sh.arrive !== undefined ? (now - sh.depart) / Math.max(0.5, sh.arrive - sh.depart) : sh.progress;
+        const at = Math.max(0, Math.min(1, prog)) * total;
         const head = shipPoint(legs, at);
         if (!head) return null;
         const color = sh.color ?? MODE_COLOR[head.mode] ?? ops('text');
@@ -736,7 +768,7 @@ const Furniture = memo(function Furniture({ view, size, boxes }: { view: View; s
 // ---------- The map ----------
 
 export default function MapView(props: MapViewProps): JSX.Element {
-  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560, network, showPlans = false, highlight = null, ripples = [] } = props;
+  const { markers, shipments, routeUse, crisisRegion = null, selected, onSelect, layers, height = 560, network, showPlans = false, highlight = null, ripples = [], clock } = props;
   const uid = `fcm${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -843,16 +875,34 @@ export default function MapView(props: MapViewProps): JSX.Element {
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
+    // Wheel notches set a target; the view glides towards it a little each frame.
+    let target: View | null = null;
+    let raf = 0;
+    const glide = () => {
+      if (!target) return;
+      const v = viewRef.current;
+      const f = 0.28;
+      const next = { S: v.S + (target.S - v.S) * f, tx: v.tx + (target.tx - v.tx) * f, ty: v.ty + (target.ty - v.ty) * f };
+      const done = Math.abs(next.S / target.S - 1) < 0.002 && Math.abs(next.tx - target.tx) < 0.5 && Math.abs(next.ty - target.ty) < 0.5;
+      apply(done ? target : next);
+      if (done) target = null;
+      else raf = requestAnimationFrame(glide);
+    };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       cancelAnimationFrame(anim.current);
       const r = el.getBoundingClientRect();
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
       const k = Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0018));
-      apply(zoomAbout(viewRef.current, e.clientX - r.left, e.clientY - r.top, k));
+      target = clampView(zoomAbout(target ?? viewRef.current, e.clientX - r.left, e.clientY - r.top, k), sizeRef.current);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(glide);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('wheel', onWheel);
+    };
   }, [apply, size.w > 0]);
 
   // Drag to pan, two pointers to pinch.
@@ -1067,7 +1117,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
             </g>
             <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
             <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
-            {layers.flows && <ShipmentsLayer S={S} shipments={shipments} />}
+            {layers.flows && <ShipmentsLayer S={S} shipments={shipments} clock={clock} />}
             <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />
             <CitiesLayer S={S} placed={placement.cities} />
             <g pointerEvents="none">

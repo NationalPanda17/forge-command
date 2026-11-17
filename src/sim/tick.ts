@@ -625,7 +625,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   s.treasury += s.appropriation;
   s.month.income.appropriation = s.appropriation;
   s.contracts = s.contracts.filter((c) => c.endDay > s.day);
-  if (s.confidence <= 0) {
+  if (s.confidence <= 0 && s.settings.dismissal) {
     s.over = true;
     s.outcome = 'dismissed';
     feed(s, 'bad', 'The Defence Committee has lost confidence in you. You are dismissed.', undefined, true);

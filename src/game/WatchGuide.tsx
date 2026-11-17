@@ -218,13 +218,13 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
   },
   {
     id: 'replay',
-    title: 'News, sound and replay',
+    title: 'News, sound and modes',
     body: (
       <ul className="list-disc pl-5">
         <Li><b>The Courier</b> prints a short edition at the end of every month. Its lead story shows under the header.</Li>
         <Li><b>Sound and Music</b> buttons sit by the clock. The music turns tense during a crisis.</Li>
-        <Li><b>Sandbox rules</b> on the title screen switch off inflation, seasons or crises, change how often things go wrong, add money, or remove the end date.</Li>
-        <Li><b>The weekly challenge</b> is the same two-year campaign for everyone that week. Your best scores are kept in this browser.</Li>
+        <Li><b>Sandbox</b> is a separate mode on the title screen: free play with no score. Its own tab lets you change the rules as you go, add money, start or end crises and disrupt sites.</Li>
+        <Li><b>Your best campaigns</b> and achievements are kept in this browser.</Li>
       </ul>
     ),
   },

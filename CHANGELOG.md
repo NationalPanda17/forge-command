@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.1.0: smooth, and a real sandbox
+
+- **Fluid movement:**
+  - The clock runs continuously between simulated days, and shipments glide along their routes every frame instead of
+    hopping a day at a time.
+  - Mouse-wheel zoom eases to its target.
+  - Bars and gauges slide to new values.
+- **Sandbox is its own game mode:**
+  - The title now offers Campaign, Sandbox and Tutorial.
+  - A sandbox has no end date and no dismissal by default, and isn't scored or counted for achievements.
+  - The new Sandbox tab changes the rules mid-game, adds money, starts or ends crises, disrupts a site, lifts every
+    disruption and finishes research.
+- **The weekly challenge is gone.** Your best campaigns are still listed on the title.
+
 ## 4.0.0: build, crew and replay
 
 ### Build the network

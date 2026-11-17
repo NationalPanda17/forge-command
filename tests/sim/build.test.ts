@@ -96,7 +96,7 @@ describe('plants and people', () => {
   });
 });
 
-describe('news, sandbox and challenges', () => {
+describe('news and the sandbox', () => {
   it('prints a Courier edition every month', () => {
     const s = advanceDays(start(), 90);
     expect(s.news).toHaveLength(3);
@@ -113,8 +113,26 @@ describe('news, sandbox and challenges', () => {
     expect(s.over).toBe(false);
   });
 
-  it('records the challenge week', () => {
-    expect(newSim({ seed: 1, challenge: '2026-W47' }).challenge).toEqual({ week: '2026-W47' });
+  it('a sandbox has no end date and no dismissal, and its controls work', () => {
+    let s = openCampaign(newSim({ seed: 1, mode: 'sandbox' }));
+    expect(s.mode).toBe('sandbox');
+    expect(s.settings.endless).toBe(true);
+    expect(s.settings.dismissal).toBe(false);
+    s = apply(s, { type: 'sandbox', op: { kind: 'money', amount: 500 } });
+    s = apply(s, { type: 'sandbox', op: { kind: 'crisis', region: 'north' } });
+    expect(s.crisis?.phase).toBe('active');
+    s = apply(s, { type: 'sandbox', op: { kind: 'disrupt', site: 'cinderFlats' } });
+    expect(s.sites.cinderFlats.disruptionDays).toBeGreaterThan(0);
+    s = apply(s, { type: 'sandbox', op: { kind: 'calm' } });
+    expect(s.sites.cinderFlats.disruptionDays).toBe(0);
+    s.confidence = 0;
+    s = advanceDays(s, 31);
+    expect(s.over).toBe(false);
+  });
+
+  it('sandbox controls are refused in a campaign', () => {
+    const s = start();
+    expect(validate(s, { type: 'sandbox', op: { kind: 'money', amount: 500 } })).toMatch(/sandbox/);
   });
 
   it('older saves gain the new fields', () => {
