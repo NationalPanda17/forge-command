@@ -37,6 +37,23 @@ export type RunMode = 'idle' | 'normal' | 'surge';
 export type Priority = 'high' | 'normal' | 'low';
 export type UpgradeKind = 'automation' | 'quality';
 export type WagePolicy = 'standard' | 'premium';
+export type Modifier = 'ironman' | 'austerity' | 'embargoWorld' | 'endless';
+
+export interface CustomRules {
+  treasuryMult: number;
+  budgetMult: number;
+  pressureMult: number;
+  crisisMult: number;
+  eventMult: number;
+  reserveMonths: number;
+  allResearch: boolean;
+}
+
+export interface ObjectiveState {
+  id: string;
+  status: 'open' | 'done' | 'failed';
+}
+
 export type StaffRole = 'procurement' | 'quality' | 'logistics' | 'research' | 'labor';
 export type Quirk = 'none' | 'abrasive' | 'connected' | 'frugal' | 'favourite';
 export type FactionId = 'hawks' | 'treasury' | 'regions' | 'industry' | 'internationalists';
@@ -531,7 +548,7 @@ export interface YearReview {
 }
 
 export interface GameState {
-  version: 7;
+  version: 8;
   seed: number;
   rng: number;
   scenario: ScenarioId;
@@ -562,6 +579,9 @@ export interface GameState {
   exportPolicy: ExportPolicy;
   /** Workers on the books at the start, for the regions faction. */
   startWorkers: number;
+  modifiers: Modifier[];
+  custom: CustomRules | null;
+  objectives: ObjectiveState[];
   research: { done: ResearchId[]; active: { id: ResearchId; monthsLeft: number } | null };
   shipments: Shipment[];
   partners: Record<PartnerId, PartnerState>;

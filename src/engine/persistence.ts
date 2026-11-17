@@ -1,10 +1,11 @@
 import { CAMPUS_IDS, COMPONENT_IDS, FACILITY_IDS, LINE_IDS, STAGES, SUPPLIER_IDS, TEST_CELLS, TIER2_IDS } from './data';
 import { emptyFacility, seedPipeline } from './setup';
 import { refreshCandidates } from './politics';
+import { STORY } from './story';
 import { CRISES, DEFAULT_DEPOT_MONTHS, PARTNER_IDS, START_TRANSPORT, THEATER_IDS } from './data';
 import type { GameState } from './types';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -98,6 +99,12 @@ export function migrate(raw: any): GameState | null {
       refreshCandidates(raw);
     }
     raw.version = 7;
+  }
+  if (raw.version === 7) {
+    raw.modifiers ??= [];
+    raw.custom ??= null;
+    raw.objectives ??= (STORY[raw.scenario as keyof typeof STORY]?.objectives ?? []).map((o) => ({ id: o.id, status: 'open' }));
+    raw.version = 8;
   }
   return raw.version === SAVE_VERSION ? (raw as GameState) : null;
 }

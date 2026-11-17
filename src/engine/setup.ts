@@ -5,6 +5,7 @@ import {
   START_WIP_MONTHS,
   TEST_CELLS,
   TIER2_IDS,
+  RESEARCH_IDS,
   LEAD_TIME,
   THEATER_IDS,
   DEFAULT_DEPOT_MONTHS,
@@ -27,6 +28,8 @@ import {
 } from './data';
 import { computeForecast } from './demand';
 import { seedDepots } from './logistics';
+import { baseAppropriation } from './rules';
+import { STORY } from './story';
 import { refreshCandidates } from './politics';
 import { spawnTender } from './partners';
 import { randRange } from './rng';
@@ -52,6 +55,8 @@ import type {
   PartnerState,
   ReserveState,
   ScenarioId,
+  Modifier,
+  CustomRules,
   SupplierState,
 } from './types';
 
@@ -60,6 +65,8 @@ export interface NewGameOptions {
   difficulty?: Difficulty;
   scenario?: ScenarioId;
   months?: number;
+  modifiers?: Modifier[];
+  custom?: CustomRules | null;
 }
 
 export const emptyLedger = (): Ledger => ({
@@ -93,7 +100,8 @@ export function seedPipeline(state: GameState): void {
 
 export const emptyFacility = (id: FacilityId): FacilityState => ({ id, status: 'none', monthsLeft: 0, tranches: [], run: 'normal', lastOutput: 0, lastLimit: null });
 
-export function newGame({ seed, difficulty = 'normal', scenario = 'standard', months = 48 }: NewGameOptions): GameState {
+export function newGame({ seed, difficulty = 'normal', scenario = 'standard', months = 48, modifiers = [], custom = null }: NewGameOptions): GameState {
+  if (modifiers.includes('endless')) months = 9999;
   const rules = DIFFICULTY[difficulty];
   const sc = SCENARIOS[scenario];
 
@@ -129,15 +137,15 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   const partners = {} as Record<PartnerId, PartnerState>;
 
   const state: GameState = {
-    version: 7,
+    version: 8,
     seed: seed >>> 0,
     rng: seed >>> 0,
     scenario,
     month: 0,
     months,
     difficulty,
-    treasury: Math.round(rules.startTreasury * sc.treasuryMult),
-    appropriation: Math.round(rules.appropriation * sc.budgetMult),
+    treasury: Math.round(rules.startTreasury * sc.treasuryMult * (custom?.treasuryMult ?? 1)),
+    appropriation: Math.round(baseAppropriation({ difficulty, scenario, custom, modifiers })),
     confidence: 60,
     lines,
     campuses,
@@ -146,7 +154,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     reserves,
     tier2: Object.fromEntries(TIER2_IDS.map((t) => [t, { id: t, availability: 1, priceIndex: 1, disruptionMonths: 0 }])) as Record<Tier2Id, Tier2State>,
     shipments: [],
-    research: { done: [], active: null },
+    research: { done: custom?.allResearch ? [...RESEARCH_IDS] : [], active: null },
     theaters: Object.fromEntries(
       THEATER_IDS.map((th) => [
         th,
@@ -162,6 +170,9 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
     publicSupport: 55,
     exportPolicy: 'balanced',
     startWorkers: 0,
+    modifiers: [...modifiers],
+    custom,
+    objectives: STORY[scenario].objectives.map((o) => ({ id: o.id, status: 'open' as const })),
     facilities: Object.fromEntries(FACILITY_IDS.map((f) => [f, emptyFacility(f)])) as Record<FacilityId, FacilityState>,
     partners,
     partnerContracts: [],
@@ -254,7 +265,7 @@ export function newGame({ seed, difficulty = 'normal', scenario = 'standard', mo
   }
 
   for (const id of LINE_IDS) {
-    reserves[id] = { id, stock: Math.round(calmDraw(state, id) * sc.reserveMonths), degraded: 0, made: 0, used: 0, unmet: 0, valueStopped: 0, engaged: {} };
+    reserves[id] = { id, stock: Math.round(calmDraw(state, id) * (custom?.reserveMonths ?? sc.reserveMonths)), degraded: 0, made: 0, used: 0, unmet: 0, valueStopped: 0, engaged: {} };
   }
   for (const p of PARTNER_IDS) partners[p] = { id: p, goodwill: 50, loanCooldown: 0 };
 

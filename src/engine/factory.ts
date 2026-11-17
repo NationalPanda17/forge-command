@@ -1,12 +1,12 @@
 // The factory floor: each line is a chain of stages with buffers between them, acceptance draws on
 // campus test cells, and in-house plants feed the shared component stock.
+import {  rulesOf } from './rules';
 import {
   CAMPUSES,
   CAMPUS_IDS,
   COMPONENTS,
   COMPONENT_IDS,
   DEBOTTLENECK_STEP,
-  DIFFICULTY,
   FACILITIES,
   FACILITY_IDS,
   LINES,
@@ -74,7 +74,7 @@ export const facilityCrew = (s: GameState, f: FacilityId) => {
 
 /** In-house plants: build progress, then production into the shared stock. Returns $M spent. */
 export function runFacilities(s: GameState, messages: Messages): { materials: number; overhead: number } {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   let materials = 0;
   let overhead = 0;
   for (const f of FACILITY_IDS) {
@@ -133,7 +133,7 @@ export interface FactoryResult {
 }
 
 export function runFactory(s: GameState, messages: Messages): FactoryResult {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   const output = Object.fromEntries(LINE_IDS.map((id) => [id, 0])) as Record<LineId, number>;
   let componentSpend = 0;
   let revenue = 0;

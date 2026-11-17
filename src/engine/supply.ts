@@ -1,9 +1,9 @@
 // The supply chain each month: feedstock markets move, suppliers drift and stumble, shipments sail,
 // contracts and spot orders fill, and old stock ages out.
+import {  rulesOf } from './rules';
 import {
   COMPONENTS,
   COMPONENT_IDS,
-  DIFFICULTY,
   GRACE_MONTHS,
   INVEST_STEP,
   LEAD_TIME,
@@ -29,7 +29,7 @@ const fmt = (v: number) => Math.round(v).toLocaleString('en-US');
 
 /** Feedstock markets: disruptions, recovery and prices. */
 export function runMarkets(s: GameState, messages: Messages): void {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   for (const t of TIER2_IDS) {
     const m = s.tier2[t];
     if (!rules.shortages) {
@@ -71,7 +71,7 @@ export function runMarkets(s: GameState, messages: Messages): void {
 
 /** Suppliers drift and deliver. Returns component spend. */
 export function runSupply(s: GameState, messages: Messages): number {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   let spend = 0;
 
   // Shipments that arrive this month.

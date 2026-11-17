@@ -1,15 +1,14 @@
 // Demand: fictional threats arrive in each region, interceptors are fired from the local depot first (with
 // a limited airlift from the central reserve), and land fires are drawn by fire missions.
+import { pressureOf, rulesOf } from './rules';
 import {
   AIRLIFT_COST,
   AIRLIFT_SHARE,
   CHEAP_THREATS,
-  DIFFICULTY,
   LAND_LINES,
   LINES,
   LINE_IDS,
   PREMIUM_LINES,
-  SCENARIOS,
   THEATERS,
   THEATER_IDS,
   THREATS,
@@ -59,7 +58,7 @@ function activeIn(state: GameState, k: number): boolean {
 
 /** Expected draw per line in one region, k months ahead. */
 export function expectedTheaterDraw(state: GameState, k: number, theater: TheaterId, focus: ThreatId | null = state.opponentFocus): Record<LineId, number> {
-  const pressure = SCENARIOS[state.scenario].pressure;
+  const pressure = pressureOf(state);
   const active = activeIn(state, k);
   const out = emptyByLine();
   const share = THEATERS[theater].threatShare;
@@ -85,7 +84,7 @@ export function expectedDraw(state: GameState, k: number, focus: ThreatId | null
 
 /** Intel's 3-month outlook. On harder levels, intel sometimes misreads the opponent's focus. */
 export function computeForecast(state: GameState): Forecast {
-  const rules = DIFFICULTY[state.difficulty];
+  const rules = rulesOf(state);
   let focus = state.opponentFocus;
   if (rules.intelError > 0 && rand(state) < rules.intelError) {
     const others = THREAT_IDS.filter((t) => t !== focus);
@@ -98,7 +97,7 @@ export function computeForecast(state: GameState): Forecast {
 
 /** Hard: the opponent leans on the threat your scarcest interceptor covers. */
 export function adaptOpponent(state: GameState): void {
-  if (!DIFFICULTY[state.difficulty].adaptive) {
+  if (!rulesOf(state).adaptive) {
     state.opponentFocus = null;
     return;
   }
@@ -174,7 +173,7 @@ export interface DemandResult {
 }
 
 export function resolveDemand(state: GameState): DemandResult {
-  const pressure = SCENARIOS[state.scenario].pressure;
+  const pressure = pressureOf(state);
   const active = state.crisis?.phase === 'active';
   const draw = emptyByLine();
   const threats = Object.fromEntries(THREAT_IDS.map((t) => [t, { arrived: 0, stopped: 0, leaked: 0 }])) as Record<ThreatId, ThreatTally>;

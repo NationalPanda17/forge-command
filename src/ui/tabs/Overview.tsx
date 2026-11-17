@@ -14,6 +14,7 @@ import {
 import { Bar, Btn, COLORS, LineChart, Panel } from '../kit';
 import { int, messageTone, money, monthLabel, qty, shortMonth, textToneFor } from '../format';
 import DecisionCards from '../DecisionCards';
+import Objectives, { Briefing } from '../Objectives';
 
 export default function Overview({ state, act }: { state: GameState; act: (a: Action) => void }) {
   const last = state.history.at(-1);
@@ -77,16 +78,7 @@ export default function Overview({ state, act }: { state: GameState; act: (a: Ac
               </div>
             </div>
           ) : (
-            <div className="space-y-2 p-3 text-[12px] leading-relaxed text-ops-dim">
-              <p>
-                You are the new Director of the Munitions Production Board of the <span className="text-ops-text">Commonwealth of Aldmere</span>. Three campuses, seven
-                production lines, a handful of suppliers and a Defence Committee that expects the racks to stay full.
-              </p>
-              <p>
-                Every month, fictional threats arrive and your interceptors and artillery are drawn from the national reserve. Keep it stocked. Keep the money flowing.
-                Keep the Committee's confidence. When you are ready, press <span className="text-ops-cyan">End month</span>.
-              </p>
-            </div>
+            <Briefing state={state} />
           )}
         </Panel>
 
@@ -121,6 +113,7 @@ export default function Overview({ state, act }: { state: GameState; act: (a: Ac
       </div>
 
       <div className="space-y-3">
+        <Objectives state={state} />
         {level !== 'none' && (
           <Panel title={level === 'full' ? 'Advisor' : 'Staff hints'} right={tips.length ? `${tips.length}` : undefined} id="advisor">
             {tips.length === 0 ? (

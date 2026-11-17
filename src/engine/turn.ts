@@ -1,9 +1,9 @@
 // Month resolution. endTurn never mutates its input.
+import { pressureOf, rulesOf } from './rules';
 import {
   CAMPUSES,
   CAMPUS_IDS,
   CRISES,
-  DIFFICULTY,
   EXPAND_STEP,
   LINES,
   LINE_IDS,
@@ -21,6 +21,8 @@ import { runFacilities, runFactory } from './factory';
 import { runMarkets, runSupply } from './supply';
 import { TRANSPORT_UPKEEP, dispatchConvoys, growRival, receiveConvoys } from './logistics';
 import { budgetRequestDecision, moraleBonus, runPolitics, salaries } from './politics';
+import { baseAppropriation } from './rules';
+import { runStory } from './story';
 import { applyFallbacks, rollEvents } from './events';
 import { accruePartnerQuotas, averageGoodwill, maybeSpawnTender, settlePartners } from './partners';
 import { clamp, pick, rand, randInt, randRange } from './rng';
@@ -33,7 +35,7 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 const fmt = (v: number) => Math.round(v).toLocaleString('en-US');
 
 function advanceCrisis(s: GameState, messages: Messages): void {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   const sc = SCENARIOS[s.scenario];
   if (!s.crisis) {
     if (s.month >= sc.quietMonths && rand(s) < rules.crisisChance) {
@@ -129,7 +131,7 @@ function advanceProjects(s: GameState, messages: Messages): void {
 
 /** Lines age: wear, first-article inspection, ramp-up, quarantine clocks. */
 function ageLines(s: GameState, messages: Messages): void {
-  const rules = DIFFICULTY[s.difficulty];
+  const rules = rulesOf(s);
   for (const id of LINE_IDS) {
     const line = s.lines[id];
     const wear = WEAR_DELTA[line.run] - (line.run === 'surge' ? line.upgrades.quality : 0);
@@ -169,13 +171,11 @@ function runWorkforce(s: GameState, messages: Messages): void {
 }
 
 function yearReview(s: GameState): YearReview {
-  const rules = DIFFICULTY[s.difficulty];
-  const sc = SCENARIOS[s.scenario];
   const year = Math.floor(s.month / 12) + 1;
   const months = s.history.slice(-12);
   const avgReady = months.reduce((a, h) => a + h.readiness, 0) / Math.max(1, months.length);
   const leakers = months.reduce((a, h) => a + Object.values(h.threats).reduce((b, t) => b + t.leaked, 0), 0);
-  const base = rules.appropriation * sc.budgetMult;
+  const base = baseAppropriation(s);
   const crisisBonus = s.crisis ? 1.05 : 1;
   const next = Math.round(base * (0.85 + s.confidence / 333) * crisisBonus);
   const notes: string[] = [];
@@ -255,7 +255,7 @@ export function endTurn(state: GameState): GameState {
   // Confidence.
   const ready = readiness(s);
   // The Committee expects some leakers in calm times; it judges what goes beyond that.
-  const expectedLeaks = 2.5 * SCENARIOS[s.scenario].pressure;
+  const expectedLeaks = 2.5 * pressureOf(s);
   let dc = (ready - 0.5) * 6 + 0.3;
   dc -= Math.min(10, Math.max(0, demand.leakSeverity - expectedLeaks) * 0.4);
   dc -= demand.landShortfall * 4;
@@ -284,6 +284,7 @@ export function endTurn(state: GameState): GameState {
   });
   s.pending = emptyLedger();
 
+  runStory(s, messages);
   if ((s.month + 1) % 12 === 0) {
     s.reviews.push(yearReview(s));
     if (s.month + 1 < s.months) budgetRequestDecision(s);

@@ -1,10 +1,10 @@
 // Player actions: validateAction explains why one is not allowed, applyAction never mutates its input.
+import {  rulesOf } from './rules';
 import {
   CAMPUSES,
   CANCEL_PENALTY,
   COMPONENTS,
   CONTRACT_DISCOUNT,
-  DIFFICULTY,
   EXPAND_STEP,
   HIRE_COST,
   LINES,
@@ -45,9 +45,9 @@ export const expandCost = (id: LineId) => LINES[id].expandCost;
 export const retoolCost = (to: LineId) => Math.round(LINES[to].expandCost * RETOOL_COST_SHARE);
 export const upgradeCost = (id: LineId, kind: UpgradeKind) => Math.round(LINES[id].expandCost * UPGRADE[kind].costShare);
 export const buildCost = (c: CampusId) => CAMPUSES[c].buildCost;
-export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * DIFFICULTY[state.difficulty].qualifyMult);
+export const qualifyCost = (state: GameState, sid: string) => Math.round(SUPPLIERS[sid].qualifyCost * rulesOf(state).qualifyMult);
 export const qualifyMonths = (state: GameState, sid: string) =>
-  Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * DIFFICULTY[state.difficulty].qualifyMult * (hasResearch(state, 'rapidQual') ? 0.5 : 1)));
+  Math.max(2, Math.round(SUPPLIERS[sid].qualifyMonths * rulesOf(state).qualifyMult * (hasResearch(state, 'rapidQual') ? 0.5 : 1)));
 export const researchMonths = (state: GameState, r: keyof typeof RESEARCH) => Math.max(2, Math.round(RESEARCH[r].months * researchMult(state)));
 export const hireCost = (p: { salary: number }) => p.salary * HIRE_MONTHS_SALARY;
 export const establishCost = (id: LineId) => LINES[id].expandCost * ESTABLISH_COST_SHARE;
@@ -65,7 +65,7 @@ export const cancelPenalty = (state: GameState, component: keyof GameState['comp
 };
 export const debottleneckCost = (id: LineId) => Math.round(LINES[id].expandCost * DEBOTTLENECK_COST_SHARE);
 export const testCellCost = (c: CampusId) => TEST_CELLS[c].cost;
-export const facilityBuildMonths = (state: GameState) => DIFFICULTY[state.difficulty].buildMonths + 3;
+export const facilityBuildMonths = (state: GameState) => rulesOf(state).buildMonths + 3;
 export const supplementalAvailable = (state: GameState) => state.mods.supplementalCooldown === 0 && !state.mods.supplementalPending;
 
 const funds = (state: GameState, cost: number) => (state.treasury >= cost ? null : `Not enough funds (needs $${Math.round(cost)}M).`);
@@ -261,7 +261,7 @@ export function applyAction(state: GameState, a: Action): GameState {
     }
     case 'buildBays': {
       charge(s, buildCost(a.campus));
-      const months = DIFFICULTY[s.difficulty].buildMonths;
+      const months = rulesOf(s).buildMonths;
       s.campuses[a.campus].construction.push({ bays: CAMPUSES[a.campus].buildBays, monthsLeft: months, total: months });
       break;
     }
@@ -302,7 +302,7 @@ export function applyAction(state: GameState, a: Action): GameState {
       charge(s, n * HIRE_COST);
       const c = s.campuses[a.campus];
       c.pool -= n;
-      c.trainees.push({ count: n, monthsLeft: DIFFICULTY[s.difficulty].trainingMonths });
+      c.trainees.push({ count: n, monthsLeft: rulesOf(s).trainingMonths });
       break;
     }
     case 'setWage':

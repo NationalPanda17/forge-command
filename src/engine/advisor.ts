@@ -1,6 +1,7 @@
 // The advisor reads the state and suggests moves. Easy: one-click orders. Normal: hints. Hard: silent.
+import {  rulesOf } from './rules';
 import { debottleneckCost, establishCost, expandCost, qualifyCost, reworkCost, testCellCost, validateAction } from './actions';
-import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, DIFFICULTY, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, STAFF_ROLES, STAFF_ROLE_IDS, SUPPLIERS, suppliersOf } from './data';
+import { CAMPUSES, CAMPUS_IDS, COMPONENTS, COMPONENT_IDS, FACILITIES, FACILITY_IDS, LINES, LINE_IDS, MIN_SAFE_TEST_SHARE, RESEARCH, STAGES, THEATERS, THEATER_IDS, DEFAULT_DEPOT_MONTHS, TRANSPORT_STEP, TRANSPORT_COST, PARTNERS, PARTNER_IDS, STAFF_ROLES, STAFF_ROLE_IDS, SUPPLIERS, suppliersOf } from './data';
 import {
   campusCrewNeed,
   componentCap,
@@ -37,7 +38,7 @@ export function advise(state: GameState): Advice[] {
     if (need <= 0) continue;
     const live = cs.contracts.reduce((t, k) => t + (k.monthsLeft > 1 ? k.qtyPerMonth : 0), 0);
     const cap = componentCap(state, c);
-    if (live < need * 0.75 && DIFFICULTY[state.difficulty].shortages) {
+    if (live < need * 0.75 && rulesOf(state).shortages) {
       const options = suppliersOf(c)
         .filter((sid) => state.suppliers[sid].qualified && !state.suppliers[sid].bankrupt)
         .map((sid) => ({ sid, free: supplierCap(state, sid) - contractedPerMonth(cs, sid) }))
@@ -68,7 +69,7 @@ export function advise(state: GameState): Advice[] {
         actionLabel: 'Allow substitute',
       });
     }
-    if (cap < need * 0.95 && DIFFICULTY[state.difficulty].shortages) {
+    if (cap < need * 0.95 && rulesOf(state).shortages) {
       const cand = suppliersOf(c).find((sid) => !state.suppliers[sid].qualified && !state.suppliers[sid].bankrupt && state.suppliers[sid].qualifyingMonths === null);
       const qualifying = suppliersOf(c).some((sid) => state.suppliers[sid].qualifyingMonths !== null);
       if (cand && !qualifying) {
@@ -173,13 +174,13 @@ export function advise(state: GameState): Advice[] {
     if (gap > 5) {
       const n = Math.min(gap, cs.pool);
       const action: Action = { type: 'hire', campus: c, count: n };
-      out.push({ id: `hire-${c}`, tone: cs.workers < need * 0.9 ? 'urgent' : 'suggest', text: `${CAMPUSES[c].name} is short ${gap} workers for the current plan. Training takes ${DIFFICULTY[state.difficulty].trainingMonths} months.`, action: n > 0 && ok(action) ? action : undefined, actionLabel: `Hire ${n}` });
+      out.push({ id: `hire-${c}`, tone: cs.workers < need * 0.9 ? 'urgent' : 'suggest', text: `${CAMPUSES[c].name} is short ${gap} workers for the current plan. Training takes ${rulesOf(state).trainingMonths} months.`, action: n > 0 && ok(action) ? action : undefined, actionLabel: `Hire ${n}` });
     }
     if (cs.morale < 40) {
       out.push({ id: `morale-${c}`, tone: 'urgent', text: `Morale at ${CAMPUSES[c].name} is ${Math.round(cs.morale)}. Strikes are possible. Ease off surge shifts or pay premium wages.`, action: cs.wage === 'standard' ? { type: 'setWage', campus: c, wage: 'premium' } : undefined, actionLabel: 'Premium wages' });
     }
     if (freeBays(state, c) === 0 && !cs.construction.length) {
-      out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${DIFFICULTY[state.difficulty].buildMonths} months.` });
+      out.push({ id: `bays-${c}`, tone: 'info', text: `${CAMPUSES[c].name} has no free bays. New buildings take ${rulesOf(state).buildMonths} months.` });
     }
   }
 

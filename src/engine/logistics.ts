@@ -1,6 +1,7 @@
 // Logistics: convoys carry rounds from the central reserve to regional depots, allies lend stock in a pinch,
 // and a rival power builds up its arms industry.
-import { DIFFICULTY, LINES, LINE_IDS, LOAN_COOLDOWN, LOAN_GOODWILL, PARTNERS, THEATERS, THEATER_IDS, WEIGHT } from './data';
+import {  rulesOf } from './rules';
+import {  LINES, LINE_IDS, LOAN_COOLDOWN, LOAN_GOODWILL, PARTNERS, THEATERS, THEATER_IDS, WEIGHT } from './data';
 import { expectedTheaterDraw } from './demand';
 import { clamp, randRange } from './rng';
 import { isEstablished, readiness } from './selectors';
@@ -110,7 +111,7 @@ export function takeLoan(s: GameState, p: PartnerId, id: LineId): number {
 
 /** The rival's arms industry grows; a well-stocked reserve slows it. */
 export function growRival(s: GameState): void {
-  const hard = DIFFICULTY[s.difficulty].adaptive ? 0.002 : 0;
+  const hard = rulesOf(s).adaptive ? 0.002 : 0;
   const deterred = readiness(s) > 0.85 ? 0.004 : 0;
   s.rival = Math.max(80, Math.round(s.rival * (1 + randRange(s, 0.002, 0.007) + hard - deterred) * 100) / 100);
   for (const p of Object.keys(s.partners) as PartnerId[]) if (s.partners[p].loanCooldown > 0) s.partners[p].loanCooldown--;

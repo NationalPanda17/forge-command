@@ -4,6 +4,8 @@ import { Btn } from './kit';
 import { money, monthLabel, pct, textToneFor } from './format';
 import { DebriefModal, ReviewModal } from './Modals';
 import Title from './Title';
+import News from './News';
+import { checkAchievements, type Achievement } from './achievements';
 import { applyUpdate, onUpdateReady, updateReady } from './pwa';
 import Tutorial, { STEPS } from './Tutorial';
 import { SLOTS, autosave, describeSave, exportSave, loadPrefs, loadSlot, saveSlot, savePrefs, type Prefs } from './saves';
@@ -84,12 +86,21 @@ export default function App() {
   const [seenReviews, setSeenReviews] = useState(0);
   const [debriefOpen, setDebriefOpen] = useState(true);
   const [update, setUpdate] = useState(updateReady);
+  const [unlocked, setUnlocked] = useState<Achievement[]>([]);
 
   useEffect(() => onUpdateReady(() => setUpdate(true)), []);
 
   useEffect(() => {
-    if (state) autosave(state);
+    if (!state) return;
+    autosave(state);
+    const fresh = checkAchievements(state);
+    if (fresh.length) setUnlocked((u) => [...u, ...fresh]);
   }, [state]);
+  useEffect(() => {
+    if (!unlocked.length) return;
+    const t = window.setTimeout(() => setUnlocked([]), 6000);
+    return () => window.clearTimeout(t);
+  }, [unlocked]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('hc', prefs.highContrast);
@@ -135,7 +146,7 @@ export default function App() {
           <div>
             <div className="label">Month</div>
             <div className="text-white">
-              {monthLabel(state.month)} <span className="text-ops-dim">({Math.min(state.month + 1, state.months)}/{state.months})</span>
+              {monthLabel(state.month)} <span className="text-ops-dim">({state.modifiers.includes('endless') ? `month ${state.month + 1}` : `${Math.min(state.month + 1, state.months)}/${state.months}`})</span>
             </div>
           </div>
           <div>
@@ -162,7 +173,9 @@ export default function App() {
             <Btn onClick={() => setPrefs((p) => ({ ...p, highContrast: !p.highContrast }))} pressed={prefs.highContrast} title="High-contrast theme">
               Contrast
             </Btn>
-            <Btn onClick={() => setSavesOpen((o) => !o)}>Saves</Btn>
+            <Btn why={state.modifiers.includes('ironman') ? 'Ironman: one autosave, no slots.' : null} onClick={() => setSavesOpen((o) => !o)}>
+              Saves
+            </Btn>
             {savesOpen && (
               <SaveMenu
                 state={state}
@@ -197,6 +210,20 @@ export default function App() {
           ))}
         </nav>
       </header>
+
+      <News state={state} />
+
+      {unlocked.length > 0 && (
+        <div role="status" className="fixed right-3 top-3 z-50 space-y-2">
+          {unlocked.map((a) => (
+            <div key={a.id} className="panel border-ops-amber/70 px-4 py-2 text-[12px] shadow-2xl">
+              <div className="text-ops-amber">★ Achievement unlocked</div>
+              <div className="font-sans text-[15px] font-semibold text-white">{a.name}</div>
+              <div className="text-[10px] text-ops-dim">{a.text}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {update && (
         <div role="status" className="panel flex items-center justify-between gap-2 border-ops-cyan/60 px-4 py-2 text-[12px] text-ops-cyan">

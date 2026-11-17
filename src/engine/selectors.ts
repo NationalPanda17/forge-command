@@ -1,4 +1,5 @@
 // Derived values. Pure reads of GameState, shared by the engine, the advisor and the UI.
+import { pressureOf, rulesOf } from './rules';
 import {
   BASE_BAYS_PER_LINE,
   FACILITIES,
@@ -9,14 +10,12 @@ import {
   NEW_TRANCHE_MATURITY,
   CAMPUSES,
   COMPONENTS,
-  DIFFICULTY,
   LINES,
   LINE_IDS,
   PREMIUM_WAGE,
   RUN_CREW,
   RUN_FACTOR,
   RUN_OVERHEAD,
-  SCENARIOS,
   STORAGE_RATE,
   SUPPLIERS,
   THREATS,
@@ -134,8 +133,8 @@ export function supplierCap(state: GameState, sid: string): number {
   const st = state.suppliers[sid];
   if (!st.qualified || st.bankrupt || st.embargoMonths > 0) return 0;
   const t = tier2For(def.component);
-  const feed = t && DIFFICULTY[state.difficulty].shortages ? state.tier2[t].availability : 1;
-  return def.baseCap * (1 + INVEST_STEP * st.capBonus) * DIFFICULTY[state.difficulty].capMult * st.capFactor * feed;
+  const feed = t && rulesOf(state).shortages ? state.tier2[t].availability : 1;
+  return def.baseCap * (1 + INVEST_STEP * st.capBonus) * rulesOf(state).capMult * st.capFactor * feed;
 }
 
 export const componentCap = (state: GameState, c: ComponentId) =>
@@ -151,7 +150,7 @@ export const backlogOf = (cs: ComponentState) => cs.contracts.reduce((s, k) => s
 
 /** Expected calm-time draw per month (doctrine weights, no crisis). */
 export function calmDraw(state: GameState, id: LineId): number {
-  const pressure = SCENARIOS[state.scenario].pressure;
+  const pressure = pressureOf(state);
   const def = LINES[id];
   if (!isEstablished(state, id)) return 0;
   if (def.family === 'land') return (def.landDraw ?? 0) * pressure * landEfficiency(state, id);

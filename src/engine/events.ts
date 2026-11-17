@@ -1,10 +1,10 @@
 // Random events and decision cards. Everything here is fictional.
+import {  rulesOf } from './rules';
 import {
   CAMPUSES,
   CAMPUS_IDS,
   COMPONENTS,
   COMPONENT_IDS,
-  DIFFICULTY,
   EXPAND_STEP,
   GRACE_MONTHS,
   LINES,
@@ -35,7 +35,7 @@ const fmtMoney = (m: number) => (m >= 1000 ? `$${(m / 1000).toFixed(1)}B` : `$${
 /** Rolls this month's random events. */
 export function rollEvents(state: GameState, messages: Messages): void {
   if (state.month < GRACE_MONTHS) return;
-  const rules = DIFFICULTY[state.difficulty];
+  const rules = rulesOf(state);
   const r = rules.eventRate;
   const chance = (p: number) => rand(state) < p * r;
   const qualified = SUPPLIER_IDS.filter((s) => state.suppliers[s].qualified && !state.suppliers[s].bankrupt);
@@ -73,7 +73,7 @@ export function rollEvents(state: GameState, messages: Messages): void {
   }
 
   // Export restrictions on foreign suppliers.
-  if (chance(0.02)) {
+  if (chance(0.02 * (state.modifiers.includes('embargoWorld') ? 3 : 1))) {
     const foreign = qualified.filter((s) => SUPPLIERS[s].nation !== 'aldmere' && state.suppliers[s].embargoMonths === 0);
     const weighted = foreign.flatMap((s) => Array(SUPPLIERS[s].nation === 'karsk' ? 4 : SUPPLIERS[s].nation === 'ostrel' ? 2 : 1).fill(s));
     if (weighted.length) {
