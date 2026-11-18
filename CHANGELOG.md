@@ -1,5 +1,44 @@
 # Changelog
 
+## 6.0.0: your own industry, a story, and comfort
+
+### Build your own industry
+- **Five open plots** across the map, shown in the Build and Industry tabs.
+  - Found a plant on one to make any of eleven parts, from perchlorate and propellant to rocket motors, seekers,
+    chips and magnets.
+  - Each plant takes about a year to build, comes with its own rail spur, needs a crew, and then ramps up.
+- **Bring parts in-house:** fit a new line into one of your arsenals in about eight months. Parts with a single
+  outside supplier today are marked.
+- **Round designs:** each round can be built as Standard, Extended-range (better odds of a kill, more motor), Lean
+  build (cheaper in every input, worse odds) or Long-life (lasts half as long again, costs a little more). A new design
+  takes about four months.
+
+### Story campaign
+- **Four chapters, a year each:**
+  - Inheritance;
+  - Shadows in the East;
+  - Hands on the Line;
+  - The Long Winter.
+- **The people:** each chapter is briefed by a recurring character (the Committee chair, the head of intelligence,
+  the union leader, the defence chief) and sets three goals.
+- **Consequences** carry forward: your budget, the rival's timing, the regions' mood, crew morale and how the final
+  winter war opens all depend on what came before.
+- **Special Courier editions** close each chapter; an epilogue closes the story.
+
+### Accessibility and comfort
+- **Display:**
+  - A colour-blind-safe palette (Okabe–Ito).
+  - Large and larger text for panels, headers and dialogs; the map keeps its own collision-free sizing.
+  - Reduced motion.
+- **Keyboard:**
+  - `[` and `]` switch tabs; `M` jumps to the map.
+  - `?` shows every shortcut and the display options.
+  - A skip link jumps to the panels.
+- **Named saves:** up to eight, kept side by side in your browser, saved from the game and loaded from the title.
+
+### Balance
+- The test player now also founds plants and brings parts in-house for starved rounds.
+
 ## 5.0.0: the rival, lasting choices and a clearer map
 
 ### The rival

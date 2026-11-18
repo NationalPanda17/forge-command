@@ -3,6 +3,7 @@ import { validate, type SimAction } from '../src/sim/actions';
 import { nationalStock, readiness, reserveTarget } from '../src/sim/selectors';
 import { bottleneck, monthsTo } from '../src/sim/analytics';
 import { DEVELOPMENTS } from '../src/sim/rival';
+import { FOUNDABLE } from '../src/sim/industry';
 import { routeByKey, routeCap } from '../src/sim/build';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import type { SimState } from '../src/sim/types';
@@ -62,6 +63,15 @@ export function active(s: SimState): SimAction[] {
       const level = nationalStock(s, line) / Math.max(1, reserveTarget(s, line));
       if (level > 1.6 && p.run !== 'idle') acts.push({ type: 'setRun', site: def.id, process: i, run: 'idle' });
       else if (level < 1.1 && p.run === 'idle' && s.lines[line].unlocked) acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' });
+      // A starved round whose tightest part has a single outside source: bring that part in-house.
+      if (level < 0.6 && s.lines[line].unlocked && s.treasury > 1500) {
+        const b = bottleneck(s, line);
+        const recipe = b ? Object.keys(FOUNDABLE).find((r) => RECIPES[r].output === b.material) : undefined;
+        if (recipe) {
+          const outside = SITES.filter((d) => d.owner !== 'state' && s.sites[d.id].processes.some((q) => q.recipe === recipe)).length;
+          if (outside <= 1) acts.push({ type: 'inhouse', site: def.id, recipe });
+        }
+      }
       // A starved round: fund the supplier behind its tightest input.
       if (level < 0.6 && s.lines[line].unlocked && s.treasury > 600) {
         const b = bottleneck(s, line);

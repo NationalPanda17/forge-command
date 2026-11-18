@@ -173,18 +173,14 @@ const Defs = memo(function Defs({ uid }: { uid: string }) {
       <pattern id={`${uid}-ice`} width={14} height={14} patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
         <path d="M0 3L6 4L9 0M3 14L7 9L14 10" stroke="rgba(245, 250, 255, 0.35)" strokeWidth={0.5} fill="none" />
       </pattern>
-      <mask id={`${uid}-sea`}>
-        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="#fff" />
-        <path d={geo.land} fill="#000" />
-      </mask>
+      <clipPath id={`${uid}-seaclip`}>
+        <path d={`M${G.FRAME.x0} ${G.FRAME.y0}H${G.FRAME.x1}V${G.FRAME.y1}H${G.FRAME.x0}Z${geo.land}`} clipRule="evenodd" />
+      </clipPath>
       <linearGradient id={`${uid}-northgrad`} x1="0" y1={G.FRAME.y0} x2="0" y2={290} gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#fff" stopOpacity={1} />
-        <stop offset="55%" stopColor="#fff" stopOpacity={0.55} />
-        <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+        <stop offset="0%" stopColor="rgb(235, 244, 255)" stopOpacity={0.2} />
+        <stop offset="55%" stopColor="rgb(235, 244, 255)" stopOpacity={0.1} />
+        <stop offset="100%" stopColor="rgb(235, 244, 255)" stopOpacity={0} />
       </linearGradient>
-      <mask id={`${uid}-northfade`}>
-        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={`url(#${uid}-northgrad)`} />
-      </mask>
       <radialGradient id={`${uid}-lights`}>
         <stop offset="0%" stopColor="#ffd38a" stopOpacity={0.75} />
         <stop offset="35%" stopColor="#ffb347" stopOpacity={0.3} />
@@ -788,13 +784,13 @@ const WeatherLayer = memo(function WeatherLayer({ uid, weather }: { uid: string;
   if (weather === 'snow')
     return (
       <g pointerEvents="none">
-        {/* Snow lies thickest in the far north and thins out southwards. */}
-        <g clipPath={`url(#${uid}-land)`} mask={`url(#${uid}-northfade)`}>
-          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill="rgba(235, 244, 255, 0.16)" />
-          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill={`url(#${uid}-snow)`} />
+        {/* Snow lies thickest in the far north and thins out southwards. Gradients and clips only: masks are slow to draw. */}
+        <g clipPath={`url(#${uid}-land)`}>
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill={`url(#${uid}-northgrad)`} />
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={170} fill={`url(#${uid}-snow)`} />
         </g>
         {/* Sea ice along the northern coast. */}
-        <g mask={`url(#${uid}-sea)`}>
+        <g clipPath={`url(#${uid}-seaclip)`}>
           <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill="rgba(220, 236, 250, 0.2)" />
           <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill={`url(#${uid}-ice)`} />
         </g>
@@ -1242,7 +1238,9 @@ export default function MapView(props: MapViewProps): JSX.Element {
   const hiddenSig = SITES.filter((s) => markers[s.id]?.hidden).map((s) => s.id).join(',');
   const hidden = useMemo(() => new Set(hiddenSig ? hiddenSig.split(',') : []), [hiddenSig]);
   const nameSig = SITES.map((s) => `${markers[s.id]?.name ?? ''}:${markers[s.id]?.kind ?? ''}`).join('|');
+  // Labels are laid out for the settled zoom; markers are spaced at the live zoom every frame, so they never touch.
   const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden), [settledS, badgeSig, hidden]);
+  const liveSpread = useMemo(() => (S === settledS ? spread : spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden)), [S, settledS, spread, badgeSig, hidden]);
   const placement = useMemo(
     () =>
       layoutMap({
@@ -1313,11 +1311,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
             <g pointerEvents="none" style={dragging || zooming ? { display: 'none' } : undefined}>
               {ripples.map((r) => {
                 if (!G.SITE_POS[r.site]) return null;
-                const [x, y] = markerAt(r.site, S, spread);
+                const [x, y] = markerAt(r.site, S, liveSpread);
                 return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
               })}
             </g>
-            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={liveSpread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
           </g>
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>

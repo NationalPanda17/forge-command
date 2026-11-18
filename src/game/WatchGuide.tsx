@@ -214,6 +214,29 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: 'industry',
+    title: 'Your own industry',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Open plots:</b> five plots show in the Build and Industry tabs. Found a plant on one to make a part you depend on. It takes about a year, lays its own rail spur, and needs a crew.</Li>
+        <Li><b>In-house lines:</b> fit a new line into one of your arsenals instead: cheaper and quicker, about eight months.</Li>
+        <Li><b>Round designs:</b> Extended-range, Lean build or Long-life, each with a trade-off. A design takes about four months.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'comfort',
+    title: 'Story, saves and display',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>The story:</b> four chapters, a year each. A briefing opens each one with three goals; what you achieve changes the chapters after.</Li>
+        <Li><b>Named saves:</b> the Save button by the clock keeps up to eight games side by side; load them from the title screen.</Li>
+        <Li><b>Display:</b> a colour-blind-safe palette, larger text and reduced motion, under ? or on the title screen.</Li>
+        <Li><b>Keyboard:</b> [ and ] switch tabs, M jumps to the map, ? lists everything.</Li>
+      </ul>
+    ),
+  },
+  {
     id: 'rival',
     title: 'The rival',
     body: (
