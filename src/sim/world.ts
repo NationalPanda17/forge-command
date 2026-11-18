@@ -429,10 +429,19 @@ export const isPlotSpur = (id: string) => id.startsWith('plot-');
 export const CANDIDATE_BY_ID: Record<string, CandidateRoute> = Object.fromEntries(CANDIDATE_ROUTES.map((c) => [c.id, c]));
 
 export const ROUTE_KEY = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+/**
+ * Generated worlds scale distances so the whole network is as long as the classic one: which links are long or short
+ * changes from world to world, but the country is no harder to supply overall.
+ */
+let KM_SCALE = 1;
+export const setKmScale = (k: number) => {
+  KM_SCALE = k;
+};
+
 export function routeKm(rt: RouteDef): number {
   const A = SITE_BY_ID[rt.a];
   const B = SITE_BY_ID[rt.b];
-  return Math.hypot(A.x - B.x, A.y - B.y) * MODES[rt.mode].detour;
+  return Math.hypot(A.x - B.x, A.y - B.y) * MODES[rt.mode].detour * KM_SCALE;
 }
 
 // ---------- Regions and the fight ----------

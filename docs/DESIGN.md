@@ -1,4 +1,4 @@
-# Forge Command 6.0: design
+# Forge Command 7.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -122,6 +122,29 @@ Physical figures follow public reference data where it exists, and are best gues
   - Pay deals add 7 to 15; refusals take away 10.
 - **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
 - **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
+
+## Procedural worlds (`worldgen.ts`, `ui/map/geo.ts`)
+- **The template:** the classic map. A world is a seeded, smooth displacement field: two octaves of value noise,
+  amplitude 75–115 km and wavelength 230–380 km. It fades out over the last 110 km to the edge of the sheet, so the
+  land border and the off-map suppliers stay put.
+- **No folding:** the warp's Jacobian is checked on a 20 km grid. If any cell is squeezed below 35% of its area or
+  flipped, the amplitude is cut by 15% and checked again. A non-folding warp keeps every site on the same side of
+  every coast and river.
+- **What moves:** sites, cities, the coastline, islands, rivers, lakes, the border, region outlines, sea-lane
+  waypoints, labels and map details all go through the same warp.
+  - Coast control points more than 45 km from any site or town also get their own push in or out, making new bays
+    and headlands.
+  - Elevation is the classic relief, read back through the inverse warp (fixed-point iteration), scaled by a broad
+    noise, plus two or three new ridges. Forest patches are moved, and farmland and coastline details reseeded.
+- **Distances:** `routeKm` is scaled by `KM_SCALE`, so a world's surface network has the classic total length.
+- **Names:** capitalised words in the classic names, blurbs, regions, links and map labels that are not generic
+  ("Steelworks", "Depot") are mapped to syllable-built names. The off-map nations and allies keep theirs.
+- **Text:** `tr()` rewrites classic place words in event text, decisions, the Courier, warnings and descriptions at
+  display time.
+- **Rebuilding:** `applyWorld(seed | null)` changes the shared world data in place and tells the map and the
+  routing graph to rebuild. Site ids, kinds, regions, owners and recipes never change, so everything that refers to
+  them keeps working. The game state records `world`, and `advanceDays` and `apply` re-apply it, so saves load into
+  the right country.
 
 ## Your own industry (`industry.ts`)
 - **Open plots:** five `kind: 'plot'` sites, closed and hidden until founded.

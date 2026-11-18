@@ -2,7 +2,7 @@
 // whole country (coast, rivers, regions, sea lanes and every site together, so ports stay on the coast and links stay
 // sensible), and every place, company, sea and hill gets a new name. Site roles, owners, recipes and links never
 // change, so every rule of the game still holds.
-import { CANDIDATE_ROUTES, CITIES, REGIONS, SITES, type RegionId } from './world';
+import { CANDIDATE_ROUTES, CITIES, REGIONS, ROUTES, SITES, routeKm, setKmScale, type RegionId } from './world';
 
 export type Pt = [number, number];
 
@@ -221,6 +221,8 @@ export function applyWorld(seed: number | null): void {
   dictionary = new Map();
   current = null;
   spec = null;
+  setKmScale(1);
+  const classicKm = ROUTES.filter((r) => r.mode !== 'air').reduce((a, r) => a + routeKm(r), 0);
   if (seed !== null) {
     const rng = mulberry(seed);
     current = { seed: seed >>> 0, amp: 75 + rng() * 40, len: 230 + rng() * 150 };
@@ -250,6 +252,9 @@ export function applyWorld(seed: number | null): void {
       c.name = tr(c.name);
       c.blurb = tr(c.blurb);
     }
+    // Keep the whole surface network as long as the classic one.
+    const worldKm = ROUTES.filter((r) => r.mode !== 'air').reduce((a, r) => a + routeKm(r), 0);
+    setKmScale(classicKm / Math.max(1, worldKm));
   }
   for (const f of listeners) f();
 }
