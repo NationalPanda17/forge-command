@@ -11,7 +11,7 @@ export const MAX_CLEARANCE = 3;
 export const CLEARANCE_NAME = ['None', 'Basic checks', 'Enhanced vetting', 'Full clearance'] as const;
 
 /** Plants worth spying on: your arsenals, founded plants and component lines. */
-export const targets = (s: SimState) => SITES.filter((d) => d.owner === 'state' && s.sites[d.id].processes.length > 0 && s.sites[d.id].status !== 'closed').map((d) => d.id);
+export const targets = (s: SimState) => SITES.filter((d) => d.owner === 'state' && s.sites[d.id].processes.length > 0 && s.sites[d.id].status !== 'closed' && !s.sites[d.id].mothballed).map((d) => d.id);
 
 /** 0..1: how hard a site is to penetrate. Clearance does most of it; unhappy crews leak. */
 export function security(s: SimState, id: string): number {

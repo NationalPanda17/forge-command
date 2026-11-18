@@ -578,7 +578,9 @@ function payDaily(s: SimState): void {
     const def = SITE_BY_ID[site.id];
     if (def.owner !== 'state' || site.status === 'closed') continue;
     ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
-    ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? 0.3 : p.run === 'surge' ? 1.35 : 1), 0);
+    // A mothballed plant keeps only a caretaker's upkeep; an idle line still pays for power and maintenance.
+    const idle = site.mothballed ? 0.05 : 0.3;
+    ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? idle : p.run === 'surge' ? 1.35 : 1), 0);
   }
   ops *= s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1);
   s.treasury -= ops;

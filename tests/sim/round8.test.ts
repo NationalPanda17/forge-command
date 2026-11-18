@@ -3,10 +3,16 @@ import { apply, validate } from '../../src/sim/actions';
 import { lotQty } from '../../src/sim/selectors';
 import { RESEARCH, resolveDecision } from '../../src/sim/strategy';
 import { newSim } from '../../src/sim/setup';
-import { activity, security } from '../../src/sim/security';
+import { activity, security, targets } from '../../src/sim/security';
 import { controllerOf } from '../../src/sim/hotseat';
+import { SITE_BY_ID } from '../../src/sim/world';
+const SITE_OWNER = (id: string) => SITE_BY_ID[id].owner;
 import { hireRoom, townIndex, townOf } from '../../src/sim/towns';
 import { advanceDays, feed, openCampaign } from '../../src/sim/tick';
+import { advise } from '../../src/sim/advisor';
+import { designBlock } from '../../src/sim/industry';
+import { peopleMonth } from '../../src/sim/people';
+import { testingMonth } from '../../src/sim/testing';
 
 const start = (seed = 1) => ({ ...openCampaign(newSim({ seed })), treasury: 20000 });
 
@@ -111,5 +117,77 @@ describe('hot-seat two-player', () => {
     expect(s.hotseat!.active).toBe(1);
     expect(s.hotseat!.handover).toBe(true);
     expect(s.hotseat!.players[0].score).not.toBe(0);
+  });
+});
+
+describe('8.0 refinements', () => {
+  it('a mothballed plant takes no apprentices', () => {
+    let s = start();
+    s.sites.ashfordComplex.apprentices = 20;
+    s = apply(s, { type: 'mothball', site: 'ashfordComplex' });
+    const before = s.sites.ashfordComplex.trainees.length;
+    peopleMonth(s, feed);
+    expect(s.sites.ashfordComplex.trainees.length).toBe(before);
+  });
+
+  it('a mothballed plant costs far less to keep, cannot be mothballed while building, and spies leave it alone', () => {
+    const base = start();
+    const run = (s: typeof base) => {
+      const t = s.treasury;
+      return t - advanceDays(s, 5).treasury;
+    };
+    const cold = apply(structuredClone(base), { type: 'mothball', site: 'ashfordComplex' });
+    const idle = apply(structuredClone(base), { type: 'setRun', site: 'ashfordComplex', process: 0, run: 'idle' });
+    expect(run(cold)).toBeLessThan(run(idle));
+    expect(targets(cold)).not.toContain('ashfordComplex');
+    const b = structuredClone(base);
+    b.sites.ashfordComplex.status = 'building';
+    expect(validate(b, { type: 'mothball', site: 'ashfordComplex' })).toMatch(/being built/);
+  });
+
+  it('the advisor never suggests hiring past what the town can supply', () => {
+    const s = start();
+    s.sites.corranWorks.workers = 0;
+    s.sites.corranWorks.trainees = [];
+    const town = townOf('corranWorks');
+    const t = s.towns[townIndex(town)];
+    for (const a of advise(s, 50)) {
+      if (a.action?.type === 'hire' && a.action.site === 'corranWorks') expect(a.action.count).toBeLessThanOrEqual(hireRoom(s, town));
+    }
+    t.pool = 0;
+    const tips = advise(s, 50);
+    expect(tips.some((a) => a.action?.type === 'hire' && a.action.site === 'corranWorks')).toBe(false);
+    expect(tips.some((a) => a.action?.type === 'housing')).toBe(true);
+  });
+
+  it('a new round with nothing to fire says it is waiting', () => {
+    const s = start();
+    s.lines.apkws.unlocked = true;
+    s.lines.apkws.accepted = false;
+    s.tests.push({ id: 991, line: 'apkws', needed: 4, passed: 0, failed: 0, range: null, investigating: 0, odds: 0.8, queued: s.day - 30 });
+    for (const site of Object.values(s.sites)) delete site.lots.apkws;
+    testingMonth(s, feed);
+    const t = s.tests.find((x) => x.id === 991)!;
+    expect(t.range).not.toBeNull();
+    expect(t.waiting).toBe(true);
+  });
+
+  it('one design per round while its last design is still being tested', () => {
+    const s = start();
+    s.tests.push({ id: 992, line: 'pac3', variant: 'lean', needed: 3, passed: 0, failed: 0, range: null, investigating: 0, odds: 0.85, queued: s.day });
+    expect(designBlock(s, 'pac3', 'lean')).toMatch(/test schedule/);
+  });
+
+  it('in two-player games the advisor only advises on your own plants', () => {
+    const s = { ...openCampaign(newSim({ seed: 2, hotseat: ['Ana', 'Ben'] })), treasury: 20000 };
+    for (const id of Object.keys(s.sites)) {
+      s.sites[id].workers = 0;
+      s.sites[id].trainees = [];
+    }
+    const tips = advise(s, 100);
+    for (const a of tips) {
+      const site = a.site ?? (a.action && 'site' in a.action ? (a.action.site as string) : undefined);
+      if (site && s.sites[site] && controllerOf(s.hotseat!, site) !== undefined && SITE_OWNER(site) === 'state') expect(controllerOf(s.hotseat!, site)).toBe(s.hotseat!.active);
+    }
   });
 });

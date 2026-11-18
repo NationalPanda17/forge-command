@@ -26,6 +26,8 @@ export interface TestProgramme {
   odds: number;
   /** Day it joined the schedule: firings start ten days later at the earliest. */
   queued?: number;
+  /** A new round with nothing at its arsenal to fire. */
+  waiting?: boolean;
 }
 
 export const RANGES = () => SITES.filter((d) => d.kind === 'testRange').map((d) => d.id);
@@ -62,7 +64,12 @@ export function testingMonth(s: SimState, feed: Feed): void {
       // A new round is fired from real production; a design change from test articles.
       if (!t.variant) {
         const arsenal = SITES.find((d) => d.owner === 'state' && s.sites[d.id].processes.some((p) => p.recipe === t.line));
-        if (!arsenal || lotQty(s.sites[arsenal.id].lots[t.line]) < 1) break;
+        if (!arsenal || lotQty(s.sites[arsenal.id].lots[t.line]) < 1) {
+          if (!t.waiting) feed(s, 'warn', `The ${programmeName(t)} firings wait for rounds: ${arsenal ? `${SITE_BY_ID[arsenal.id].name} has none to spare yet` : 'no arsenal makes it'}.`, arsenal?.id);
+          t.waiting = true;
+          break;
+        }
+        t.waiting = false;
         takeLots(s.sites[arsenal.id], t.line, 1);
       } else {
         const cost = MATERIALS[t.line].price * 1.5 * s.priceIndex;

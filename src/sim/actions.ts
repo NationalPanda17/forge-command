@@ -203,6 +203,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, housingCost(s));
     case 'mothball':
       if (def!.owner !== 'state' || !site!.processes.length) return 'Only your own plants.';
+      if (site!.status === 'building') return 'It is still being built.';
       return site!.mothballed ? 'Already mothballed.' : null;
     case 'reopen':
       return site!.mothballed ? null : 'It is running.';

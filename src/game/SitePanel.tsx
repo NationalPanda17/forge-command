@@ -13,6 +13,7 @@ import { KIND_LABEL } from '../ui/map/icons';
 import { Explain } from '../ui/Explain';
 import { rateWhy } from './explain';
 import { money, qty } from '../ui/format';
+import { controllerOf } from '../sim/hotseat';
 
 const OWNER = { state: 'Yours', private: 'Private company', foreign: 'Foreign supplier' } as const;
 
@@ -77,6 +78,15 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
         <div className="text-[10px] text-ops-dim">
           {def.nation ?? REGIONS[def.region].name} · {KIND_LABEL[site.plantKind ?? def.kind].toLowerCase()}
         </div>
+        {state.hotseat && def.owner === 'state' && (() => {
+          const h = state.hotseat;
+          const c = controllerOf(h, def.id);
+          return (
+            <div className={`text-[10px] ${c === h.active ? 'text-ops-cyan' : 'text-ops-dim'}`}>
+              Run by {h.players[c].name} ({h.players[c].command}){c === h.active ? '' : ': only they can act here'}
+            </div>
+          );
+        })()}
         <p className="mt-1 text-ops-text">{def.blurb}</p>
         <div className="mt-1 flex flex-wrap gap-1">
           {site.status !== 'active' && def.kind !== 'plot' && <Chip tone="border-ops-red/60 text-ops-red">{site.status}</Chip>}

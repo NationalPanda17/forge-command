@@ -142,7 +142,10 @@ Physical figures follow public reference data where it exists, and are best gues
 - **Growth and decline:** with jobs above 95% of the pool, the pool grows 3% a month, capped by housing. Below 85%
   for three months, it shrinks 2% a month and regions −0.4.
 - **Housing:** projects add 400 homes after 150 days.
-- **Mothballing:** idles the lines and lays off the crew. Regions lose up to 12, confidence up to 6.
+- **Mothballing:** idles the lines and lays off the crew. Regions lose up to 12, confidence up to 6. Upkeep falls to 5% of
+  the lines' running cost.
+- **Apprentices:** local school leavers, so they join even in a fully employed town, which then grows as housing
+  allows. A mothballed plant takes none.
 
 ## Testing (`testing.ts`)
 - **Ranges:** each test range runs one programme at a time, firing three rounds a month.

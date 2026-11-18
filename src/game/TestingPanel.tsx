@@ -31,8 +31,8 @@ export default function TestingPanel({ state, act, onSite }: { state: SimState; 
                   <div className="mt-1">
                     <div className="flex flex-wrap justify-between gap-2">
                       <span className="text-ops-text">{programmeName(t)}</span>
-                      <span className={t.investigating ? 'text-ops-amber' : 'text-ops-dim'}>
-                        {t.investigating ? `investigating a failure · ${t.investigating} days` : `${t.passed} of ${t.needed} firings passed · ${t.failed} failed · ${pct(t.odds)} odds`}
+                      <span className={t.investigating || t.waiting ? 'text-ops-amber' : 'text-ops-dim'}>
+                        {t.investigating ? `investigating a failure · ${t.investigating} days` : t.waiting ? `${t.passed} of ${t.needed} passed · waiting for rounds from production` : `${t.passed} of ${t.needed} firings passed · ${t.failed} failed · ${pct(t.odds)} odds`}
                       </span>
                     </div>
                     <Bar ratio={t.passed / t.needed} tone={t.investigating ? 'bg-ops-amber' : 'bg-ops-green'} />

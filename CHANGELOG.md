@@ -38,6 +38,16 @@
 - **Scoring:** each director is scored on their own bases, their own plants' output, and their share of the
   spending. The end-of-term report names the winner.
 
+### Refinements
+- **Towns:** a mothballed plant now costs only a caretaker's upkeep and takes no apprentices, and a plant still
+  being built cannot be mothballed. When a town has no one left, the advisor suggests housing instead
+  of a hire it cannot fill.
+- **Spies** leave mothballed plants alone.
+- **Testing:** a new round with nothing at its arsenal to fire now says it is waiting for rounds. A round's next
+  design must wait until the last one leaves the test schedule.
+- **Two players:** the clock cannot be restarted behind the handover screen or a story briefing. The advisor only
+  advises on your own plants, and each site says who runs it.
+
 ### Balance
 - **Hard:** the Committee now expects 72% readiness, down from 76%, and the monthly budget rises from $195M to
   $205M, to make room for the new pressures.

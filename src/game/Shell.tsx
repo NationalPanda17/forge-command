@@ -1,5 +1,5 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { monthOfYear, seasonOf } from '../sim/living';
 import MarketsPanel from './MarketsPanel';
 import BuildPanel from './BuildPanel';
@@ -92,7 +92,10 @@ function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> 
 }
 
 export default function Shell({ initial, onMenu, autoPause }: { initial: SimState; onMenu: (s: SimState) => void; autoPause: boolean }) {
-  const { state, speed, setSpeed, act, step, clock } = useSim(initial, autoPause);
+  const { state, speed, setSpeed: rawSetSpeed, act, step, clock } = useSim(initial, autoPause);
+  // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
+  const held = !!state.hotseat?.handover || (state.story?.briefing !== null && state.story?.briefing !== undefined);
+  const setSpeed = useCallback((sp: Speed) => rawSetSpeed(held ? 0 : sp), [held, rawSetSpeed]);
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
   const [panel, setPanel] = useState<PanelId>('watch');

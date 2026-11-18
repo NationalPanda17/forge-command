@@ -170,6 +170,7 @@ export function variantInput(s: SimState, recipe: string, m: MaterialId): number
 export function designBlock(s: SimState, line: LineId, variant: VariantId): string | null {
   if (!s.lines[line]?.unlocked) return 'That round is not in production.';
   if (s.design) return 'Your designers are busy with another variant.';
+  if (s.tests?.some((t) => t.line === line && t.variant)) return 'A design for this round is still on the test schedule.';
   if ((s.variants[line] ?? 'standard') === variant) return 'Already in production.';
   return s.treasury >= designCost(s) ? null : `Not enough money (needs $${designCost(s)}M).`;
 }
