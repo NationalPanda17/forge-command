@@ -1,6 +1,9 @@
 import type { LineId, MaterialId, RegionId, SiteKind } from './world';
 import type { VariantId } from './industry';
 import type { StoryState } from './story';
+import type { TownState } from './towns';
+import type { TestProgramme } from './testing';
+import type { HotseatState } from './hotseat';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 import type { RivalState } from './rival';
 import type { PolicyId, Programme } from './commitments';
@@ -79,6 +82,10 @@ export interface SiteState {
   /** Founded plants: what kind of plant now stands on the plot, and its name. */
   plantKind?: SiteKind;
   plantName?: string;
+  /** Security vetting level, 0..3. */
+  clearance?: number;
+  /** Laid off and idle until reopened. */
+  mothballed?: boolean;
 }
 
 /** Something the player is building. */
@@ -186,6 +193,8 @@ export interface MonthReport {
   exported?: number;
   /** Where this month's change in confidence came from. */
   why?: { readiness: number; leaks: number; land: number; debt: number; other: number };
+  /** Espionage incidents that got through. */
+  incidents?: number;
 }
 
 /** One supplier's offer in a tender. */
@@ -267,7 +276,8 @@ export interface SimState {
   crisis: Crisis | null;
   policy: Policy;
   /** since: the day a line was unlocked (new lines get a year's grace before they count). */
-  lines: Record<LineId, { unlocked: boolean; since?: number }>;
+  /** accepted: false until a new round passes its test firings. */
+  lines: Record<LineId, { unlocked: boolean; since?: number; accepted?: boolean }>;
   feed: FeedItem[];
   /** Running totals for the month in progress. */
   month: MonthReport;
@@ -312,6 +322,12 @@ export interface SimState {
   story: StoryState | null;
   /** The generated world's seed, or null for the classic Commonwealth of Aldmere. */
   world: number | null;
+  /** Workforce towns, in the same order as the city list. */
+  towns: TownState[];
+  /** Test programmes at the ranges: running first, then queued. */
+  tests: TestProgramme[];
+  /** Two players sharing the country, when playing hot-seat. */
+  hotseat: HotseatState | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

@@ -4,6 +4,7 @@ import { nationalStock, readiness, reserveTarget } from '../src/sim/selectors';
 import { bottleneck, monthsTo } from '../src/sim/analytics';
 import { DEVELOPMENTS } from '../src/sim/rival';
 import { FOUNDABLE } from '../src/sim/industry';
+import { townIndex, townOf } from '../src/sim/towns';
 import { routeByKey, routeCap } from '../src/sim/build';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import type { SimState } from '../src/sim/types';
@@ -88,7 +89,13 @@ export function active(s: SimState): SimAction[] {
     });
     // Hire to cover the crew, counting people already in training.
     const training = site.trainees.reduce((x, t) => x + t.count, 0);
-    if (site.workers + training < (def.crew + site.extraCrew) * 1.05) acts.push({ type: 'hire', site: def.id, count: 60 });
+    if (site.workers + training < (def.crew + site.extraCrew) * 1.05) {
+      const hire: SimAction = { type: 'hire', site: def.id, count: 60 };
+      // A full town needs homes before it can supply more people.
+      if (validate(s, hire)?.includes('housing')) acts.push({ type: 'housing', town: townIndex(townOf(def.id)) });
+      else acts.push(hire);
+    }
+    if (site.clearance === undefined || site.clearance < 2) if (s.treasury > 900) acts.push({ type: 'vet', site: def.id });
     // Look after the people: safety, apprentices, and automation once the books allow.
     if (site.safety < 2 && s.treasury > 700) acts.push({ type: 'safety', site: def.id });
     if (site.apprentices === 0) acts.push({ type: 'apprentices', site: def.id, perMonth: 10 });

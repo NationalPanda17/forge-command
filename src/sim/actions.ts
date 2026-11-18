@@ -9,6 +9,11 @@ import { buildBlock, projectName, startProject } from './build';
 import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
 import { applyWorld } from './worldgen';
+import { MAX_CLEARANCE, vetCost } from './security';
+import { HOMES_PER_PROJECT, HOUSING_DAYS, hireRoom, housingCost, mothball, reopen, townOf } from './towns';
+import { prioritise } from './testing';
+import { controlBlock } from './hotseat';
+import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
@@ -45,7 +50,13 @@ export type SimAction =
   | { type: 'found'; plot: string; recipe: string }
   | { type: 'inhouse'; site: string; recipe: string }
   | { type: 'design'; line: LineId; variant: VariantId }
-  | { type: 'storyBriefed' };
+  | { type: 'storyBriefed' }
+  | { type: 'vet'; site: string }
+  | { type: 'housing'; town: number }
+  | { type: 'mothball'; site: string }
+  | { type: 'reopen'; site: string }
+  | { type: 'prioritiseTest'; test: number }
+  | { type: 'handover' };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -78,6 +89,11 @@ const funds = (s: SimState, cost: number) => (s.treasury >= cost ? null : `Not e
 export function validate(s: SimState, a: SimAction): string | null {
   if (a.type === 'secondTerm') return canSecondTerm(s);
   if (s.over) return 'The campaign is over.';
+  // Hot-seat: each player runs only their own half of the country.
+  if (a.type !== 'handover') {
+    const blocked = controlBlock(s, 'site' in a ? a.site : a.type === 'found' ? a.plot : undefined);
+    if (blocked) return blocked;
+  }
   const site = 'site' in a ? s.sites[a.site] : null;
   if ('site' in a && !site) return 'Unknown site.';
   const def = site ? SITE_BY_ID[site.id] : null;
@@ -90,10 +106,14 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (!site!.processes[a.process]) return 'Unknown process.';
       if (site!.processes[a.process].expansions >= 4) return 'No room left on this site.';
       return funds(s, expandCost(s, a.site, a.process));
-    case 'hire':
+    case 'hire': {
       if (def!.owner !== 'state') return 'Only your own sites hire directly.';
       if (!(a.count > 0)) return 'Hire at least one person.';
+      if (site!.mothballed) return 'Reopen the plant first.';
+      const room = hireRoom(s, townOf(a.site));
+      if (a.count > room) return room <= 0 ? `${townOf(a.site)} has no one left to hire: build housing there.` : `${townOf(a.site)} can supply only ${room} more people: hire fewer, or build housing.`;
       return funds(s, a.count * HIRE_COST * s.priceIndex);
+    }
     case 'repair':
       if (def!.owner !== 'state') return 'Only your own sites.';
       if (site!.condition >= 95) return 'Already in good repair.';
@@ -174,6 +194,22 @@ export function validate(s: SimState, a: SimAction): string | null {
       return s.policies.length >= MAX_POLICIES ? `At most ${MAX_POLICIES} policies at once. Revoke one first.` : null;
     case 'revokePolicy':
       return s.policies.includes(a.policy) ? null : 'Not in force.';
+    case 'vet':
+      if (def!.owner !== 'state' || !site!.processes.length) return 'Only your own plants.';
+      if ((site!.clearance ?? 0) >= MAX_CLEARANCE) return 'Already at full clearance.';
+      return funds(s, vetCost(s, a.site));
+    case 'housing':
+      if (!CITIES[a.town]) return 'No such town.';
+      return funds(s, housingCost(s));
+    case 'mothball':
+      if (def!.owner !== 'state' || !site!.processes.length) return 'Only your own plants.';
+      return site!.mothballed ? 'Already mothballed.' : null;
+    case 'reopen':
+      return site!.mothballed ? null : 'It is running.';
+    case 'prioritiseTest':
+      return s.tests.some((t) => t.id === a.test) ? null : 'No such programme.';
+    case 'handover':
+      return s.hotseat?.handover ? null : 'No handover waiting.';
     case 'storyBriefed':
       return s.story?.briefing !== null && s.story !== null ? null : 'No briefing waiting.';
     case 'found':
@@ -204,6 +240,7 @@ export function apply(state: SimState, a: SimAction): SimState {
   applyWorld(state.world ?? null);
   const s = structuredClone(state);
   setNetwork(s.network.built, s.network.upgrades);
+  const before = s.treasury;
   switch (a.type) {
     case 'setRun':
       s.sites[a.site].processes[a.process].run = a.run;
@@ -344,6 +381,32 @@ export function apply(state: SimState, a: SimAction): SimState {
     case 'storyBriefed':
       s.story!.briefing = null;
       break;
+    case 'vet': {
+      charge(s, vetCost(s, a.site));
+      const site = s.sites[a.site];
+      site.clearance = (site.clearance ?? 0) + 1;
+      // Vetting is intrusive: a little grumbling on the shop floor.
+      site.morale = Math.max(0, site.morale - 2);
+      feed(s, 'info', `Security vetting at ${SITE_BY_ID[a.site].name} reaches level ${site.clearance}.`, a.site);
+      break;
+    }
+    case 'housing':
+      charge(s, housingCost(s));
+      s.towns[a.town].building.push({ homes: HOMES_PER_PROJECT, days: HOUSING_DAYS });
+      feed(s, 'info', `${HOMES_PER_PROJECT} homes are being built in ${CITIES[a.town].name}: about five months.`);
+      break;
+    case 'mothball':
+      mothball(s, a.site, feed);
+      break;
+    case 'reopen':
+      reopen(s, a.site, feed);
+      break;
+    case 'prioritiseTest':
+      prioritise(s, a.test);
+      break;
+    case 'handover':
+      s.hotseat!.handover = false;
+      break;
     case 'found':
       foundPlant(s, a.plot, a.recipe, feed);
       break;
@@ -395,6 +458,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };
       break;
   }
+  if (s.hotseat && s.treasury < before) s.hotseat.players[s.hotseat.active].spent += before - s.treasury;
   return s;
 }
 

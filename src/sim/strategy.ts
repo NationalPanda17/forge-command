@@ -3,6 +3,7 @@ import { clamp, pick, rand } from './rng';
 import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
 import { variantInput } from './industry';
+import { queueTest } from './testing';
 import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
 // ---------- Research ----------
@@ -104,6 +105,9 @@ function finishResearch(s: SimState, r: ResearchId, feed: Feed): void {
   if (nl) {
     s.lines[nl.line].unlocked = true;
     s.lines[nl.line].since = s.day;
+    // A new round is not issued until it passes its firings at the ranges.
+    s.lines[nl.line].accepted = false;
+    queueTest(s, nl.line, undefined, feed);
     const site = s.sites[nl.site];
     const rate = LINE_RATE[nl.line];
     site.processes.push({ recipe: nl.line, capacity: rate, maturity: 0.1, run: 'normal', partial: 0, lastOutput: 0, lastLimit: null, expansions: 0 });
@@ -165,7 +169,7 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure';
   title: string;
   body: string;
   options: DecisionOption[];
