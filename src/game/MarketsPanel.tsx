@@ -10,6 +10,7 @@ import { Bar, Btn, COLORS, LineChart, NumberInput, Segmented } from '../ui/kit';
 import { pct, qty } from '../ui/format';
 import { dateLabel, monthLabel2 } from './useSim';
 import { Explain } from '../ui/Explain';
+import { tr } from '../sim/worldgen';
 import { seasonWhy } from './explain';
 
 const CHAIN_LABEL = { labour: 'Pay dispute', quality: 'Suspect parts', safety: 'Mine safety' } as const;
@@ -50,7 +51,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
           <LineChart height={70} min={1} max={Math.max(1.05, ...hist.map((h) => h.priceIndex ?? 1)) + 0.01} xLabels={[monthLabel2(hist[0].month), monthLabel2(hist.at(-1)!.month)]} format={(v) => v.toFixed(3)} series={[{ label: 'Price index', values: hist.map((h) => h.priceIndex ?? 1), color: COLORS.amber }]} />
         )}
         <p className="mt-2 text-ops-dim">
-          <span className="text-ops-text">{season[0].toUpperCase() + season.slice(1)}.</span> {SEASON_NOTE[season]}
+          <span className="text-ops-text">{season[0].toUpperCase() + season.slice(1)}.</span> {tr(SEASON_NOTE[season])}
         </p>
       </section>
 
@@ -184,7 +185,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
                 <span className={state.allies[a] >= 60 ? 'text-ops-green' : state.allies[a] >= 40 ? 'text-ops-text' : 'text-ops-red'}>{Math.round(state.allies[a])}</span>
               </div>
               <Bar ratio={state.allies[a] / 100} tone={state.allies[a] >= 60 ? 'bg-ops-green' : state.allies[a] >= 40 ? 'bg-ops-cyan' : 'bg-ops-red'} />
-              <p className="mt-0.5 text-[10px] text-ops-dim">{ALLIES[a].blurb} Good relations unlock emergency sales when you are short.</p>
+              <p className="mt-0.5 text-[10px] text-ops-dim">{tr(ALLIES[a].blurb)} Good relations unlock emergency sales when you are short.</p>
             </li>
           ))}
         </ul>

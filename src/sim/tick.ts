@@ -29,6 +29,7 @@ import { rivalArrivals, rivalDay, rivalLand, rivalPk, rivalShots } from './rival
 import { hasPolicy, policyMonth, programmeMonth } from './commitments';
 import { industryDay, variantOf } from './industry';
 import { storyDay } from './story';
+import { applyWorld } from './worldgen';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -684,6 +685,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
 /** Advances the simulation by n days. Never mutates its input. Stops early on game over. */
 export function advanceDays(prev: SimState, n = 1): SimState {
   if (prev.over) return prev;
+  applyWorld(prev.world ?? null);
   const s = structuredClone(prev);
   s.alert = null;
   setNetwork(s.network.built, s.network.upgrades);

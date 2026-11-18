@@ -2,6 +2,7 @@
 import { forecast } from '../sim/analytics';
 import { reserveDays } from '../sim/commitments';
 import { DIFF } from '../sim/tick';
+import { tr } from '../sim/worldgen';
 import { SEASON_NOTE, seasonOf } from '../sim/living';
 import { peopleFactor } from '../sim/people';
 import { RIVAL_NAME, rivalArrivals, rivalShots } from '../sim/rival';
@@ -55,7 +56,7 @@ export function treasuryWhy(s: SimState): string[] {
 
 export function seasonWhy(s: SimState): string[] {
   const season = seasonOf(s.day);
-  return [SEASON_NOTE[season], `Prices are ${pct(s.priceIndex - 1)} above the start of your term: wages, running costs, freight, spot buying and new contracts all follow them.`];
+  return [tr(SEASON_NOTE[season]), `Prices are ${pct(s.priceIndex - 1)} above the start of your term: wages, running costs, freight, spot buying and new contracts all follow them.`];
 }
 
 export function stockWhy(s: SimState, line: LineId): string[] {

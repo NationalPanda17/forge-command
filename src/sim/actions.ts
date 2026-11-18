@@ -8,6 +8,7 @@ import { CONTRACT_DISCOUNT, TENDER_COST, bidders, makeTender, priceNow } from '.
 import { buildBlock, projectName, startProject } from './build';
 import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
+import { applyWorld } from './worldgen';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
@@ -200,6 +201,7 @@ function charge(s: SimState, cost: number): void {
 
 export function apply(state: SimState, a: SimAction): SimState {
   if (validate(state, a)) return state;
+  applyWorld(state.world ?? null);
   const s = structuredClone(state);
   setNetwork(s.network.built, s.network.upgrades);
   switch (a.type) {
