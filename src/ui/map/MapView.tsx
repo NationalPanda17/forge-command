@@ -1375,7 +1375,7 @@ export function MapLayerToggles({ layers, onChange, className = '' }: { layers: 
   return (
     <div className={`flex flex-wrap gap-1 ${className}`} role="group" aria-label="Map layers">
       {LAYER_LABEL.map(([k, label, c]) => (
-        <button key={k} type="button" className={`btn px-2 py-0.5 text-[10px] ${layers[k] ? 'btn-active' : ''}`} aria-pressed={layers[k]} onClick={() => onChange({ ...layers, [k]: !layers[k] })}>
+        <button key={k} type="button" className={`btn min-h-[24px] px-2 py-0.5 text-[10px] md:min-h-0 ${layers[k] ? 'btn-active' : ''}`} aria-pressed={layers[k]} onClick={() => onChange({ ...layers, [k]: !layers[k] })}>
           {c && <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c, opacity: layers[k] ? 1 : 0.4 }} />}
           {label}
         </button>

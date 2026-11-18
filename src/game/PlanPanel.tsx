@@ -43,7 +43,7 @@ export default function PlanPanel({ state, onMaterial, onSite }: { state: SimSta
         {lines.map((l) => {
           const r = nationalStock(state, l) / Math.max(1, reserveTarget(state, l));
           return (
-            <button key={l} type="button" aria-pressed={l === line} onClick={() => setLine(l)} className={`btn px-2 py-0.5 normal-case tracking-normal ${l === line ? 'border-ops-cyan text-ops-cyan' : ''}`}>
+            <button key={l} type="button" aria-pressed={l === line} onClick={() => setLine(l)} className={`btn min-h-[24px] px-2 py-0.5 normal-case tracking-normal ${l === line ? 'border-ops-cyan text-ops-cyan' : ''}`}>
               {MATERIALS[l].name} <span className={ratioText(r)}>{pct(Math.min(9.99, r))}</span>
             </button>
           );
@@ -94,7 +94,7 @@ export default function PlanPanel({ state, onMaterial, onSite }: { state: SimSta
                 <button type="button" className="truncate text-left text-white hover:underline" onClick={() => onMaterial(st.material)}>
                   {MATERIALS[st.material].name}
                 </button>
-                <span className="block truncate text-[10px] text-ops-dim">
+                <span className="block break-words text-[10px] text-ops-dim">
                   {qty(st.supply)} a day against {qty(st.demand)}
                   {st.top && (
                     <>

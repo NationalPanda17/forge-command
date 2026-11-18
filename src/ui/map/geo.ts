@@ -805,12 +805,21 @@ const CLASSIC_HARBOURS: [Pt, string][] = [
 ];
 export let HARBOURS = '';
 
-/** Moves an absolute SVG path (M L Q C H V A Z) by dx, dy. */
+/** Moves an SVG path by dx, dy. Absolute commands are shifted; relative ones (lowercase) ride along unchanged. */
 export function shiftPath(d: string, dx: number, dy: number): string {
   if (!dx && !dy) return d;
-  return d.replace(/([MLQCTSHVAZ])([^MLQCTSHVAZ]*)/g, (_m, cmd: string, args: string) => {
+  let first = true;
+  return d.replace(/([MLQCTSHVAZ])([^MLQCTSHVAZ]*)/gi, (_m, c: string, args: string) => {
     const n = (args.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number);
-    if (cmd === 'Z') return 'Z';
+    // Relative commands move with the point before them, so they stay as they are; a path's opening 'm' is absolute.
+    const lead = first;
+    first = false;
+    if (c === 'z' || c === 'Z') return c;
+    if (c !== c.toUpperCase()) {
+      if (c !== 'm' || !lead) return c + args;
+      return 'm' + n.map((v, i) => (i < 2 ? f1(v + (i === 0 ? dx : dy)) : String(v))).join(' ');
+    }
+    const cmd = c;
     if (cmd === 'H') return `H${n.map((v) => f1(v + dx)).join(' ')}`;
     if (cmd === 'V') return `V${n.map((v) => f1(v + dy)).join(' ')}`;
     if (cmd === 'A') {

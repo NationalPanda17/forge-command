@@ -85,7 +85,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
     <div className="fc-zoom mx-auto max-w-3xl space-y-4 p-4">
       <header className="pt-8 text-center">
         <h1 className="font-sans text-5xl font-bold tracking-[0.25em] text-ops-amber">FORGE COMMAND</h1>
-        <p className="mt-2 text-[13px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
+        <p className="mt-2 text-balance text-[13px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
       </header>
       {saved && !saved.over && (
         <div className="flex justify-center">
@@ -102,7 +102,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             type="button"
             aria-pressed={mode === m.id}
             onClick={() => setMode(m.id)}
-            className={`panel p-3 text-left ${mode === m.id ? 'border-ops-amber bg-ops-amber/10' : 'hover:border-ops-dim'}`}
+            className={`panel flex flex-col justify-start p-3 text-left ${mode === m.id ? 'border-ops-amber bg-ops-amber/10' : 'hover:border-ops-dim'}`}
           >
             <div className={`font-sans text-[17px] font-bold tracking-wider ${mode === m.id ? 'text-ops-amber' : 'text-white'}`}>{m.name}</div>
             <div className="text-[11px] text-ops-dim">{m.blurb}</div>
@@ -136,7 +136,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           ) : (
             <>
               <p className="text-ops-text">
-                You are Director of the Munitions Production Board of the Commonwealth of Aldmere. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
+                You are Director of the Munitions Production Board of the {world !== null ? makeSpec(world).title : 'Commonwealth of Aldmere'}. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
                 air-defense batteries and a demilitarization yard, all tied together by rail, road, sea and air. Keep the rounds flowing.
               </p>
               {mode === 'hotseat' && (

@@ -228,7 +228,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
-    id: 'industry',
+    id: 'ownIndustry',
     title: 'Your own industry',
     body: (
       <ul className="list-disc pl-5">

@@ -141,8 +141,8 @@ export default function BuildPanel({ state, act, onHighlight, onSite }: { state:
             const going = n.projects.some((p) => p.kind === 'harden' && p.target === d.id);
             return (
               <li key={d.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <span className="min-w-0 truncate">
-                  <button type="button" className="text-ops-text hover:underline" onClick={() => onSite(d.id)}>
+                <span className="min-w-0 break-words">
+                  <button type="button" className="text-left text-ops-text hover:underline" onClick={() => onSite(d.id)}>
                     {d.name}
                   </button>{' '}
                   <span className="text-ops-dim">

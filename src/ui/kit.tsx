@@ -88,7 +88,7 @@ export function Segmented<T extends string>({ value, options, onChange, label, t
         <button
           key={o.id}
           type="button"
-          className={`btn px-1.5 ${value === o.id ? (tones?.[o.id] ?? 'btn-active') : ''}`}
+          className={`btn min-w-[24px] px-1.5 ${value === o.id ? (tones?.[o.id] ?? 'btn-active') : ''}`}
           aria-pressed={value === o.id}
           onClick={() => onChange(o.id)}
         >
