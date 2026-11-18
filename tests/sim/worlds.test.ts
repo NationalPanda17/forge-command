@@ -10,7 +10,7 @@ import * as G from '../../src/ui/map/geo';
 const CLASSIC = Object.fromEntries(SITES.map((s) => [s.id, { x: s.x, y: s.y, name: s.name }]));
 const CLASSIC_CITIES = CITIES.map((c) => c.name);
 const onSheet = (x: number, y: number) => x >= G.FRAME.x0 && x <= G.FRAME.x1 && y >= G.FRAME.y0 && y <= G.FRAME.y1;
-const SEEDS = Array.from({ length: 24 }, (_, i) => 1000 + i * 7919);
+const SEEDS = Array.from({ length: Number(process.env.WORLD_SEEDS ?? 24) }, (_, i) => 1000 + i * 7919);
 /** Sites that sit on land (or at the water's edge) on the classic map. Offshore gas is meant to be at sea. */
 let ASHORE = new Set<string>();
 

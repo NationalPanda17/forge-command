@@ -900,7 +900,33 @@ export let GEO_LABELS: GeoLabel[] = CLASSIC_LABELS;
 // The map's own place names, so a generated world renames them too.
 registerPlaceTexts([...CLASSIC_LABELS.map((l) => l.text), ...RIVER_DEFS.map((r) => r.name ?? ''), ...LAKE_DEFS.map((l) => l[3] ?? ''), ...CLASSIC_DANGER.map((d) => d.label)]);
 
+/** Classic positions of everything on the coast that must stay there. */
+const anchors = () => SITES.map((s) => unwarp(s.x, s.y)).concat(CITIES.map((c) => unwarp(c.x, c.y)));
+
+/**
+ * A generated world's own bays and headlands: coast points far from any site or town are pushed in or out by a
+ * smooth random amount, so the outline changes without leaving a port inland or a plant in the sea.
+ */
+function coastFeature(c: Ctrl): Ctrl {
+  const [x, y, r] = c;
+  if (x >= 1000) return wc(c);
+  let near = Infinity;
+  for (const [ax, ay] of anchorCache) near = Math.min(near, Math.hypot(ax - x, ay - y));
+  const free = Math.max(0, Math.min(1, (near - 45) / 45));
+  const seed = worldSeed() % 9973;
+  const n = (fbm(x / 140, y / 140, 2, seed + 5) - 0.5) * 2;
+  // Push along the outward direction from the middle of the country.
+  const ox = x - 520;
+  const oy = y - 340;
+  const len = Math.hypot(ox, oy) || 1;
+  const push = n * 75 * free;
+  const [wx, wy] = warp(x + (ox / len) * push, y + (oy / len) * push);
+  return [wx, wy, r];
+}
+let anchorCache: Pt[] = [];
+
 function rebuildGeography(): void {
+  anchorCache = anchors();
   const seed = worldSeed();
   // This world's own mountains and forests (in classic coordinates).
   const rng = mulberry32(seed || 1);
@@ -916,7 +942,7 @@ function rebuildGeography(): void {
     : [];
   forestPatches = seed ? FOREST_PATCHES.map(([x, y, rx, ry]) => [x + (rng() - 0.5) * 140, y + (rng() - 0.5) * 120, rx * (0.7 + rng() * 0.7), ry * (0.7 + rng() * 0.7)]) : FOREST_PATCHES;
 
-  MAINLAND_RING = fractalRing(MAINLAND.map(wc), mix(1701), 2);
+  MAINLAND_RING = fractalRing(MAINLAND.map(seed ? coastFeature : wc), mix(1701), 2);
   ISLAND_RINGS = [
     fractalRing(HOLM.map(wc), mix(211), 0.8),
     fractalRing(GREAT_SKERRY.map(wc), mix(223), 0.8),

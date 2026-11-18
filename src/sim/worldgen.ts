@@ -54,7 +54,7 @@ function fbm2(x: number, y: number, seed: number): number {
 
 /** The sheet the country is drawn on (km), matching the map frame. */
 const FRAME = { x0: 0, y0: -10, x1: 980, y1: 690 };
-const EDGE = 70;
+const EDGE = 110;
 
 interface Warp {
   seed: number;
@@ -74,6 +74,25 @@ function displacement(w: Warp, x: number, y: number): Pt {
   const dx = (fbm2(x / w.len, y / w.len, w.seed) - 0.5) * 2 * w.amp * taper;
   const dy = (fbm2(x / w.len + 31.7, y / w.len - 12.3, w.seed + 101) - 0.5) * 2 * w.amp * taper;
   return [dx, dy];
+}
+
+/** True if the warp squeezes any part of the sheet below 35% of its area, or turns it inside out. */
+function folds(w: Warp): boolean {
+  const h = 2;
+  for (let x = FRAME.x0; x <= FRAME.x1; x += 20) {
+    for (let y = FRAME.y0; y <= FRAME.y1; y += 20) {
+      const [ax, ay] = displacement(w, x - h, y);
+      const [bx, by] = displacement(w, x + h, y);
+      const [cx, cy] = displacement(w, x, y - h);
+      const [dx, dy] = displacement(w, x, y + h);
+      const jxx = 1 + (bx - ax) / (2 * h);
+      const jyx = (by - ay) / (2 * h);
+      const jxy = (dx - cx) / (2 * h);
+      const jyy = 1 + (dy - cy) / (2 * h);
+      if (jxx * jyy - jxy * jyx < 0.35) return true;
+    }
+  }
+  return false;
 }
 
 /** Classic coordinates to this world's. Identity on the classic map. */
@@ -204,7 +223,9 @@ export function applyWorld(seed: number | null): void {
   spec = null;
   if (seed !== null) {
     const rng = mulberry(seed);
-    current = { seed: seed >>> 0, amp: 55 + rng() * 30, len: 210 + rng() * 140 };
+    current = { seed: seed >>> 0, amp: 75 + rng() * 40, len: 230 + rng() * 150 };
+    // A warp must never fold the map over itself, or a site could slip across a coast: weaken it until it cannot.
+    while (folds(current) && current.amp > 15) current.amp *= 0.85;
     spec = makeSpec(seed);
     // New names for every place word.
     const namer = makeNamer(mulberry(seed ^ 0x9a3e), new Set(collectPlaceWords([...SITES.map((s) => `${s.name} ${s.blurb}`), ...CITIES.map((c) => c.name), ...Object.values(CLASSIC.regions), ...extraTexts]).concat([spec.name.toLowerCase()])));
