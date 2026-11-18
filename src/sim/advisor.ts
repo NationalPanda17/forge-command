@@ -6,6 +6,8 @@ import { DEVELOPMENTS, COUNTER_NAMES } from './rival';
 import { crewNeed, nationalStock, reserveTarget } from './selectors';
 import { RESEARCH, RESEARCH_IDS } from './strategy';
 import type { SimState } from './types';
+import { controlBlock } from './hotseat';
+import { hireRoom, townIndex, townOf } from './towns';
 import { FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
 export type AdvicePanel = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes';
@@ -28,7 +30,11 @@ const ok = (s: SimState, a: SimAction) => validate(s, a) === null;
 export function advise(s: SimState, limit = 6): Advice[] {
   if (s.over) return [];
   const out: Advice[] = [];
-  const add = (a: Advice) => out.push(a);
+  // In a two-player game, advice about the other director's plants is theirs to act on.
+  const add = (a: Advice) => {
+    const site = a.site ?? (a.action && 'site' in a.action ? (a.action.site as string) : undefined);
+    if (!controlBlock(s, site)) out.push(a);
+  };
   const bal = balances(s);
 
   if (s.strategy.decisions.length) add({ id: 'decisions', priority: 95, tone: 'warn', title: `Answer ${s.strategy.decisions.length} decision${s.strategy.decisions.length > 1 ? 's' : ''}`, why: 'Unanswered cards take their default at month end, and the default is rarely the best.', panel: 'strategy' });
@@ -97,9 +103,18 @@ export function advise(s: SimState, limit = 6): Advice[] {
     const site = s.sites[def.id];
     const training = site.trainees.reduce((a, t) => a + t.count, 0);
     const short = Math.ceil(crewNeed(site) - site.workers - training);
-    if (short > 20) {
-      const a: SimAction = { type: 'hire', site: def.id, count: Math.ceil(short / 10) * 10 };
-      add({ id: `hire-${def.id}`, priority: 72, tone: 'warn', title: `Hire ${a.count} at ${def.name}`, why: `It is ${short} people short, counting those in training. Training takes about three months.`, action: ok(s, a) ? a : undefined, site: def.id });
+    if (short > 20 && !site.mothballed) {
+      const town = townOf(def.id);
+      const room = hireRoom(s, town);
+      const count = Math.min(Math.ceil(short / 10) * 10, room);
+      if (count >= 10) {
+        const a: SimAction = { type: 'hire', site: def.id, count };
+        const capped = count < short ? ` ${town} can supply only ${room} more; build housing there for the rest.` : '';
+        add({ id: `hire-${def.id}`, priority: 72, tone: 'warn', title: `Hire ${a.count} at ${def.name}`, why: `It is ${short} people short, counting those in training. Training takes about three months.${capped}`, action: ok(s, a) ? a : undefined, site: def.id });
+      } else if (!s.towns[townIndex(town)]?.building.length && !out.some((o) => o.id === `housing-${town}`)) {
+        const a: SimAction = { type: 'housing', town: townIndex(town) };
+        add({ id: `housing-${town}`, priority: 70, tone: 'warn', title: `Build housing in ${town}`, why: `${def.name} is ${short} people short, and ${town} has no one left to hire. New homes take about five months.`, action: ok(s, a) ? a : undefined, site: def.id });
+      }
     }
     if (site.fatigue >= 50) {
       const i = site.processes.findIndex((p) => p.run === 'surge');

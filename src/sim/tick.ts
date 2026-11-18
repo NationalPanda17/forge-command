@@ -30,7 +30,11 @@ import { hasPolicy, policyMonth, programmeMonth } from './commitments';
 import { industryDay, variantOf } from './industry';
 import { storyDay } from './story';
 import { applyWorld } from './worldgen';
-import { expireDecisions, hasResearch, recipeInputs, recipeScrap, skillOf, strategyDay, strategyMonth } from './strategy';
+import { resolveSecurity, securityMonth } from './security';
+import { townsDay, townsMonth } from './towns';
+import { accepted, resolveTesting, testingDay, testingMonth } from './testing';
+import { hotseatMonth } from './hotseat';
+import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
@@ -53,6 +57,9 @@ export const DIFF = {
 /** How often things go wrong: difficulty times the sandbox setting. */
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
 
+// Decision cards from modules that strategy itself loads are registered here, once everything has loaded.
+registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed));
+
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
 export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert = false): void {
@@ -64,32 +71,9 @@ export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: s
 
 // ---------- Lots ----------
 
-export function addLots(site: SiteState, line: LineId, lots: Lot[]): void {
-  const cur = site.lots[line] ?? (site.lots[line] = []);
-  for (const l of lots) {
-    if (l.qty <= 0) continue;
-    const same = cur.find((x) => x.made === l.made && x.until === l.until);
-    if (same) same.qty += l.qty;
-    else cur.push({ ...l });
-  }
-  cur.sort((a, b) => a.until - b.until);
-}
-
-/** Takes up to qty rounds, oldest first. */
-export function takeLots(site: SiteState, line: LineId, qty: number): Lot[] {
-  const cur = site.lots[line] ?? [];
-  const out: Lot[] = [];
-  let left = qty;
-  while (left > 1e-9 && cur.length) {
-    const l = cur[0];
-    const t = Math.min(l.qty, left);
-    out.push({ qty: t, made: l.made, until: l.until });
-    l.qty -= t;
-    left -= t;
-    if (l.qty <= 1e-9) cur.shift();
-  }
-  return out;
-}
+// Lots live in their own module so that testing and the world events can use them without loading the tick.
+export { addLots, takeLots } from './lots';
+import { addLots, takeLots } from './lots';
 
 function stockOf(site: SiteState, m: MaterialId): number {
   return isLine(m) ? lotQty(site.lots[m]) : site.stock[m] ?? 0;
@@ -204,6 +188,8 @@ function requests(s: SimState): Request[] {
     if (site.id === 'depotCentral') {
       for (const a of SITES.filter((x) => x.kind === 'arsenal')) {
         for (const line of Object.keys(s.sites[a.id].lots) as LineId[]) {
+          // New rounds stay at the arsenal until they pass their test firings.
+          if (!accepted(s, line)) continue;
           const q = lotQty(s.sites[a.id].lots[line]);
           if (q >= 1) out.push({ to: site.id, material: line, qty: q, state: true });
         }
@@ -592,7 +578,9 @@ function payDaily(s: SimState): void {
     const def = SITE_BY_ID[site.id];
     if (def.owner !== 'state' || site.status === 'closed') continue;
     ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
-    ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? 0.3 : p.run === 'surge' ? 1.35 : 1), 0);
+    // A mothballed plant keeps only a caretaker's upkeep; an idle line still pays for power and maintenance.
+    const idle = site.mothballed ? 0.05 : 0.3;
+    ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? idle : p.run === 'surge' ? 1.35 : 1), 0);
   }
   ops *= s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1);
   s.treasury -= ops;
@@ -609,8 +597,11 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   peopleMonth(s, feed);
   programmeMonth(s, feed);
   policyMonth(s);
+  securityMonth(s, feed);
+  townsMonth(s, feed);
+  testingMonth(s, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
-  const expect = { easy: 0.62, normal: 0.7, hard: 0.76 }[s.difficulty];
+  const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty];
   const parts = {
     readiness: (ready - expect) * 8,
     leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5),
@@ -638,6 +629,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   s.news.push({ month: s.month.month, headlines: writeEdition(s, s.month, s.history.at(-1)) });
   if (s.news.length > 24) s.news.splice(0, s.news.length - 24);
   s.history.push(s.month);
+  hotseatMonth(s, feed);
   s.month = emptyMonth(s.history.length);
   s.treasury += s.appropriation;
   s.month.income.appropriation = s.appropriation;
@@ -661,6 +653,8 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   buildDay(s, feed);
   rivalDay(s, feed);
   industryDay(s, feed);
+  townsDay(s, feed);
+  testingDay(s, feed);
   peopleDay(s, feed, eventScale(s));
   produce(s);
   logistics(s);

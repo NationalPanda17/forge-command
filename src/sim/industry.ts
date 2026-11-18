@@ -1,5 +1,6 @@
 // Build your own industry: found plants on open plots, bring parts in-house at your arsenals, and design round variants.
 import { setNetwork } from './graph';
+import { queueTest } from './testing';
 import { clamp } from './rng';
 import type { FeedItem, SimState } from './types';
 import { MATERIALS, RECIPES, SITES, SITE_BY_ID, processCapacity, type LineId, type MaterialId, type SiteKind } from './world';
@@ -126,9 +127,9 @@ export function industryDay(s: SimState, feed: Feed): void {
   if (d) {
     d.days--;
     if (d.days <= 0) {
-      s.variants[d.line] = d.variant;
       s.design = null;
-      feed(s, 'good', `Design complete: ${VARIANTS[d.variant].name} ${MATERIALS[d.line].name} goes into production. ${VARIANTS[d.variant].effect}`, undefined, true);
+      feed(s, 'good', `Design complete: ${VARIANTS[d.variant].name} ${MATERIALS[d.line].name}. It goes into service once it passes its test firings.`, undefined, true);
+      queueTest(s, d.line, d.variant, feed);
     }
   }
 }
@@ -169,6 +170,7 @@ export function variantInput(s: SimState, recipe: string, m: MaterialId): number
 export function designBlock(s: SimState, line: LineId, variant: VariantId): string | null {
   if (!s.lines[line]?.unlocked) return 'That round is not in production.';
   if (s.design) return 'Your designers are busy with another variant.';
+  if (s.tests?.some((t) => t.line === line && t.variant)) return 'A design for this round is still on the test schedule.';
   if ((s.variants[line] ?? 'standard') === variant) return 'Already in production.';
   return s.treasury >= designCost(s) ? null : `Not enough money (needs $${designCost(s)}M).`;
 }

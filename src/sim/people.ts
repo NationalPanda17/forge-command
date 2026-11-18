@@ -64,9 +64,12 @@ export function peopleMonth(s: SimState, feed: Feed): void {
   let cost = 0;
   for (const def of ownPlants(s)) {
     const site = s.sites[def.id];
-    if (site.apprentices > 0) {
-      site.trainees.push({ count: site.apprentices, days: 135, apprentice: true });
-      cost += site.apprentices * APPRENTICE_COST * s.priceIndex;
+    // Apprentices are the town's own school leavers, so they join even when the town is fully employed; the busy
+    // town then grows (as far as its housing allows). A mothballed plant takes none.
+    const intake = site.mothballed ? 0 : site.apprentices;
+    if (intake > 0) {
+      site.trainees.push({ count: intake, days: 135, apprentice: true });
+      cost += intake * APPRENTICE_COST * s.priceIndex;
     }
     if (site.morale < 35) feed(s, 'warn', `Morale is low at ${def.name}. Output suffers, and the union is restless.`, def.id);
   }

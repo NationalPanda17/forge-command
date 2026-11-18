@@ -10,6 +10,8 @@ import { setNetwork } from './graph';
 import { newRival } from './rival';
 import { newStory } from './story';
 import { applyWorld } from './worldgen';
+import { newTowns } from './towns';
+import { newHotseat } from './hotseat';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -27,6 +29,8 @@ export interface SimOptions {
   story?: boolean;
   /** Seed of a generated world; null or missing plays on the classic map. */
   world?: number | null;
+  /** Two players' names, for a hot-seat game. */
+  hotseat?: [string, string];
 }
 
 export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false, dismissal: true };
@@ -51,6 +55,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
 export function migrate(s: SimState): SimState {
   s.world ??= null;
   applyWorld(s.world);
+  s.tests ??= [];
+  s.hotseat ??= null;
   s.priceIndex ??= 1;
   s.tenders ??= [];
   s.exports ??= [];
@@ -84,13 +90,14 @@ export function migrate(s: SimState): SimState {
   }
   setNetwork(s.network.built, s.network.upgrades);
   if (!(s.scenario in SCENARIOS)) s.scenario = 'standard';
+  s.towns ??= newTowns(s);
   return s;
 }
 
 export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = {
   easy: { treasury: 900, appropriation: 240 },
   normal: { treasury: 700, appropriation: 215 },
-  hard: { treasury: 550, appropriation: 195 },
+  hard: { treasury: 550, appropriation: 205 },
 };
 
 export const emptyMonth = (month: number): MonthReport => ({
@@ -134,7 +141,7 @@ function blankSite(id: string): SiteState {
   return { id, status: 'closed', condition: 100, repairDays: 0, processes: [], stock: {}, lots: {}, unserviceable: {}, workers: 0, trainees: [], extraCrew: 0, health: 100, qualified: true, qualifyingDays: null, embargoDays: 0, disruptionDays: 0, disruptionFactor: 1, ...PEOPLE_START };
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null }: SimOptions): SimState {
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null, hotseat }: SimOptions): SimState {
   // The story and the tutorial are written for the classic map.
   if (story || scenario === 'tutorial') world = null;
   applyWorld(world);
@@ -200,6 +207,9 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     design: null,
     story: null,
     world,
+    towns: [],
+    tests: [],
+    hotseat: hotseat ? newHotseat(hotseat) : null,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -300,6 +310,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   if (!rules.crises && state.crisis) state.crisis = null;
   state.rival = newRival(state);
   if (story) state.story = newStory(0);
+  state.towns = newTowns(state);
   // The tutorial keeps the rival quiet for its first year.
   if (scenario === 'tutorial') state.rival.next = 420;
   setNetwork([], {});

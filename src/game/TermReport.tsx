@@ -10,6 +10,7 @@ import { recordScore } from './scores';
 import { useMemo } from 'react';
 import { canSecondTerm } from '../sim/commitments';
 import { epilogue } from '../sim/story';
+import { winner } from '../sim/hotseat';
 import { monthLabel2 } from './useSim';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
@@ -47,6 +48,20 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           </div>
         </header>
 
+        {state.hotseat && (
+          <section className="rounded border border-ops-cyan/40 bg-ops-cyan/5 p-3">
+            <div className="label mb-1 text-ops-cyan">{winner(state.hotseat)}</div>
+            <ul className="grid grid-cols-2 gap-2">
+              {state.hotseat.players.map((p, i) => (
+                <li key={i} className="min-w-0">
+                  <span className="block truncate text-white">{p.name}</span>
+                  <span className="block truncate text-ops-dim">{p.command}</span>
+                  <span className="font-sans text-xl font-bold text-white">{p.score.toFixed(1)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {state.story && <p className="rounded border border-ops-amber/40 bg-ops-amber/5 p-3 leading-relaxed text-ops-text">{epilogue(state)}</p>}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stat('Average readiness', pct(r.avgReadiness))}

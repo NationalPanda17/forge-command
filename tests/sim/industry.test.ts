@@ -44,7 +44,11 @@ describe('building your own industry', () => {
     const before = recipeInputs(s, 'pac3').rocketMotor!;
     s = apply(s, { type: 'design', line: 'pac3', variant: 'extended' });
     expect(validate(s, { type: 'design', line: 'sm6', variant: 'lean' })).toMatch(/busy/);
-    s = advanceDays(s, 125);
+    // Day by day until the finished design joins the test schedule: it is not in service yet.
+    while (!s.tests.some((x) => x.variant === 'extended') && !s.variants.pac3) s = advanceDays(s, 1);
+    expect(s.variants.pac3).toBeUndefined();
+    s.tests.find((x) => x.variant === 'extended')!.odds = 1;
+    s = advanceDays(s, 90);
     expect(s.variants.pac3).toBe('extended');
     expect(recipeInputs(s, 'pac3').rocketMotor!).toBeCloseTo(before * 1.3);
     expect(variantOf(s, 'pac3').pk).toBeGreaterThan(1);

@@ -1,5 +1,5 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { monthOfYear, seasonOf } from '../sim/living';
 import MarketsPanel from './MarketsPanel';
 import BuildPanel from './BuildPanel';
@@ -7,6 +7,9 @@ import NewsPanel from './NewsPanel';
 import SandboxPanel from './SandboxPanel';
 import IntelPanel from './IntelPanel';
 import IndustryPanel from './IndustryPanel';
+import TestingPanel from './TestingPanel';
+import TownsPanel from './TownsPanel';
+import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
 import { KeyboardHelp } from './Options';
 import { saveSlot } from './saves';
@@ -37,7 +40,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -46,6 +49,8 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'markets', label: 'Markets' },
   { id: 'build', label: 'Build' },
   { id: 'industry', label: 'Industry' },
+  { id: 'testing', label: 'Testing' },
+  { id: 'towns', label: 'Towns' },
   { id: 'intel', label: 'Intel' },
   { id: 'policy', label: 'Policy' },
   { id: 'stockpile', label: 'Stockpile' },
@@ -87,7 +92,10 @@ function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> 
 }
 
 export default function Shell({ initial, onMenu, autoPause }: { initial: SimState; onMenu: (s: SimState) => void; autoPause: boolean }) {
-  const { state, speed, setSpeed, act, step, clock } = useSim(initial, autoPause);
+  const { state, speed, setSpeed: rawSetSpeed, act, step, clock } = useSim(initial, autoPause);
+  // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
+  const held = !!state.hotseat?.handover || (state.story?.briefing !== null && state.story?.briefing !== undefined);
+  const setSpeed = useCallback((sp: Speed) => rawSetSpeed(held ? 0 : sp), [held, rawSetSpeed]);
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
   const [panel, setPanel] = useState<PanelId>('watch');
@@ -121,6 +129,10 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   tabsRef.current = tabs;
   const panelRef = useRef(panel);
   panelRef.current = panel;
+  // A hot-seat handover stops the clock until the next director takes over.
+  useEffect(() => {
+    if (state.hotseat?.handover) setSpeed(0);
+  }, [state.hotseat?.handover, setSpeed]);
   // A chapter briefing stops the clock until it is read.
   useEffect(() => {
     if (state.story?.briefing !== null && state.story?.briefing !== undefined) setSpeed(0);
@@ -236,6 +248,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <div className="label">Date</div>
           <div className="text-white">{dateLabel(state.day)}</div>
         </div>
+        <HotseatChip state={state} />
         <div>
           <div className="label">Season</div>
           <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above the start of your term.`}>
@@ -407,6 +420,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'news' && <NewsPanel state={state} />}
             {panel === 'industry' && <IndustryPanel state={state} act={act} onSite={select} onHighlight={setHighlight} />}
             {panel === 'story' && <StoryPanel state={state} />}
+            {panel === 'testing' && <TestingPanel state={state} act={act} onSite={select} />}
+            {panel === 'towns' && <TownsPanel state={state} act={act} onSite={select} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
@@ -432,6 +447,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         <Feed state={state} onSite={select} limit={6} />
       </footer>
       <Briefing state={state} act={act} />
+      <Handover state={state} act={act} />
       {help && <KeyboardHelp onClose={() => setHelp(false)} />}
       {state.over && !reportClosed && (
         <TermReport

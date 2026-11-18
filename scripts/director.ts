@@ -4,6 +4,8 @@ import { nationalStock, readiness, reserveTarget } from '../src/sim/selectors';
 import { bottleneck, monthsTo } from '../src/sim/analytics';
 import { DEVELOPMENTS } from '../src/sim/rival';
 import { FOUNDABLE } from '../src/sim/industry';
+import { hireRoom, townIndex, townOf } from '../src/sim/towns';
+import { crewNeed } from '../src/sim/selectors';
 import { routeByKey, routeCap } from '../src/sim/build';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import type { SimState } from '../src/sim/types';
@@ -88,7 +90,15 @@ export function active(s: SimState): SimAction[] {
     });
     // Hire to cover the crew, counting people already in training.
     const training = site.trainees.reduce((x, t) => x + t.count, 0);
-    if (site.workers + training < (def.crew + site.extraCrew) * 1.05) acts.push({ type: 'hire', site: def.id, count: 60 });
+    // Hire to the real crew requirement (expansions and new lines included), as far as the town can supply.
+    const short = Math.ceil(crewNeed(site) * 1.03 - site.workers - training);
+    if (short > 0) {
+      const room = hireRoom(s, townOf(def.id));
+      if (room > 0) acts.push({ type: 'hire', site: def.id, count: Math.min(room, Math.ceil(short / 10) * 10) });
+      // A full town needs homes before it can supply more people.
+      if (room < short && !s.towns[townIndex(townOf(def.id))].building.length) acts.push({ type: 'housing', town: townIndex(townOf(def.id)) });
+    }
+    if (site.clearance === undefined || site.clearance < 2) if (s.treasury > 900) acts.push({ type: 'vet', site: def.id });
     // Look after the people: safety, apprentices, and automation once the books allow.
     if (site.safety < 2 && s.treasury > 700) acts.push({ type: 'safety', site: def.id });
     if (site.apprentices === 0) acts.push({ type: 'apprentices', site: def.id, perMonth: 10 });

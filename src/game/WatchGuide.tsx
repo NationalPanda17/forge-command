@@ -8,7 +8,7 @@ import { DEVELOPMENTS } from '../sim/rival';
 import { tr } from '../sim/worldgen';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
-export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy';
+export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns';
 interface Watch {
   tone: 'bad' | 'warn' | 'info';
   text: string;
@@ -61,6 +61,7 @@ export function watchList(s: SimState): Watch[] {
     if (site.fatigue >= 50) out.push({ tone: 'warn', text: `Crews at ${def.name} are exhausted (fatigue ${Math.round(site.fatigue)}). Ease off the round-the-clock shifts before someone gets hurt.`, site: def.id });
     if (site.morale < 40) out.push({ tone: 'warn', text: `Morale is low at ${def.name} (${Math.round(site.morale)}). A safety programme or a pay deal would help.`, site: def.id });
   }
+  for (const l of FINISHED as LineId[]) if (s.lines[l].unlocked && s.lines[l].accepted === false) out.push({ tone: 'info', text: `${MATERIALS[l].name} awaits acceptance at the test ranges: made, but not issued yet (Testing tab).`, panel: 'testing' });
   for (const p of s.network.projects) if (p.days <= 14) out.push({ tone: 'info', text: `A building project finishes in ${p.days} days (Build tab).`, panel: 'build' });
   // A year ahead: rounds that will run low before you can react.
   for (const l of FINISHED as LineId[]) {
@@ -174,6 +175,18 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li>Everything moves on the network: rail (cheap, big), road (everywhere, smaller), sea (cheap, slow, to islands and abroad) and air (fast, tiny, expensive). Each route carries only so many tonnes a day.</Li>
         <Li>Sites pull what they need: plants keep days of inputs, bases keep ready rounds, depots keep days of their region's draw. Set depot targets on the Logistics tab, and raise the one a crisis is heading for.</Li>
         <Li>Foreign suppliers are reached by sea and can be hit by export bans.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'security',
+    title: 'Spies, towns and testing',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Spies:</b> the rival's agents target your plants: sabotage, stolen designs, leaks. Vet your staff (in each plant's view) to stop them, and to catch rings before they act.</Li>
+        <Li><b>Towns:</b> a plant can only hire as many people as its town has homes for. Build housing on the Towns tab. Mothballing a plant saves wages but costs goodwill.</Li>
+        <Li><b>Testing:</b> new rounds and designs are fired at the test ranges before they are accepted. Until then, new rounds wait at the arsenal.</Li>
+        <Li><b>Two players:</b> on one device, each runs half the country; turns change every month.</Li>
       </ul>
     ),
   },
