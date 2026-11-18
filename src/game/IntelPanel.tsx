@@ -8,6 +8,8 @@ import { Btn } from '../ui/kit';
 import { Explain } from '../ui/Explain';
 import { money } from '../ui/format';
 import { threatWhy } from './explain';
+import { CLEARANCE_NAME, activity, security, targets } from '../sim/security';
+import { SITE_BY_ID } from '../sim/world';
 import { dateLabel } from './useSim';
 
 export default function IntelPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
@@ -56,6 +58,28 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
           </ol>
         )}
         {left > 0 && <p className="mt-2 text-ops-dim">Intel believes {left} more programme{left > 1 ? 's are' : ' is'} under way.</p>}
+      </section>
+
+      <section>
+        <h3 className="label mb-1">Counter-intelligence</h3>
+        <p className="mb-2 text-ops-dim">
+          {RIVAL_NAME[0].toUpperCase() + RIVAL_NAME.slice(1)}'s agents target your plants, more often as its programmes grow. Vet your staff to stop sabotage, stolen designs and leaks. {state.history.slice(-12).reduce((a, h) => a + (h.incidents ?? 0), 0)} incidents in the last year.
+        </p>
+        <ul className="space-y-1">
+          {targets(state).map((id) => {
+            const sec = security(state, id);
+            return (
+              <li key={id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <span className="min-w-0 truncate text-ops-text">
+                  {state.sites[id].plantName ?? SITE_BY_ID[id].name} <span className="text-ops-dim">· {CLEARANCE_NAME[state.sites[id].clearance ?? 0]}</span>
+                </span>
+                <span className={sec < 0.35 ? 'text-ops-red' : sec < 0.6 ? 'text-ops-amber' : 'text-ops-green'}>
+                  {Math.round(sec * 100)}% secure · {(activity(state) * (1 - sec) * 100).toFixed(1)}% a month
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section>

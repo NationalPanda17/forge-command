@@ -97,7 +97,7 @@ export function migrate(s: SimState): SimState {
 export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = {
   easy: { treasury: 900, appropriation: 240 },
   normal: { treasury: 700, appropriation: 215 },
-  hard: { treasury: 550, appropriation: 195 },
+  hard: { treasury: 550, appropriation: 205 },
 };
 
 export const emptyMonth = (month: number): MonthReport => ({

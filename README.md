@@ -55,6 +55,12 @@ manoeuvring warheads, decoys, heavier barrages and armour. Intel warns you, and 
 research. Multi-year programmes, standing policies and a second term make choices last. An advisor suggests the next
 best move, and most numbers explain themselves.
 
+## Spies, towns and test ranges
+
+The rival's agents sabotage, steal and leak; vet your staff. Plants draw their people from nearby towns, and housing
+limits how fast you can hire. New rounds and designs are fired at the test ranges before they are accepted. Two
+players can share one device, each running half the country.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -83,6 +89,8 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Policy:** multi-year programmes and standing policies.
 - **Industry:** open plots, in-house lines and round designs.
 - **Story:** the chapter's goals and how earlier chapters went (story games only).
+- **Testing:** the test ranges, the queue and what awaits acceptance.
+- **Towns:** housing, jobs and mothballing.
 - **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.

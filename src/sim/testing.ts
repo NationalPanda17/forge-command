@@ -24,17 +24,19 @@ export interface TestProgramme {
   investigating: number;
   /** Odds each firing passes. */
   odds: number;
+  /** Day it joined the schedule: firings start ten days later at the earliest. */
+  queued?: number;
 }
 
 export const RANGES = () => SITES.filter((d) => d.kind === 'testRange').map((d) => d.id);
-export const FIRINGS_PER_MONTH = 2;
+export const FIRINGS_PER_MONTH = 3;
 export const programmeName = (p: TestProgramme) => (p.variant ? `${VARIANTS[p.variant].name} ${MATERIALS[p.line].name}` : `${MATERIALS[p.line].name} first-article`);
 
 /** Is a line's production cleared for issue? Starting lines always are. */
 export const accepted = (s: SimState, line: LineId) => s.lines[line]?.accepted !== false;
 
 export function queueTest(s: SimState, line: LineId, variant: VariantId | undefined, feed: Feed): void {
-  s.tests.push({ id: s.nextId++, line, variant, needed: variant ? 4 : 6, passed: 0, failed: 0, range: null, investigating: 0, odds: variant ? 0.8 : 0.75 });
+  s.tests.push({ id: s.nextId++, line, variant, needed: variant ? 3 : 4, passed: 0, failed: 0, range: null, investigating: 0, odds: variant ? 0.85 : 0.8, queued: s.day });
   feed(s, 'info', `${variant ? VARIANTS[variant].name + ' ' : ''}${MATERIALS[line].name} joins the test schedule. It is not accepted until it passes its firings.`);
 }
 
@@ -55,7 +57,7 @@ export function testingDay(s: SimState, _feed: Feed): void {
 export function testingMonth(s: SimState, feed: Feed): void {
   assign(s);
   for (const t of [...s.tests]) {
-    if (!t.range || t.investigating > 0) continue;
+    if (!t.range || t.investigating > 0 || s.day - (t.queued ?? 0) < 10) continue;
     for (let i = 0; i < FIRINGS_PER_MONTH && t.passed < t.needed && t.investigating === 0; i++) {
       // A new round is fired from real production; a design change from test articles.
       if (!t.variant) {
@@ -72,7 +74,7 @@ export function testingMonth(s: SimState, feed: Feed): void {
         continue;
       }
       t.failed++;
-      t.investigating = randInt(s, 30, 50);
+      t.investigating = randInt(s, 20, 35);
       s.strategy.decisions.push({
         id: s.nextId++,
         kind: 'testFailure',

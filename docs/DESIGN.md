@@ -1,4 +1,4 @@
-# Forge Command 7.0: design
+# Forge Command 8.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -122,6 +122,41 @@ Physical figures follow public reference data where it exists, and are best gues
   - Pay deals add 7 to 15; refusals take away 10.
 - **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
 - **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
+
+## Espionage (`security.ts`)
+- **Rival activity:** 0.012 × (1 + known rival weapons) × the events setting, a month per plant.
+- **Security:** 0.15 + 0.6 × clearance/3 + 0.25 × (morale − 0.4), between 0 and 0.95. An incident happens with
+  probability activity × (1 − security).
+- **Detection:** before damage, with probability 0.15 + 0.25 × clearance. A caught ring becomes a `spyRing`
+  decision.
+- **Incidents:**
+  - **Sabotage:** 20–45 days at 40% output, and −10 condition.
+  - **Theft:** the rival's next report 75 days sooner, and −2 confidence.
+  - **Leak:** −3 confidence, hawks −3, and a live crisis's intensity +0.15.
+- **Turned rings:** they add 60 days before the next fielded weapon.
+
+## Towns (`towns.ts`)
+- **Towns:** each site belongs to its nearest city. A town's labour pool starts at max(1.12 × current jobs,
+  4 × population + 60), and its housing at 1.05 × the pool.
+- **Hiring:** a hire is refused beyond pool − employed.
+- **Growth and decline:** with jobs above 95% of the pool, the pool grows 3% a month, capped by housing. Below 85%
+  for three months, it shrinks 2% a month and regions −0.4.
+- **Housing:** projects add 400 homes after 150 days.
+- **Mothballing:** idles the lines and lays off the crew. Regions lose up to 12, confidence up to 6.
+
+## Testing (`testing.ts`)
+- **Ranges:** each test range runs one programme at a time, firing three rounds a month.
+- **New rounds:** need 4 passes at 80% odds, fired from real production. Unaccepted lines are not pulled to the
+  central depot.
+- **Designs:** need 3 passes at 85% odds, with test articles costing 1.5× the round price each.
+- **Failures:** pause the programme 20–35 days. A design fix costs 20 × the price index, adds 12% odds and one
+  firing.
+
+## Hot-seat (`hotseat.ts`)
+- **Control:** sites are controlled by region (Corran's arsenal goes west). Actions on the other player's sites
+  are refused, and each action's cost is booked to whoever took it.
+- **Scoring each month:** + 10 × own-base stock against need, + own plants' output value / 40 (at most 10),
+  − 10 × (spending share above 60%). Then the turn passes.
 
 ## Procedural worlds (`worldgen.ts`, `ui/map/geo.ts`)
 - **The template:** the classic map. A world is a seeded, smooth displacement field: two octaves of value noise,

@@ -1,5 +1,49 @@
 # Changelog
 
+## 8.0.0: spies, towns, test ranges and two players
+
+### Espionage and security
+- **Spies:** the rival's intelligence service targets your plants, more often as its weapons programmes grow.
+- **Incidents:** sabotage (a fire that halves output for weeks), stolen designs (the rival's next weapon comes
+  sooner), and leaked stock figures (the Committee is angry, and a crisis bites harder).
+- **Security clearance:** three vetting levels at each plant raise its security. Unhappy crews lower it.
+- **Spy rings:** good security catches a ring before it acts. Then you choose: expose it publicly, turn it into
+  double agents (more warning of the rival's next weapon), or dismiss it quietly.
+- **Where to see it:** the Intel tab shows each plant's security and its monthly risk.
+
+### Workforce towns
+- **Towns:** every plant draws its people from the nearest town, and a town can supply only as many as it has
+  homes for.
+- **Hiring:** hiring beyond that is refused. Build housing (400 homes, about five months) where you need people.
+- **Growth and decline:** towns grow with jobs, and lose people after months without enough work.
+- **Mothballing:** lay off a plant's crew and idle it to save wages, at a cost to the regions and the Committee.
+  Reopen it later.
+- **New Towns tab.**
+
+### Testing and qualification
+- **What gets tested:** new rounds from research and new round designs.
+- **Firings:** each is fired at the two test ranges, one programme per range, three firings a month, before it is
+  accepted. Until then a new round's production waits at its arsenal.
+- **Failures:** a failed firing stops the programme for an investigation. Then fix the design (better odds, one
+  more firing) or press on.
+- **New Testing tab:** the ranges, the queue (which you can reorder) and what awaits acceptance.
+
+### Hot-seat two-player
+- **Two directors, one device:**
+  - **Western Command:** the north, the coast, the isles and Corran's arsenal.
+  - **Eastern Command:** the east and the heartland.
+- **Shared and separate:** the treasury, railways, research and policy are shared, but each player can act only on
+  their own plants.
+- **Turns:** control changes every month, with a handover screen.
+- **Scoring:** each director is scored on their own bases, their own plants' output, and their share of the
+  spending. The end-of-term report names the winner.
+
+### Balance
+- **Hard:** the Committee now expects 72% readiness, down from 76%, and the monthly budget rises from $195M to
+  $205M, to make room for the new pressures.
+- **The test player** now hires to the full crew requirement, builds housing when a town runs short, and vets its
+  plants.
+
 ## 7.0.0: a new country every game
 
 - **Procedural worlds:** campaigns and sandboxes now start, by default, in a new country drawn from the game seed.

@@ -19,12 +19,13 @@ const DIFF: Record<Difficulty, string> = {
   hard: 'Tight money, and every mistake shows.',
 };
 
-type Mode = 'story' | 'campaign' | 'sandbox' | 'tutorial';
+type Mode = 'story' | 'campaign' | 'sandbox' | 'hotseat' | 'tutorial';
 
 const MODES: { id: Mode; name: string; blurb: string }[] = [
   { id: 'story', name: 'Story', blurb: 'Four chapters, a year each, with the people around you and consequences that carry forward.' },
   { id: 'campaign', name: 'Campaign', blurb: 'A scored term as Director. The Committee judges you, and you can be dismissed.' },
   { id: 'sandbox', name: 'Sandbox', blurb: 'Free play. Set the rules, change them as you go, add money, start crises. No score.' },
+  { id: 'hotseat', name: 'Two players', blurb: 'Hot-seat on one device: each runs half the country, sharing the money and the railways. Turns change every month.' },
   { id: 'tutorial', name: 'Tutorial', blurb: 'A guided first two years on Easy, with no crisis for the first year.' },
 ];
 
@@ -41,6 +42,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [rules, setRules] = useState<Settings>(SANDBOX_SETTINGS);
   const [extra, setExtra] = useState({ treasury: 0, appropriation: 0 });
   const [mapKind, setMapKind] = useState<'classic' | 'new'>('new');
+  const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2']);
   const world = mapKind === 'new' ? seedFrom(seed || '0') : null;
   const scores = loadScores().slice(0, 5);
   const [slots, setSlots] = useState(listSlots);
@@ -48,6 +50,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
     if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true })));
+    if (mode === 'hotseat') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, hotseat: names })));
     if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world })));
     onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world })));
   };
@@ -92,7 +95,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Game mode">
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Game mode">
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -108,7 +111,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       </div>
 
       <section className="panel">
-        <div className="panel-title">{mode === 'story' ? 'The story' : mode === 'campaign' ? 'New campaign' : mode === 'sandbox' ? 'New sandbox' : 'Tutorial'}</div>
+        <div className="panel-title">{mode === 'story' ? 'The story' : mode === 'campaign' ? 'New campaign' : mode === 'sandbox' ? 'New sandbox' : mode === 'hotseat' ? 'Two players' : 'Tutorial'}</div>
         <div className="space-y-4 p-4 text-[12px]">
           {mode === 'story' ? (
             <>
@@ -136,6 +139,21 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 You are Director of the Munitions Production Board of the Commonwealth of Aldmere. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
                 air-defense batteries and a demilitarization yard, all tied together by rail, road, sea and air. Keep the rounds flowing.
               </p>
+              {mode === 'hotseat' && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(['Western Command: north, coast, isles and Corran', 'Eastern Command: the east and the heartland'] as const).map((label, i) => (
+                    <label key={i} className="block">
+                      <span className="label mb-1 block">{label}</span>
+                      <input
+                        className="input w-full"
+                        value={names[i]}
+                        maxLength={20}
+                        onChange={(e) => setNames(i === 0 ? [e.target.value, names[1]] : [names[0], e.target.value])}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
               <div>
                 <div className="label mb-1">Map</div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -234,7 +252,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           )}
           <div className="flex justify-end">
             <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={begin}>
-              {mode === 'story' ? 'Begin the story →' : mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : 'Play the tutorial →'}
+              {mode === 'story' ? 'Begin the story →' : mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : mode === 'hotseat' ? 'Start the game →' : 'Play the tutorial →'}
             </Btn>
           </div>
         </div>

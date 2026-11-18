@@ -86,7 +86,7 @@ describe('testing and qualification', () => {
   it('a failed firing asks for a fix or to press on', () => {
     let s = start();
     s = apply(s, { type: 'design', line: 'pac3', variant: 'lean' });
-    s = advanceDays(s, 125);
+    while (!s.tests.some((x) => x.variant === 'lean') && !s.variants.pac3) s = advanceDays(s, 1);
     const t = s.tests.find((x) => x.variant === 'lean')!;
     t.odds = 0;
     s = advanceDays(s, 31);

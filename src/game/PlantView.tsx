@@ -2,6 +2,8 @@
 import { automateCost } from '../sim/build';
 import { validate, type SimAction } from '../sim/actions';
 import { APPRENTICE_COST, MAX_SAFETY, moraleTarget, safetyCost } from '../sim/people';
+import { CLEARANCE_NAME, MAX_CLEARANCE, security, vetCost } from '../sim/security';
+import { townOf } from '../sim/towns';
 import { crewNeed, processRate } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { MATERIALS, RECIPES, type MaterialId } from '../sim/world';
@@ -132,6 +134,17 @@ export default function PlantView({ state, siteId, act }: { state: SimState; sit
           </Btn>
         )}
       </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-ops-text">
+          Security: <span className="text-white">{CLEARANCE_NAME[site.clearance ?? 0]}</span> <span className="text-ops-dim">· {Math.round(security(state, siteId) * 100)}% secure</span>
+        </span>
+        {(site.clearance ?? 0) < MAX_CLEARANCE && (
+          <Btn why={why({ type: 'vet', site: siteId })} onClick={() => act({ type: 'vet', site: siteId })} title="Vetting catches spies before they act. Crews grumble a little.">
+            Vet staff · {money(vetCost(state, siteId))}
+          </Btn>
+        )}
+      </div>
+      <p className="mt-0.5 text-[10px] text-ops-dim">Workers come from {townOf(siteId)} (Towns tab).</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-ops-text">Apprentices a month</span>
         <Segmented<string>

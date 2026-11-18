@@ -13,7 +13,7 @@ import { FINISHED, MATERIALS, type LineId } from '../sim/world';
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const m = (v: number) => `$${Math.round(v).toLocaleString('en-US')}M`;
 const sign = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}`;
-const EXPECT = { easy: 0.62, normal: 0.7, hard: 0.76 } as const;
+const EXPECT = { easy: 0.62, normal: 0.7, hard: 0.72 } as const;
 
 export function readinessWhy(s: SimState): string[] {
   const lines = (FINISHED as LineId[]).filter((l) => s.lines[l].unlocked && nationalDailyDraw(s, l) > 0);

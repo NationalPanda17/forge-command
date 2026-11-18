@@ -599,7 +599,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   townsMonth(s, feed);
   testingMonth(s, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
-  const expect = { easy: 0.62, normal: 0.7, hard: 0.76 }[s.difficulty];
+  const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty];
   const parts = {
     readiness: (ready - expect) * 8,
     leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5),
