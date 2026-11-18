@@ -78,4 +78,17 @@ describe('procedural worlds', () => {
     expect(newSim({ seed: 1, story: true, world: 99 }).world).toBeNull();
     applyWorld(null);
   });
+
+  it('renames places but never ordinary words', () => {
+    for (const seed of [1, 2, 3, 332940, 4242]) {
+      applyWorld(seed);
+      for (const w of ['Short', 'Open', 'Over', 'Behind', 'Test range', 'Coastal', 'test range', 'short of seekers']) expect(tr(w)).toBe(w);
+    }
+    applyWorld(null);
+  });
+
+  it('moves map paths with relative commands without breaking them', () => {
+    expect(G.shiftPath('M10 20h5.2v4.4h-5.2Z', 3, -2)).toBe('M13 18h5.2v4.4h-5.2Z');
+    expect(G.shiftPath('M10 20L12 22Z', 1, 1)).toBe('M11 21L13 23Z');
+  });
 });

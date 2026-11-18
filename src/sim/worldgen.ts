@@ -146,7 +146,7 @@ function makeNamer(rng: () => number, taken: Set<string>) {
 
 /** Words in the classic map that are place names, not descriptions. Everything else in a name is kept. */
 const GENERIC = new Set(
-  'Iron Pits Colliery Bauxite Zinc Mine Copper Mineral Sands Quarry Saltworks Offshore Gas River Pulp Steelworks Aluminium Smelter Refinery Separation Plant Silicon Ammonia Nitric Polymers Chemical Cellulose Energetics Microwave Imaging Trusted Foundry Aerostructures Controls Magnetics Propellant Charges Forge Propulsion Motor Works Fuze Valley Integration Center Munitions Complex Depot Air Defense Sector Base Isles Artillery Brigade Corps Proving Ground Range Demilitarization Facility Port Harbour Logistics Hub Central Docks Town State Metals Circuit Sensors Optics Aerojet Plateau Hills Head Top Height Water Burn Beck Lake Flats Strait Reach Bight Directorate Union Republic Federation Great Of Of The A An And Commonwealth Northern Southern Eastern Western Coast Heartland Ports Marches 3rd Rocket Line Main Southern Direct Link Spur Cut-off Military Road Fields Vale Heath Downs Ridge Plot Westline Gap Fell'
+  'Iron Pits Colliery Bauxite Zinc Mine Copper Mineral Sands Quarry Saltworks Offshore Gas River Pulp Steelworks Aluminium Smelter Refinery Separation Plant Silicon Ammonia Nitric Polymers Chemical Cellulose Energetics Microwave Imaging Trusted Foundry Aerostructures Controls Magnetics Propellant Charges Forge Propulsion Motor Works Fuze Valley Integration Center Munitions Complex Depot Air Defense Sector Base Isles Artillery Brigade Corps Proving Ground Range Demilitarization Facility Port Harbour Logistics Hub Central Docks Town State Metals Circuit Sensors Optics Aerojet Plateau Hills Head Top Height Water Burn Beck Lake Flats Strait Reach Bight Directorate Union Republic Federation Great Of Of The A An And Commonwealth Northern Southern Eastern Western Coast Heartland Ports Marches 3rd Rocket Line Main Southern Direct Link Spur Cut-off Military Road Fields Vale Heath Downs Ridge Plot Westline Gap Fell Test Coastal'
     .split(' ')
     .map((w) => w.toLowerCase()),
 );
@@ -174,7 +174,8 @@ let dictionary = new Map<string, string>();
 /** Rewrites classic place names in any text for this world. */
 export function tr(text: string): string {
   if (!dictionary.size || !text) return text;
-  return text.replace(/[A-Za-z][A-Za-z'’]*/g, (w) => {
+  // Place names are capitalised; a lowercase word is always an ordinary one.
+  return text.replace(/[A-Z][A-Za-z'’]*/g, (w) => {
     const base = w.replace(/['’]s$/, '');
     const hit = dictionary.get(base.toLowerCase());
     if (!hit) return w;
@@ -183,12 +184,20 @@ export function tr(text: string): string {
   });
 }
 
-function collectPlaceWords(texts: string[]): string[] {
+/** Capitalised words in names and labels, plus those in prose that are not just starting a sentence. */
+function collectPlaceWords(names: string[], prose: string[] = []): string[] {
   const words = new Set<string>();
-  for (const t of texts) for (const w of t.match(/[A-Za-z][A-Za-z]*/g) ?? []) {
+  const take = (w: string) => {
     const l = w.toLowerCase();
-    if (w[0] !== w[0].toUpperCase() || GENERIC.has(l) || KEEP.has(l) || l.length < 3) continue;
+    if (w[0] !== w[0].toUpperCase() || GENERIC.has(l) || KEEP.has(l) || l.length < 3) return;
     words.add(l);
+  };
+  for (const t of names) for (const w of t.match(/[A-Za-z][A-Za-z]*/g) ?? []) take(w);
+  // In a sentence, 'Short of seekers' or 'Open land' is an ordinary word, not a place.
+  for (const t of prose) for (const m of t.matchAll(/[A-Za-z][A-Za-z]*/g)) {
+    const before = t.slice(0, m.index).trimEnd();
+    if (!before || /[.!?:;—–-]$/.test(before)) continue;
+    take(m[0]);
   }
   return [...words].sort();
 }
@@ -230,8 +239,8 @@ export function applyWorld(seed: number | null): void {
     while (folds(current) && current.amp > 15) current.amp *= 0.85;
     spec = makeSpec(seed);
     // New names for every place word.
-    const namer = makeNamer(mulberry(seed ^ 0x9a3e), new Set(collectPlaceWords([...SITES.map((s) => `${s.name} ${s.blurb}`), ...CITIES.map((c) => c.name), ...Object.values(CLASSIC.regions), ...extraTexts]).concat([spec.name.toLowerCase()])));
-    for (const w of collectPlaceWords([...SITES.map((s) => `${s.name} ${s.blurb}`), ...CITIES.map((c) => c.name), ...Object.values(CLASSIC.regions), ...CANDIDATE_ROUTES.map((c) => `${c.name} ${c.blurb}`), ...extraTexts])) {
+    const namer = makeNamer(mulberry(seed ^ 0x9a3e), new Set(collectPlaceWords([...SITES.map((s) => s.name), ...CITIES.map((c) => c.name), ...Object.values(CLASSIC.regions), ...extraTexts], SITES.map((s) => s.blurb)).concat([spec.name.toLowerCase()])));
+    for (const w of collectPlaceWords([...SITES.map((s) => s.name), ...CITIES.map((c) => c.name), ...Object.values(CLASSIC.regions), ...CANDIDATE_ROUTES.map((c) => c.name), ...extraTexts], [...SITES.map((s) => s.blurb), ...CANDIDATE_ROUTES.map((c) => c.blurb)])) {
       dictionary.set(w, namer());
     }
     dictionary.set('aldmere', spec.name);

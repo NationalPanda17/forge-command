@@ -1,5 +1,17 @@
 # Changelog
 
+## 8.0.1: display fixes
+- **Generated worlds:** ordinary words that begin a sentence in a site's description (such as "Short", "Open" or
+  "Over") were mistaken for place names and renamed, garbling messages like "Short of infrared seekers". Only
+  capitalised place words are renamed now, and "Test" and "Coastal" stay as they are.
+- **Map:** the salt pans were drawn as broken shapes on generated worlds (and logged an error), because moving a
+  path dropped its relative commands. Relative commands now move with their path.
+- **Guide:** "Your own industry" opened the wrong section; the two sections shared an id.
+- **Layout:** supplier names on the Plan tab and plant names on the Towns and Build tabs wrap instead of being cut off; the
+  game-mode cards on the title screen line up; the title's tagline breaks evenly; and the new-game text names the
+  generated country instead of Aldmere.
+- **Phones:** the map layer toggles, the round chips and small option buttons are now at least 24px to tap.
+
 ## 8.0.0: spies, towns, test ranges and two players
 
 ### Espionage and security

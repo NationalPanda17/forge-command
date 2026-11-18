@@ -55,8 +55,8 @@ export default function TownsPanel({ state, act, onSite }: { state: SimState; ac
             const a: SimAction = site.mothballed ? { type: 'reopen', site: d.id } : { type: 'mothball', site: d.id };
             return (
               <li key={d.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <span className="min-w-0 truncate">
-                  <button type="button" className="text-ops-text hover:underline" onClick={() => onSite(d.id)}>
+                <span className="min-w-0 break-words">
+                  <button type="button" className="text-left text-ops-text hover:underline" onClick={() => onSite(d.id)}>
                     {site.plantName ?? SITE_BY_ID[d.id].name}
                   </button>{' '}
                   <span className="text-ops-dim">
