@@ -1,5 +1,6 @@
 // Routing: fastest paths over the transport network, precomputed once for every pair of sites.
 import { CANDIDATE_ROUTES, MODES, ROUTES, ROUTE_KEY, SITES, routeKm, type Mode, type RouteDef } from './world';
+import { onWorldChange } from './worldgen';
 
 export interface Leg {
   to: string;
@@ -18,7 +19,12 @@ let signature = '\u0000';
 export const UPGRADE_STEP = 0.5;
 
 /** The network as built so far: the original routes, any links the player finished, and route upgrades. */
+let lastBuilt: readonly string[] = [];
+let lastUpgrades: Readonly<Record<string, number>> = {};
+
 export function setNetwork(built: readonly string[] = [], upgrades: Readonly<Record<string, number>> = {}): void {
+  lastBuilt = built;
+  lastUpgrades = upgrades;
   const sig = `${[...built].sort().join(',')}|${Object.entries(upgrades).filter(([, v]) => v > 0).sort().map(([k, v]) => `${k}=${v}`).join(',')}`;
   if (sig === signature) return;
   signature = sig;
@@ -39,6 +45,11 @@ export function setNetwork(built: readonly string[] = [], upgrades: Readonly<Rec
   }
 }
 setNetwork();
+// A new world moves every site: distances change, so the network is rebuilt.
+onWorldChange(() => {
+  signature = '\u0000';
+  setNetwork(lastBuilt, lastUpgrades);
+});
 
 export const neighbours = (id: string) => ADJ.get(id) ?? [];
 

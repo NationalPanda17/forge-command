@@ -14,6 +14,7 @@ import { isFounded } from '../sim/industry';
 import PolicyPanel from './PolicyPanel';
 import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
+import { tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
 import { sfx, setSoundEnabled } from '../ui/sound';
 import { loadAudioPrefs, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
@@ -328,7 +329,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       {lead && (
         <button type="button" onClick={() => setPanel('news')} className="fc-zoom panel flex min-w-0 items-center gap-2 px-3 py-1 text-left text-[11px] hover:border-ops-dim">
           <span className="label shrink-0">Courier</span>
-          <span className="min-w-0 truncate text-ops-text">{lead.title}</span>
+          <span className="min-w-0 truncate text-ops-text">{tr(lead.title)}</span>
         </button>
       )}
 
@@ -346,7 +347,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       {state.alert && speed === 0 && (
         <div role="status" className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${state.alert.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : state.alert.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
           <span>
-            Paused: {state.alert.text}
+            Paused: {tr(state.alert.text)}
           </span>
           <span className="flex gap-1">
             {state.alert.site && <Btn onClick={() => select(state.alert!.site!)}>Show</Btn>}
@@ -363,6 +364,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             <MapLayerToggles layers={layers} onChange={setLayers} />
           </div>
           <MapView
+            key={state.world ?? 'classic'}
             markers={markers}
             shipments={shipments}
             routeUse={routeUse}

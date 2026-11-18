@@ -1,8 +1,9 @@
-// Operational map of the Commonwealth of Aldmere: static geography, transport network, sites, shipments.
+// Operational map of the country (classic or generated): static geography, transport network, sites, shipments.
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef, type SiteKind } from '../../sim/world';
 import * as G from './geo';
+import { countryTitle, onWorldChange } from '../../sim/worldgen';
 import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
 import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
 
@@ -647,6 +648,8 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
 
 interface Leg { pts: G.Pt[]; cum: number[]; len: number; mode: string }
 const legCache = new Map<string, { legs: Leg[]; total: number }>();
+// Routes move with the world: forget the old ones.
+onWorldChange(() => legCache.clear());
 
 function legsFor(path: string[], mode: string): { legs: Leg[]; total: number } {
   const key = `${mode}:${path.join('>')}`;
@@ -1270,7 +1273,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
       style={{ height }}
       tabIndex={0}
       role="region"
-      aria-label="Map of the Commonwealth of Aldmere. Arrow keys pan, plus and minus zoom, 0 resets, Tab moves between sites."
+      aria-label={`Map of the ${countryTitle()}. Arrow keys pan, plus and minus zoom, 0 resets, Tab moves between sites.`}
       onKeyDown={onKeyDown}
     >
       <style>{LOD_CSS}</style>
@@ -1321,7 +1324,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
         </svg>
       )}
       <div data-hud="" className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5">
-        <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">Commonwealth of Aldmere</div>
+        <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">{countryTitle()}</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
       <div data-hud="" className="absolute right-3 top-3 flex flex-col gap-1">

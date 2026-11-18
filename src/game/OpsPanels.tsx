@@ -5,6 +5,7 @@ import { lotQty, nationalDailyDraw, nationalStock, readiness, regionDailyDraw, r
 import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
 import { Bar, Btn, COLORS, LineChart, Segmented } from '../ui/kit';
+import { tr } from '../sim/worldgen';
 import { messageTone, money, pct, qty } from '../ui/format';
 import { dateLabel, monthLabel2 } from './useSim';
 
@@ -297,10 +298,10 @@ export function Feed({ state, onSite, limit = 40 }: { state: SimState; onSite: (
           <span className="mr-1 text-ops-dim">{dateLabel(f.day).split(' · ')[0]}</span>
           {f.site ? (
             <button type="button" className="text-left hover:underline" onClick={() => onSite(f.site!)}>
-              {f.text}
+              {tr(f.text)}
             </button>
           ) : (
-            f.text
+            tr(f.text)
           )}
         </li>
       ))}

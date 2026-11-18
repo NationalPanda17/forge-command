@@ -5,6 +5,7 @@ import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from 
 import type { SimState } from '../sim/types';
 import { monthsTo } from '../sim/analytics';
 import { DEVELOPMENTS } from '../sim/rival';
+import { tr } from '../sim/worldgen';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
 export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy';
@@ -104,10 +105,10 @@ export function WatchPanel({ state, onSite, onMaterial, onPanel }: { state: SimS
           <li key={i} className="flex items-start justify-between gap-2 px-3 py-1.5">
             {target ? (
               <button type="button" className={`min-w-0 text-left hover:underline ${tone}`} onClick={() => go(w)} title="Go to the fix">
-                {w.text}
+                {tr(w.text)}
               </button>
             ) : (
-              <span className={tone}>{w.text}</span>
+              <span className={tone}>{tr(w.text)}</span>
             )}
             <span className="flex shrink-0 gap-2">
               {w.site && w.panel && (

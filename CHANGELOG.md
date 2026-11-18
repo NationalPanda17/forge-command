@@ -1,5 +1,26 @@
 # Changelog
 
+## 7.0.0: a new country every game
+
+- **Procedural worlds:** campaigns and sandboxes now start, by default, in a new country drawn from the game seed.
+  - Its own coastline, with bays and headlands of its own.
+  - Islands, rivers and lakes moved with the land.
+  - New mountain ranges, forests and farmland.
+  - Cities, regions and every site placed to fit the land.
+  - New names for the country, cities, companies, seas, hills and rivers.
+- **What stays the same:** every site keeps its role, owner, recipes and links, so the supply chain, the rival and
+  every rule play the same.
+- **Choosing a map:** pick "A new country" or "Classic Aldmere" on the title screen. "Another" draws a different
+  country, and the same seed always draws the same one.
+- **Story and tutorial** stay on the classic map, because their text names its places.
+- **Saves** remember their world.
+- **Checked:** 300 generated worlds were tested. Every site lands on land and inside the map, and everything stays
+  reachable. A warp that would fold the map over itself is weakened until it cannot.
+- **Balance:** each world's distances are scaled so its whole rail and road network is as long as the classic one.
+  Which links are long changes, but supplying the country is about as hard overall. In testing, a competent
+  director finished every Easy and Normal campaign on generated worlds. Hard is tighter there, and was already close
+  on the classic map.
+
 ## 6.0.0: your own industry, a story, and comfort
 
 ### Build your own industry

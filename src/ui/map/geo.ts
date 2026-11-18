@@ -1,7 +1,9 @@
-// Geography of the Commonwealth of Aldmere for the map. Everything here is deterministic: seeded noise and
-// midpoint displacement over hand-placed control points. Units are km, matching src/sim/world.ts.
+// Geography for the map. The hand-placed classic country (the Commonwealth of Aldmere) is the template: a generated
+// world is the same template seen through a smooth seeded warp, with its own mountains, forests and names.
+// Everything is deterministic. Units are km, matching src/sim/world.ts. Rebuilt whenever the world changes.
 
 import { CITIES, ROUTES, ROUTE_KEY, SITES, SITE_BY_ID, type Mode, type RegionId, CANDIDATE_ROUTES } from '../../sim/world';
+import { onWorldChange, registerPlaceTexts, tr, unwarp, warp, warpPt, worldSeed } from '../../sim/worldgen';
 
 export type Pt = [number, number];
 
@@ -100,8 +102,23 @@ function distToPolyline(x: number, y: number, pl: Pt[]): number {
 
 const KARROW_RIDGE: Pt[] = [[590, 645], [650, 602], [720, 580], [790, 566], [850, 576], [905, 596], [1000, 588]];
 
-/** Relative elevation, roughly 0 (coastal plain) to 1.2 (Karrow summits). */
+/** Mountain ranges this world adds, in classic coordinates. */
+let worldRidges: { line: Pt[]; h: number }[] = [];
+
+/** Relative elevation, roughly 0 (coastal plain) to 1.2 (the highest summits), in this world's coordinates. */
 export function elev(x: number, y: number): number {
+  const [u, v] = unwarp(x, y);
+  const seed = worldSeed();
+  if (!seed) return elevClassic(u, v);
+  let h = elevClassic(u, v) * (0.7 + 0.6 * fbm(u / 170, v / 170, 2, seed % 9973));
+  for (const r of worldRidges) {
+    const d = distToPolyline(u, v, r.line);
+    h += Math.exp(-(d * d) / (38 * 38)) * r.h * (0.35 + 0.65 * ridged(u / 16, v / 16, 4, seed % 7919));
+  }
+  return Math.max(0, h);
+}
+
+function elevClassic(x: number, y: number): number {
   let h = 0.03 + 0.1 * fbm(x / 55, y / 55, 4, 11);
   // Eastern uplands rise toward the border.
   h += smoothstep(520, 900, x) * (0.1 + 0.14 * fbm(x / 35, y / 35, 3, 23));
@@ -200,14 +217,16 @@ const ISLETS: [number, number, number][] = [
   [45, 520, 4], [890, 22, 3], [700, 18, 2.2], [80, 120, 2.5],
 ];
 
-export const MAINLAND_RING = fractalRing(MAINLAND, 1701, 2);
-export const ISLAND_RINGS: Pt[][] = [
-  fractalRing(HOLM, 211, 0.8),
-  fractalRing(GREAT_SKERRY, 223, 0.8),
-  fractalRing(FENNICK, 227, 0.8),
-  ...ISLETS.map(([x, y, r], i) => blobRing(x, y, r, 300 + i, 8, 0.2, 0.6)),
-];
-export const LAND_RINGS: Pt[][] = [MAINLAND_RING, ...ISLAND_RINGS];
+const wc = (c: Ctrl): Ctrl => {
+  const [x, y] = warp(c[0], c[1]);
+  return [x, y, c[2]];
+};
+/** Mixes the world seed into a fixed detail seed, so each world has its own coastline wiggles. */
+const mix = (n: number) => (worldSeed() ? (n * 31 + (worldSeed() % 99991)) | 0 : n);
+
+export let MAINLAND_RING: Pt[] = [];
+export let ISLAND_RINGS: Pt[][] = [];
+export let LAND_RINGS: Pt[][] = [];
 
 // ---------- Path helpers ----------
 
@@ -294,7 +313,7 @@ function scanMask(rings: Pt[][], step: number): (x: number, y: number) => boolea
   };
 }
 
-export const onLand = scanMask(LAND_RINGS, 0.5);
+export let onLand: (x: number, y: number) => boolean = () => false;
 
 // ---------- Rivers and lakes ----------
 
@@ -330,31 +349,25 @@ const RIVER_DEFS: RiverDef[] = [
 ];
 
 export interface River { name?: string; order: 1 | 2 | 3; pts: Pt[]; d: string }
-export const RIVERS: River[] = RIVER_DEFS.map((r, i) => {
-  const rough = fractalLine(r.ctrl, r.order === 1 ? 0.12 : 0.16, 900 + i, 1.5);
-  const pts = smoothLine(rough, 2);
-  return { name: r.name, order: r.order, pts, d: linePath(pts) };
-});
+export let RIVERS: River[] = [];
 
 const LAKE_DEFS: [number, number, number, string?][] = [
   [250, 350, 11, 'Corrmere'], [330, 372, 6.5, 'Lake Ennis'], [606, 166, 4.5], [842, 444, 6, 'Velm Water'], [562, 300, 5], [132, 456, 5.5],
   [200, 150, 5], [728, 515, 3.5], [480, 330, 3],
 ];
-export const LAKES = LAKE_DEFS.map(([x, y, r, name], i) => ({ x, y, r, name, d: ringPath(blobRing(x, y, r, 500 + i, 10, 0.16, 0.6)) }));
+export let LAKES: { x: number; y: number; r: number; name?: string; d: string }[] = [];
 
 // ---------- Vardan border ----------
 
-export const BORDER: Pt[] = smoothLine(
-  fractalLine([[903, 28], [899, 80], [907, 140], [896, 210], [904, 290], [911, 370], [901, 450], [907, 520], [897, 590], [905, 676]], 0.1, 77, 3),
-  2,
-);
-export const VARDAN_RING: Pt[] = [...BORDER, [1030, 690], [1030, 20]];
+const BORDER_CTRL: Pt[] = [[903, 28], [899, 80], [907, 140], [896, 210], [904, 290], [911, 370], [901, 450], [907, 520], [897, 590], [905, 676]];
+export let BORDER: Pt[] = [];
+export let VARDAN_RING: Pt[] = [];
 
 // ---------- Regions ----------
 
 const BORDER_COARSE: Pt[] = [[903, -30], [903, 28], [899, 80], [907, 140], [896, 210], [904, 290], [911, 370], [901, 450], [907, 520], [897, 590], [905, 676], [905, 720]];
 
-export const REGION_RINGS: Record<RegionId, Pt[]> = {
+const CLASSIC_REGION_RINGS: Record<RegionId, Pt[]> = {
   north: [[228, -30], [720, -30], [705, 140], [690, 250], [640, 266], [560, 248], [480, 226], [380, 204], [232, 194]],
   east: [[720, -30], ...BORDER_COARSE, [560, 720], [588, 560], [582, 470], [566, 420], [570, 362], [582, 292], [640, 266], [690, 250], [705, 140]],
   coast: [[-60, -30], [228, -30], [232, 194], [242, 262], [228, 340], [218, 420], [262, 470], [270, 508], [300, 560], [380, 590], [420, 720], [200, 720], [170, 577], [-60, 568]],
@@ -362,7 +375,9 @@ export const REGION_RINGS: Record<RegionId, Pt[]> = {
   central: [[232, 194], [380, 204], [480, 226], [560, 248], [640, 266], [582, 292], [570, 362], [566, 420], [582, 470], [588, 560], [560, 720], [420, 720], [380, 590], [300, 560], [270, 508], [262, 470], [218, 420], [228, 340], [242, 262]],
 };
 
-export const REGION_LABEL_AT: Record<RegionId, Pt> = {
+export let REGION_RINGS: Record<RegionId, Pt[]> = { ...CLASSIC_REGION_RINGS };
+
+const CLASSIC_REGION_LABEL_AT: Record<RegionId, Pt> = {
   north: [300, 120],
   coast: [180, 470],
   east: [728, 515],
@@ -373,7 +388,8 @@ export const REGION_LABEL_AT: Record<RegionId, Pt> = {
 // ---------- Cities ----------
 
 export const cityRadius = (pop: number) => 1.2 + Math.sqrt(pop) * 0.22;
-export const URBAN = CITIES.map((c, i) => ({ name: c.name, d: ringPath(blobRing(c.x, c.y, cityRadius(c.pop), 700 + i, 11, 0.2, 0.5)) }));
+export let REGION_LABEL_AT: Record<RegionId, Pt> = { ...CLASSIC_REGION_LABEL_AT };
+export let URBAN: { name: string; d: string }[] = [];
 
 // ---------- Forests and farmland ----------
 
@@ -382,10 +398,14 @@ const FOREST_PATCHES: [number, number, number, number][] = [
   [300, 236, 36, 30], [540, 452, 40, 28], [860, 480, 30, 40], [640, 175, 30, 25],
 ];
 
+/** Forest patches for this world, in classic coordinates. */
+let forestPatches: [number, number, number, number][] = FOREST_PATCHES;
+
 function forestDensity(x: number, y: number): number {
+  const [u, v] = unwarp(x, y);
   let m = 0;
-  for (const [cx, cy, rx, ry] of FOREST_PATCHES) m = Math.max(m, blob(x, y, cx, cy, rx, ry));
-  return m * (0.4 + 0.9 * fbm(x / 22, y / 22, 3, 77));
+  for (const [cx, cy, rx, ry] of forestPatches) m = Math.max(m, blob(u, v, cx, cy, rx, ry));
+  return m * (0.4 + 0.9 * fbm(u / 22, v / 22, 3, mix(77)));
 }
 
 function clearOf(x: number, y: number, siteGap: number, cityGap: number): boolean {
@@ -399,7 +419,7 @@ function clearOf(x: number, y: number, siteGap: number, cityGap: number): boolea
 }
 
 function buildTrees(): { canopy: string; shade: string; count: number } {
-  const rng = mulberry32(4242);
+  const rng = mulberry32(mix(4242));
   const step = 3.1;
   let canopy = '';
   let shade = '';
@@ -422,7 +442,7 @@ function buildTrees(): { canopy: string; shade: string; count: number } {
 }
 
 function buildFields(): string[] {
-  const rng = mulberry32(9191);
+  const rng = mulberry32(mix(9191));
   const out = ['', '', ''];
   const cell = 8.5;
   const th = 0.21;
@@ -432,7 +452,8 @@ function buildFields(): string[] {
   for (let v = -120; v < 760; v += cell) {
     for (let u = 0; u < 1000; u += cell) {
       const [cx, cy] = rot(u + cell / 2, v + cell / 2);
-      if (cx < 150 || cx > 640 || cy < 60 || cy > 630) continue;
+      const [ux, uy] = unwarp(cx, cy);
+      if (ux < 150 || ux > 640 || uy < 60 || uy > 630) continue;
       if (!onLand(cx, cy) || elev(cx, cy) > 0.24 || forestDensity(cx, cy) > 0.42 || !clearOf(cx, cy, 3, 2.5)) continue;
       if (fbm(cx / 40, cy / 40, 2, 5) < 0.36) continue;
       const split = 1 + Math.floor(rng() * 3);
@@ -656,7 +677,7 @@ function buildRoute(a: string, b: string, mode: Mode): Pt[] {
   if (mode === 'sea') {
     const lane = SEA_LANES.find(([p, q]) => (p === a && q === b) || (p === b && q === a));
     if (lane) {
-      const wp = lane[0] === a ? lane[2] : lane[2].slice().reverse();
+      const wp = (lane[0] === a ? lane[2] : lane[2].slice().reverse()).map(warpPt);
       return smoothLine([pa, ...wp, pb], 8);
     }
     return smoothLine([pa, [pa[0] + dx / 2 + nx * len * 0.12, pa[1] + dy / 2 + ny * len * 0.12], pb], 12);
@@ -692,24 +713,28 @@ function cumLen(p: Pt[]): number[] {
   return c;
 }
 
-export const ROUTE_GEOMS: RouteGeom[] = ROUTES.map((r) => {
-  const pts = buildRoute(r.a, r.b, r.mode);
-  const cum = cumLen(pts);
-  return { key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
-});
-
+export let ROUTE_GEOMS: RouteGeom[] = [];
 /** Links the player may build, drawn as plans until they open. */
-export const CANDIDATE_GEOMS: (RouteGeom & { id: string })[] = CANDIDATE_ROUTES.map((r) => {
-  const pts = buildRoute(r.a, r.b, r.mode);
-  const cum = cumLen(pts);
-  return { id: r.id, key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
-});
-
+export let CANDIDATE_GEOMS: (RouteGeom & { id: string })[] = [];
 export const GEOMS_BY_KEY: Map<string, RouteGeom[]> = new Map();
-for (const g of [...ROUTE_GEOMS, ...CANDIDATE_GEOMS]) {
-  const l = GEOMS_BY_KEY.get(g.key) ?? [];
-  l.push(g);
-  GEOMS_BY_KEY.set(g.key, l);
+
+function buildTransport(): void {
+  ROUTE_GEOMS = ROUTES.map((r) => {
+    const pts = buildRoute(r.a, r.b, r.mode);
+    const cum = cumLen(pts);
+    return { key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
+  });
+  CANDIDATE_GEOMS = CANDIDATE_ROUTES.map((r) => {
+    const pts = buildRoute(r.a, r.b, r.mode);
+    const cum = cumLen(pts);
+    return { id: r.id, key: ROUTE_KEY(r.a, r.b), mode: r.mode, a: r.a, b: r.b, pts, cum, len: cum[cum.length - 1], d: linePath(pts) };
+  });
+  GEOMS_BY_KEY.clear();
+  for (const g of [...ROUTE_GEOMS, ...CANDIDATE_GEOMS]) {
+    const l = GEOMS_BY_KEY.get(g.key) ?? [];
+    l.push(g);
+    GEOMS_BY_KEY.set(g.key, l);
+  }
 }
 
 export function pointAt(g: { pts: Pt[]; cum: number[] }, s: number): Pt {
@@ -739,7 +764,8 @@ export function clampToFrame(p: Pt, inset = 0): Pt {
 
 /** Where each foreign supplier's lane leaves the sheet. */
 export interface OffMapExit { siteId: string; nation: string; name: string; at: Pt; angle: number; marker: Pt }
-export const OFF_MAP_EXITS: OffMapExit[] = SITES.filter((s) => !inFrame(s.x, s.y)).map((s) => {
+export let OFF_MAP_EXITS: OffMapExit[] = [];
+const buildExits = (): OffMapExit[] => SITES.filter((s) => !inFrame(s.x, s.y)).map((s) => {
   const g = ROUTE_GEOMS.find((r) => r.a === s.id || r.b === s.id);
   const pts = g ? (g.b === s.id ? g.pts : g.pts.slice().reverse()) : ([[s.x, s.y]] as Pt[]);
   let at: Pt = clampToFrame([s.x, s.y]);
@@ -756,44 +782,72 @@ export const OFF_MAP_EXITS: OffMapExit[] = SITES.filter((s) => !inFrame(s.x, s.y
 });
 
 /** Where a site's marker is drawn: its own position, or the sheet edge for foreign suppliers. */
-export const SITE_POS: Record<string, Pt> = Object.fromEntries(
-  SITES.map((s) => {
+export const SITE_POS: Record<string, Pt> = {};
+function buildSitePos(): void {
+  for (const s of SITES) {
     const ex = OFF_MAP_EXITS.find((e) => e.siteId === s.id);
-    return [s.id, ex ? ex.marker : ([s.x, s.y] as Pt)];
-  }),
-);
+    SITE_POS[s.id] = ex ? ex.marker : ([s.x, s.y] as Pt);
+  }
+}
 
 // ---------- Small cartographic details ----------
 
 /** Breakwaters and quays, drawn at close zoom. */
-export const HARBOURS =
+const CLASSIC_HARBOURS: [Pt, string][] = [
   // Port of Meric
-  'M351 41Q350 35 355 31M369 42Q371 36 366 31M356 41V37M360 41V36M364 41V37' +
+  [[360, 38], 'M351 41Q350 35 355 31M369 42Q371 36 366 31M356 41V37M360 41V36M364 41V37'],
   // Halvard Docks
-  'M152 293Q146 293 143 288M155 278Q149 276 145 280M155 289H151M156 285H151M156 281H152' +
+  [[150, 286], 'M152 293Q146 293 143 288M155 278Q149 276 145 280M155 289H151M156 285H151M156 281H152'],
   // Lowmouth
-  'M327 631Q326 637 330 641M343 632Q345 638 341 641M331 631V635M335 631V636M339 631V635' +
+  [[335, 634], 'M327 631Q326 637 330 641M343 632Q345 638 341 641M331 631V635M335 631V636M339 631V635'],
   // Skerry Harbour
-  'M121 604Q120 608 123 610M130 604Q132 608 129 610M124 604V607M127 604V607';
+  [[125, 606], 'M121 604Q120 608 123 610M130 604Q132 608 129 610M124 604V607M127 604V607'],
+];
+export let HARBOURS = '';
+
+/** Moves an absolute SVG path (M L Q C H V A Z) by dx, dy. */
+export function shiftPath(d: string, dx: number, dy: number): string {
+  if (!dx && !dy) return d;
+  return d.replace(/([MLQCTSHVAZ])([^MLQCTSHVAZ]*)/g, (_m, cmd: string, args: string) => {
+    const n = (args.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number);
+    if (cmd === 'Z') return 'Z';
+    if (cmd === 'H') return `H${n.map((v) => f1(v + dx)).join(' ')}`;
+    if (cmd === 'V') return `V${n.map((v) => f1(v + dy)).join(' ')}`;
+    if (cmd === 'A') {
+      const out: number[] = [];
+      for (let i = 0; i + 6 < n.length + 1; i += 7) out.push(n[i], n[i + 1], n[i + 2], n[i + 3], n[i + 4], n[i + 5] + dx, n[i + 6] + dy);
+      return `A${out.map((v, i) => (i % 7 >= 5 ? f1(v) : String(v))).join(' ')}`;
+    }
+    return cmd + n.map((v, i) => f1(v + (i % 2 === 0 ? dx : dy))).join(' ');
+  });
+}
+/** How far the land moved under a classic point. */
+const moved = (p: Pt): Pt => {
+  const [x, y] = warp(p[0], p[1]);
+  return [x - p[0], y - p[1]];
+};
 
 /** Runways at the air bases, drawn at close zoom. */
-export const RUNWAYS = [
+const CLASSIC_RUNWAYS = [
   { x: 150, y: 225, a: -28, l: 4.2 },
   { x: 85, y: 640, a: -12, l: 3.4 },
   { x: 470, y: 265, a: 18, l: 3.8 },
 ];
+export let RUNWAYS = CLASSIC_RUNWAYS;
 
 /** Open pits drawn as nested rings. */
-export const PITS: [number, number, number][] = [[520, 175, 3.2], [760, 300, 4.5], [285, 470, 2.6], [215, 560, 2.2], [675, 410, 2.2], [830, 530, 2.4]];
+const CLASSIC_PITS: [number, number, number][] = [[520, 175, 3.2], [760, 300, 4.5], [285, 470, 2.6], [215, 560, 2.2], [675, 410, 2.2], [830, 530, 2.4]];
+export let PITS = CLASSIC_PITS;
 
 /** Range danger areas. */
-export const DANGER_AREAS = [
+const CLASSIC_DANGER = [
   { id: 'D-114', label: 'D-114 SALTMERE', d: 'M108 430L60 380A70 70 0 0 0 52 482Z', at: [62, 432] as Pt },
   { id: 'D-209', label: 'D-209 KARROW', d: ringPath(blobRing(705, 590, 22, 77, 8, 0.05, 2)), at: [705, 566] as Pt },
 ];
+export let DANGER_AREAS = CLASSIC_DANGER;
 
 /** Salt pans on the Meric flats. */
-export const SALT_PANS = (() => {
+const CLASSIC_SALT_PANS = (() => {
   let s = '';
   const rng = mulberry32(31);
   for (let j = 0; j < 3; j++) {
@@ -807,10 +861,12 @@ export const SALT_PANS = (() => {
   return s;
 })();
 
-export const PIPELINE = 'M95 300L118 303L138 306L152 314L165 320';
+export let SALT_PANS = CLASSIC_SALT_PANS;
+const CLASSIC_PIPELINE = 'M95 300L118 303L138 306L152 314L165 320';
+export let PIPELINE = CLASSIC_PIPELINE;
 
 export interface GeoLabel { text: string; at: Pt; size: number; rot?: number; kind: 'sea' | 'relief' | 'water' | 'island' | 'nation'; lod: number; spacing?: number }
-export const GEO_LABELS: GeoLabel[] = [
+const CLASSIC_LABELS: GeoLabel[] = [
   { text: 'HALVARD STRAIT', at: [52, 330], size: 12, rot: -90, kind: 'sea', lod: 0, spacing: 0.5 },
   { text: 'NORTHERN REACH', at: [620, 10], size: 12, kind: 'sea', lod: 0, spacing: 0.6 },
   { text: 'LOWMOUTH BIGHT', at: [520, 676], size: 11, kind: 'sea', lod: 0, spacing: 0.5 },
@@ -836,3 +892,105 @@ export const GEO_LABELS: GeoLabel[] = [
   { text: '▲ Brennock Top 910', at: [575, 186], size: 9, kind: 'relief', lod: 2 },
   { text: '▲ Velm Height 1,310', at: [818, 392], size: 9, kind: 'relief', lod: 2 },
 ];
+
+// ---------- Building the geography for the current world ----------
+
+export let GEO_LABELS: GeoLabel[] = CLASSIC_LABELS;
+
+// The map's own place names, so a generated world renames them too.
+registerPlaceTexts([...CLASSIC_LABELS.map((l) => l.text), ...RIVER_DEFS.map((r) => r.name ?? ''), ...LAKE_DEFS.map((l) => l[3] ?? ''), ...CLASSIC_DANGER.map((d) => d.label)]);
+
+/** Classic positions of everything on the coast that must stay there. */
+const anchors = () => SITES.map((s) => unwarp(s.x, s.y)).concat(CITIES.map((c) => unwarp(c.x, c.y)));
+
+/**
+ * A generated world's own bays and headlands: coast points far from any site or town are pushed in or out by a
+ * smooth random amount, so the outline changes without leaving a port inland or a plant in the sea.
+ */
+function coastFeature(c: Ctrl): Ctrl {
+  const [x, y, r] = c;
+  if (x >= 1000) return wc(c);
+  let near = Infinity;
+  for (const [ax, ay] of anchorCache) near = Math.min(near, Math.hypot(ax - x, ay - y));
+  const free = Math.max(0, Math.min(1, (near - 45) / 45));
+  const seed = worldSeed() % 9973;
+  const n = (fbm(x / 140, y / 140, 2, seed + 5) - 0.5) * 2;
+  // Push along the outward direction from the middle of the country.
+  const ox = x - 520;
+  const oy = y - 340;
+  const len = Math.hypot(ox, oy) || 1;
+  const push = n * 75 * free;
+  const [wx, wy] = warp(x + (ox / len) * push, y + (oy / len) * push);
+  return [wx, wy, r];
+}
+let anchorCache: Pt[] = [];
+
+function rebuildGeography(): void {
+  anchorCache = anchors();
+  const seed = worldSeed();
+  // This world's own mountains and forests (in classic coordinates).
+  const rng = mulberry32(seed || 1);
+  worldRidges = seed
+    ? Array.from({ length: 2 + Math.floor(rng() * 2) }, () => {
+        const x = 220 + rng() * 600;
+        const y = 120 + rng() * 440;
+        const a = rng() * Math.PI;
+        const l = 70 + rng() * 120;
+        const line: Pt[] = [0, 0.33, 0.66, 1].map((t) => [x + Math.cos(a) * l * (t - 0.5) + (rng() - 0.5) * 30, y + Math.sin(a) * l * (t - 0.5) + (rng() - 0.5) * 30]);
+        return { line, h: 0.25 + rng() * 0.35 };
+      })
+    : [];
+  forestPatches = seed ? FOREST_PATCHES.map(([x, y, rx, ry]) => [x + (rng() - 0.5) * 140, y + (rng() - 0.5) * 120, rx * (0.7 + rng() * 0.7), ry * (0.7 + rng() * 0.7)]) : FOREST_PATCHES;
+
+  MAINLAND_RING = fractalRing(MAINLAND.map(seed ? coastFeature : wc), mix(1701), 2);
+  ISLAND_RINGS = [
+    fractalRing(HOLM.map(wc), mix(211), 0.8),
+    fractalRing(GREAT_SKERRY.map(wc), mix(223), 0.8),
+    fractalRing(FENNICK.map(wc), mix(227), 0.8),
+    ...ISLETS.map(([x, y, r], i) => {
+      const [wx, wy] = warp(x, y);
+      return blobRing(wx, wy, r, mix(300 + i), 8, 0.2, 0.6);
+    }),
+  ];
+  LAND_RINGS = [MAINLAND_RING, ...ISLAND_RINGS];
+  onLand = scanMask(LAND_RINGS, 0.5);
+  RIVERS = RIVER_DEFS.map((r, i) => {
+    const rough = fractalLine(r.ctrl.map(warpPt), r.order === 1 ? 0.12 : 0.16, mix(900 + i), 1.5);
+    const pts = smoothLine(rough, 2);
+    return { name: r.name ? tr(r.name) : undefined, order: r.order, pts, d: linePath(pts) };
+  });
+  LAKES = LAKE_DEFS.map(([x, y, r, name], i) => {
+    const [wx, wy] = warp(x, y);
+    return { x: wx, y: wy, r, name: name ? tr(name) : undefined, d: ringPath(blobRing(wx, wy, r, mix(500 + i), 10, 0.16, 0.6)) };
+  });
+  BORDER = smoothLine(fractalLine(BORDER_CTRL.map(warpPt), 0.1, mix(77), 3), 2);
+  VARDAN_RING = [...BORDER, [1030, 690], [1030, 20]];
+  REGION_RINGS = Object.fromEntries((Object.keys(CLASSIC_REGION_RINGS) as RegionId[]).map((r) => [r, CLASSIC_REGION_RINGS[r].map(warpPt)])) as Record<RegionId, Pt[]>;
+  REGION_LABEL_AT = Object.fromEntries((Object.keys(CLASSIC_REGION_LABEL_AT) as RegionId[]).map((r) => [r, warpPt(CLASSIC_REGION_LABEL_AT[r])])) as Record<RegionId, Pt>;
+  URBAN = CITIES.map((c, i) => ({ name: c.name, d: ringPath(blobRing(c.x, c.y, cityRadius(c.pop), mix(700 + i), 11, 0.2, 0.5)) }));
+
+  buildTransport();
+  OFF_MAP_EXITS = buildExits();
+  buildSitePos();
+
+  HARBOURS = CLASSIC_HARBOURS.map(([at, d]) => shiftPath(d, ...moved(at))).join('');
+  RUNWAYS = CLASSIC_RUNWAYS.map((r) => {
+    const [x, y] = warp(r.x, r.y);
+    return { ...r, x, y };
+  });
+  PITS = CLASSIC_PITS.map(([x, y, r]) => {
+    const [wx, wy] = warp(x, y);
+    return [wx, wy, r];
+  });
+  DANGER_AREAS = CLASSIC_DANGER.map((d) => ({ ...d, label: tr(d.label), d: shiftPath(d.d, ...moved(d.at)), at: warpPt(d.at) }));
+  SALT_PANS = shiftPath(CLASSIC_SALT_PANS, ...moved([462, 62]));
+  PIPELINE = shiftPath(CLASSIC_PIPELINE, ...moved([130, 308]));
+  GEO_LABELS = CLASSIC_LABELS.map((l) => ({ ...l, text: tr(l.text), at: l.kind === 'nation' ? l.at : warpPt(l.at) }));
+
+  geoCache = null;
+  reliefCache = null;
+  reliefJob = null;
+}
+
+rebuildGeography();
+onWorldChange(rebuildGeography);

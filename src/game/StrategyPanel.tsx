@@ -5,6 +5,7 @@ import type { SimState } from '../sim/types';
 import { Bar, Btn, Chip } from '../ui/kit';
 import { money, textToneFor } from '../ui/format';
 import { dateLabel } from './useSim';
+import { tr } from '../sim/worldgen';
 
 export function Decisions({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   if (!state.strategy.decisions.length) return null;
@@ -12,16 +13,16 @@ export function Decisions({ state, act }: { state: SimState; act: (a: SimAction)
     <div className="space-y-2">
       {state.strategy.decisions.map((d) => (
         <article key={d.id} className="rounded border border-ops-amber/50 bg-ops-amber/5 p-3 text-[11px]">
-          <h3 className="font-sans text-[15px] font-semibold text-white">{d.title}</h3>
-          <p className="text-ops-text">{d.body}</p>
+          <h3 className="font-sans text-[15px] font-semibold text-white">{tr(d.title)}</h3>
+          <p className="text-ops-text">{tr(d.body)}</p>
           <div className="mt-2 space-y-1">
             {d.options.map((o) => (
               <button key={o.id} type="button" className="btn w-full flex-col items-start gap-0 py-1.5 text-left normal-case tracking-normal" onClick={() => act({ type: 'decide', decision: d.id, option: o.id })}>
                 <span className="text-[12px] text-white">
-                  {o.label}
+                  {tr(o.label)}
                   {o.id === d.fallback && <span className="ml-2 text-[10px] text-ops-dim">(default at month end)</span>}
                 </span>
-                <span className="text-[10px] text-ops-dim">{o.detail}</span>
+                <span className="text-[10px] text-ops-dim">{tr(o.detail)}</span>
               </button>
             ))}
           </div>

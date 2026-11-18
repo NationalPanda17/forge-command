@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { loadScores } from './scores';
+import { makeSpec } from '../sim/worldgen';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
@@ -39,14 +40,16 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [seed, setSeed] = useState(() => String(Math.floor(Math.random() * 1e6)));
   const [rules, setRules] = useState<Settings>(SANDBOX_SETTINGS);
   const [extra, setExtra] = useState({ treasury: 0, appropriation: 0 });
+  const [mapKind, setMapKind] = useState<'classic' | 'new'>('new');
+  const world = mapKind === 'new' ? seedFrom(seed || '0') : null;
   const scores = loadScores().slice(0, 5);
   const [slots, setSlots] = useState(listSlots);
   const begin = () => {
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
     if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true })));
-    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra })));
-    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12 })));
+    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world })));
+    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world })));
   };
   const rule = (k: 'inflation' | 'seasons' | 'crises' | 'endless' | 'dismissal', label: string) => (
     <label className="flex items-center gap-2">
@@ -133,6 +136,34 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 You are Director of the Munitions Production Board of the Commonwealth of Aldmere. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
                 air-defense batteries and a demilitarization yard, all tied together by rail, road, sea and air. Keep the rounds flowing.
               </p>
+              <div>
+                <div className="label mb-1">Map</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Segmented<'classic' | 'new'>
+                    label="Map"
+                    value={mapKind}
+                    onChange={setMapKind}
+                    options={[
+                      { id: 'new', label: 'A new country' },
+                      { id: 'classic', label: 'Classic Aldmere' },
+                    ]}
+                  />
+                  {world !== null && (
+                    <Btn onClick={() => setSeed(String(Math.floor(Math.random() * 1e6)))} title="Draw another country">
+                      Another
+                    </Btn>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] text-ops-dim">
+                  {world !== null ? (
+                    <>
+                      You will run the industry of the <span className="text-ops-text">{makeSpec(world).title}</span>: a coastline, mountains, cities, sites and names of its own, from seed {seed || '0'}.
+                    </>
+                  ) : (
+                    'The hand-made Commonwealth of Aldmere, the same every time.'
+                  )}
+                </p>
+              </div>
               {scenarioPicker}
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>

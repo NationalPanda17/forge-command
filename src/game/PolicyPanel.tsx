@@ -7,6 +7,7 @@ import { FINISHED, MATERIALS, type LineId } from '../sim/world';
 import { Bar, Btn, Segmented } from '../ui/kit';
 import { money } from '../ui/format';
 import { dateLabel } from './useSim';
+import { tr } from '../sim/worldgen';
 
 export default function PolicyPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   const lines = (FINISHED as LineId[]).filter((l) => state.lines[l].unlocked);
@@ -71,7 +72,7 @@ export default function PolicyPanel({ state, act }: { state: SimState; act: (a: 
             return (
               <li key={id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded border p-2 ${on ? 'border-ops-cyan/60 bg-ops-cyan/5' : 'border-ops-line/60'}`}>
                 <span className="min-w-0">
-                  <span className={on ? 'text-ops-cyan' : 'text-white'}>{p.name}</span>
+                  <span className={on ? 'text-ops-cyan' : 'text-white'}>{tr(p.name)}</span>
                   <span className="block text-[10px] text-ops-green">+ {p.pro}</span>
                   <span className="block text-[10px] text-ops-amber">− {p.con}</span>
                 </span>

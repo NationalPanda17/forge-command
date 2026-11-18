@@ -55,6 +55,12 @@ manoeuvring warheads, decoys, heavier barrages and armour. Intel warns you, and 
 research. Multi-year programmes, standing policies and a second term make choices last. An advisor suggests the next
 best move, and most numbers explain themselves.
 
+## A new country every game
+
+Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
+cities and names, with the same supply chain underneath. The hand-made Commonwealth of Aldmere is still there for
+anyone who wants it, and the story is set there.
+
 ## Your own industry, and a story
 
 Found plants on open plots, bring parts in-house at your arsenals, and choose each round's design. Play the

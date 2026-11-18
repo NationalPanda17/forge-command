@@ -9,7 +9,8 @@ import { active } from './director';
 for (const mode of ['hands-off', 'active'] as const) {
   for (const difficulty of ['easy', 'normal', 'hard'] as const) {
     for (const seed of [1, 2, 3]) {
-      let s = openCampaign(newSim({ seed, difficulty, months: 48 }));
+      // WORLDS=1 plays every campaign on a generated world instead of the classic map.
+      let s = openCampaign(newSim({ seed, difficulty, months: 48, world: process.env.WORLDS ? seed * 7919 + 17 : null }));
       while (!s.over) {
         if (mode === 'active') {
           for (const a of active(s)) s = apply(s, a);

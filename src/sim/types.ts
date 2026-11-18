@@ -310,6 +310,8 @@ export interface SimState {
   design: { line: LineId; variant: VariantId; days: number } | null;
   /** The story campaign, when playing it. */
   story: StoryState | null;
+  /** The generated world's seed, or null for the classic Commonwealth of Aldmere. */
+  world: number | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;
