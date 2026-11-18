@@ -1,14 +1,23 @@
 // Operational map of the Commonwealth of Aldmere: static geography, transport network, sites, shipments.
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef } from '../../sim/world';
+import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef, type SiteKind } from '../../sim/world';
 import * as G from './geo';
 import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
 import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
 
 // ---------- Public types ----------
 
-export interface MapMarker { tone?: 'ok' | 'warn' | 'bad' | 'idle'; badge?: string; pulse?: boolean }
+export interface MapMarker {
+  tone?: 'ok' | 'warn' | 'bad' | 'idle';
+  badge?: string;
+  pulse?: boolean;
+  /** Not drawn at all. */
+  hidden?: boolean;
+  /** Overrides for sites that change (a plant founded on a plot). */
+  kind?: SiteKind;
+  name?: string;
+}
 export interface MapShipment {
   id: number;
   /** Site ids along the way. */
@@ -164,18 +173,14 @@ const Defs = memo(function Defs({ uid }: { uid: string }) {
       <pattern id={`${uid}-ice`} width={14} height={14} patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
         <path d="M0 3L6 4L9 0M3 14L7 9L14 10" stroke="rgba(245, 250, 255, 0.35)" strokeWidth={0.5} fill="none" />
       </pattern>
-      <mask id={`${uid}-sea`}>
-        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="#fff" />
-        <path d={geo.land} fill="#000" />
-      </mask>
+      <clipPath id={`${uid}-seaclip`}>
+        <path d={`M${G.FRAME.x0} ${G.FRAME.y0}H${G.FRAME.x1}V${G.FRAME.y1}H${G.FRAME.x0}Z${geo.land}`} clipRule="evenodd" />
+      </clipPath>
       <linearGradient id={`${uid}-northgrad`} x1="0" y1={G.FRAME.y0} x2="0" y2={290} gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#fff" stopOpacity={1} />
-        <stop offset="55%" stopColor="#fff" stopOpacity={0.55} />
-        <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+        <stop offset="0%" stopColor="rgb(235, 244, 255)" stopOpacity={0.2} />
+        <stop offset="55%" stopColor="rgb(235, 244, 255)" stopOpacity={0.1} />
+        <stop offset="100%" stopColor="rgb(235, 244, 255)" stopOpacity={0} />
       </linearGradient>
-      <mask id={`${uid}-northfade`}>
-        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={`url(#${uid}-northgrad)`} />
-      </mask>
       <radialGradient id={`${uid}-lights`}>
         <stop offset="0%" stopColor="#ffd38a" stopOpacity={0.75} />
         <stop offset="35%" stopColor="#ffb347" stopOpacity={0.3} />
@@ -524,12 +529,13 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
   const k = 1 / S;
   const m = markerPx(S);
   const h = m / 2;
-  const order = SITES.slice().sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
+  const order = SITES.filter((s) => !markers[s.id]?.hidden).sort((a, b) => (a.id === selected ? 1 : b.id === selected ? -1 : 0));
   return (
     <g>
       {/* Leaders from where a site really is to where its marker was moved to keep it clear of its neighbours. */}
       <g pointerEvents="none">
         {SITES.map((s) => {
+          if (markers[s.id]?.hidden) return null;
           const d = spread[s.id];
           if (!d || Math.hypot(d[0], d[1]) < h * 0.6) return null;
           const [x, y] = G.SITE_POS[s.id];
@@ -558,7 +564,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
             transform={`translate(${x} ${y}) scale(${k})`}
             tabIndex={0}
             role="button"
-            aria-label={`${s.name}, ${KIND_LABEL[s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
+            aria-label={`${mk?.name ?? s.name}, ${KIND_LABEL[mk?.kind ?? s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
             aria-pressed={sel}
             onClick={(e) => onActivate(s.id, e)}
             onKeyDown={(e) => {
@@ -589,7 +595,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
               )}
               {body}
             </g>
-            <SiteIcon kind={s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
+            <SiteIcon kind={mk?.kind ?? s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
             {mk?.badge && (
               <g transform={`translate(${h - 2} ${-h - 3})`}>
                 <rect x={0} y={-6.5} width={8 + mk.badge.length * 5.6} height={13} rx={6.5} fill={col} stroke="rgba(6, 11, 20, 0.9)" strokeWidth={1.2} />
@@ -604,6 +610,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
       <g pointerEvents="none">
         {Object.entries(labelIds).map(([id, p]) => {
           const s = SITE_BY_ID[id];
+          const mk = markers[id];
           const [mx, my] = markerAt(id, S, spread);
           const x = mx * k;
           const y = my * k;
@@ -621,11 +628,11 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
                 />
               )}
               <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={SITE_FONT} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
-                {s.name}
+                {mk?.name ?? s.name}
               </text>
               {hot && (
                 <text x={p.x} y={p.y + SITE_SUB_GAP} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={SITE_SUB_FONT} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
-                  {kindLine(id)}
+                  {kindLine(id, mk?.kind)}
                 </text>
               )}
             </g>
@@ -777,13 +784,13 @@ const WeatherLayer = memo(function WeatherLayer({ uid, weather }: { uid: string;
   if (weather === 'snow')
     return (
       <g pointerEvents="none">
-        {/* Snow lies thickest in the far north and thins out southwards. */}
-        <g clipPath={`url(#${uid}-land)`} mask={`url(#${uid}-northfade)`}>
-          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill="rgba(235, 244, 255, 0.16)" />
-          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill={`url(#${uid}-snow)`} />
+        {/* Snow lies thickest in the far north and thins out southwards. Gradients and clips only: masks are slow to draw. */}
+        <g clipPath={`url(#${uid}-land)`}>
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={300} fill={`url(#${uid}-northgrad)`} />
+          <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={170} fill={`url(#${uid}-snow)`} />
         </g>
         {/* Sea ice along the northern coast. */}
-        <g mask={`url(#${uid}-sea)`}>
+        <g clipPath={`url(#${uid}-seaclip)`}>
           <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill="rgba(220, 236, 250, 0.2)" />
           <path d="M120 -10H800V40Q640 58 470 52T120 40Z" fill={`url(#${uid}-ice)`} />
         </g>
@@ -1223,12 +1230,17 @@ export default function MapView(props: MapViewProps): JSX.Element {
     if (!layers.labels) return hot;
     if (lodSettled < 1) return hot;
     const rank = (s: SiteDef) => (s.owner === 'state' ? (s.kind === 'arsenal' ? 0 : s.kind === 'depot' ? 1 : 2) : 3);
-    const rest = SITES.filter((s) => !hot.includes(s.id)).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
+    const rest = SITES.filter((s) => !hot.includes(s.id) && !markers[s.id]?.hidden).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
     return [...hot, ...rest];
-  }, [selected, focused, hovered, layers.labels, lodSettled]);
+  }, [selected, focused, hovered, layers.labels, lodSettled, markers]);
   const hotIds = useMemo(() => [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]), [selected, focused, hovered]);
   const badgeSig = SITES.map((s) => markers[s.id]?.badge ?? '').join('|');
-  const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge]))), [settledS, badgeSig]);
+  const hiddenSig = SITES.filter((s) => markers[s.id]?.hidden).map((s) => s.id).join(',');
+  const hidden = useMemo(() => new Set(hiddenSig ? hiddenSig.split(',') : []), [hiddenSig]);
+  const nameSig = SITES.map((s) => `${markers[s.id]?.name ?? ''}:${markers[s.id]?.kind ?? ''}`).join('|');
+  // Labels are laid out for the settled zoom; markers are spaced at the live zoom every frame, so they never touch.
+  const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden), [settledS, badgeSig, hidden]);
+  const liveSpread = useMemo(() => (S === settledS ? spread : spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden)), [S, settledS, spread, badgeSig, hidden]);
   const placement = useMemo(
     () =>
       layoutMap({
@@ -1241,8 +1253,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
         selected,
         badges: Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])),
         spread,
+        hidden,
+        names: Object.fromEntries(SITES.filter((s) => markers[s.id]?.name).map((s) => [s.id, markers[s.id]!.name!])),
+        kinds: Object.fromEntries(SITES.filter((s) => markers[s.id]?.kind).map((s) => [s.id, markers[s.id]!.kind!])),
       }),
-    [settledS, lodSettled, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady],
+    [settledS, lodSettled, layers.labels, layers.regions, labelOrder, hotIds, selected, badgeSig, spread, fontsReady, hidden, nameSig],
   );
 
   const netSig = network ? `${network.built.join(',')}|${Object.entries(network.upgrades).map(([k, v]) => `${k}=${v}`).join(',')}|${network.building.join(',')}|${network.upgrading.join(',')}` : '';
@@ -1296,11 +1311,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
             <g pointerEvents="none" style={dragging || zooming ? { display: 'none' } : undefined}>
               {ripples.map((r) => {
                 if (!G.SITE_POS[r.site]) return null;
-                const [x, y] = markerAt(r.site, S, spread);
+                const [x, y] = markerAt(r.site, S, liveSpread);
                 return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
               })}
             </g>
-            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={spread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={liveSpread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
           </g>
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>

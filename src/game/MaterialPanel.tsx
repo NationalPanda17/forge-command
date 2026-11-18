@@ -42,7 +42,7 @@ function Tree({ m, mult, depth, onMaterial }: { m: MaterialId; mult: number; dep
 
 export default function MaterialPanel({ state, material, onMaterial, onSite }: { state: SimState; material: MaterialId; onMaterial: (m: MaterialId) => void; onSite: (id: string) => void }) {
   const def = MATERIALS[material];
-  const makers = SITES.filter((x) => x.processes.some((p) => RECIPES[p.recipe].output === material || RECIPES[p.recipe].extra?.[material]));
+  const makers = SITES.filter((x) => state.sites[x.id].processes.some((p) => RECIPES[p.recipe].output === material || RECIPES[p.recipe].extra?.[material]));
   const users = Object.values(RECIPES).filter((r) => r.inputs[material]);
   const held = Object.values(state.sites).reduce((a, s) => a + (isLine(material) ? lotQty(s.lots[material]) : s.stock[material] ?? 0), 0);
   const moving = state.shipments.filter((sh) => sh.material === material).reduce((a, sh) => a + sh.qty, 0);

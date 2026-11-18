@@ -1,4 +1,6 @@
-import type { LineId, MaterialId, RegionId } from './world';
+import type { LineId, MaterialId, RegionId, SiteKind } from './world';
+import type { VariantId } from './industry';
+import type { StoryState } from './story';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 import type { RivalState } from './rival';
 import type { PolicyId, Programme } from './commitments';
@@ -74,6 +76,9 @@ export interface SiteState {
   safety: number;
   /** Your sites: apprentices taken on each month. */
   apprentices: number;
+  /** Founded plants: what kind of plant now stands on the plot, and its name. */
+  plantKind?: SiteKind;
+  plantName?: string;
 }
 
 /** Something the player is building. */
@@ -109,6 +114,8 @@ export interface Headline {
 export interface NewsEdition {
   month: number;
   headlines: Headline[];
+  /** A special edition's title. */
+  special?: string;
 }
 
 export interface Shipment {
@@ -295,6 +302,14 @@ export interface SimState {
   policies: PolicyId[];
   /** Which term as Director this is. */
   term: number;
+  /** In-house lines being fitted out at your arsenals. */
+  inhouse: { site: string; recipe: string; days: number }[];
+  /** The design chosen for each round. */
+  variants: Partial<Record<LineId, VariantId>>;
+  /** A variant being designed. */
+  design: { line: LineId; variant: VariantId; days: number } | null;
+  /** The story campaign, when playing it. */
+  story: StoryState | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

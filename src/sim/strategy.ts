@@ -2,6 +2,7 @@
 import { clamp, pick, rand } from './rng';
 import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
+import { variantInput } from './industry';
 import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
 // ---------- Research ----------
@@ -54,6 +55,17 @@ const NEW_LINE_SITE: Partial<Record<ResearchId, { line: LineId; site: string; cr
 
 /** A recipe's inputs after research. */
 export function recipeInputs(s: SimState, recipe: string): Partial<Record<MaterialId, number>> {
+  return withVariant(s, recipe, baseInputs(s, recipe));
+}
+
+function withVariant(s: SimState, recipe: string, inputs: Partial<Record<MaterialId, number>>): Partial<Record<MaterialId, number>> {
+  if (!s.variants || !Object.keys(s.variants).length) return inputs;
+  const out: Partial<Record<MaterialId, number>> = {};
+  for (const [m, q] of Object.entries(inputs) as [MaterialId, number][]) out[m] = q * variantInput(s, recipe, m);
+  return out;
+}
+
+function baseInputs(s: SimState, recipe: string): Partial<Record<MaterialId, number>> {
   const rec = RECIPES[recipe];
   const out: Partial<Record<MaterialId, number>> = { ...rec.inputs };
   const scale = (m: MaterialId, f: number) => {

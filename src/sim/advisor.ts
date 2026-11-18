@@ -93,7 +93,7 @@ export function advise(s: SimState, limit = 6): Advice[] {
   }
 
   // Your plants and people.
-  for (const def of SITES.filter((d) => d.owner === 'state' && d.crew > 0 && d.processes.length)) {
+  for (const def of SITES.filter((d) => d.owner === 'state' && (d.crew > 0 || s.sites[d.id].extraCrew > 0) && s.sites[d.id].processes.length && s.sites[d.id].status !== 'closed')) {
     const site = s.sites[def.id];
     const training = site.trainees.reduce((a, t) => a + t.count, 0);
     const short = Math.ceil(crewNeed(site) - site.workers - training);

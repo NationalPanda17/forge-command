@@ -2,6 +2,8 @@
 import { useRef, useState } from 'react';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { loadScores } from './scores';
+import { deleteSlot, listSlots, loadSlot } from './saves';
+import { DisplayOptions } from './Options';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { openCampaign } from '../sim/tick';
 import type { Difficulty, ScenarioId, Settings, SimState } from '../sim/types';
@@ -16,9 +18,10 @@ const DIFF: Record<Difficulty, string> = {
   hard: 'Tight money, and every mistake shows.',
 };
 
-type Mode = 'campaign' | 'sandbox' | 'tutorial';
+type Mode = 'story' | 'campaign' | 'sandbox' | 'tutorial';
 
 const MODES: { id: Mode; name: string; blurb: string }[] = [
+  { id: 'story', name: 'Story', blurb: 'Four chapters, a year each, with the people around you and consequences that carry forward.' },
   { id: 'campaign', name: 'Campaign', blurb: 'A scored term as Director. The Committee judges you, and you can be dismissed.' },
   { id: 'sandbox', name: 'Sandbox', blurb: 'Free play. Set the rules, change them as you go, add money, start crises. No score.' },
   { id: 'tutorial', name: 'Tutorial', blurb: 'A guided first two years on Easy, with no crisis for the first year.' },
@@ -37,9 +40,11 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [rules, setRules] = useState<Settings>(SANDBOX_SETTINGS);
   const [extra, setExtra] = useState({ treasury: 0, appropriation: 0 });
   const scores = loadScores().slice(0, 5);
+  const [slots, setSlots] = useState(listSlots);
   const begin = () => {
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
+    if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true })));
     if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra })));
     onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12 })));
   };
@@ -71,7 +76,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
     </div>
   );
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
+    <div className="fc-zoom mx-auto max-w-3xl space-y-4 p-4">
       <header className="pt-8 text-center">
         <h1 className="font-sans text-5xl font-bold tracking-[0.25em] text-ops-amber">FORGE COMMAND</h1>
         <p className="mt-2 text-[13px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
@@ -79,12 +84,12 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       {saved && !saved.over && (
         <div className="flex justify-center">
           <Btn kind="primary" className="px-4 py-2 text-[12px]" onClick={() => onStart(saved)}>
-            Continue {saved.mode === 'sandbox' ? 'sandbox' : 'campaign'} · {dateLabel(saved.day)}
+            Continue {saved.story ? 'story' : saved.mode === 'sandbox' ? 'sandbox' : 'campaign'} · {dateLabel(saved.day)}
           </Btn>
         </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-3" role="group" aria-label="Game mode">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Game mode">
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -100,9 +105,27 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       </div>
 
       <section className="panel">
-        <div className="panel-title">{mode === 'campaign' ? 'New campaign' : mode === 'sandbox' ? 'New sandbox' : 'Tutorial'}</div>
+        <div className="panel-title">{mode === 'story' ? 'The story' : mode === 'campaign' ? 'New campaign' : mode === 'sandbox' ? 'New sandbox' : 'Tutorial'}</div>
         <div className="space-y-4 p-4 text-[12px]">
-          {mode === 'tutorial' ? (
+          {mode === 'story' ? (
+            <>
+              <p className="text-ops-text">
+                Four years as Director, told in four chapters: inheriting a thin reserve, a rival that starts to move, a workforce that wants a fair deal, and a winter
+                war in the north. Each chapter is briefed by someone you will come to know, sets three goals, and changes what comes next.
+              </p>
+              <div>
+                <div className="label mb-1">Difficulty</div>
+                <div className="flex gap-1">
+                  {(Object.keys(DIFF) as Difficulty[]).map((d) => (
+                    <Btn key={d} pressed={difficulty === d} onClick={() => setDifficulty(d)}>
+                      {d}
+                    </Btn>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-ops-dim">{DIFF[difficulty]}</p>
+              </div>
+            </>
+          ) : mode === 'tutorial' ? (
             <p className="text-ops-text">{SCENARIOS.tutorial.blurb} A coach card walks you through the map, the plan, the markets and the Board, one step at a time.</p>
           ) : (
             <>
@@ -180,11 +203,57 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           )}
           <div className="flex justify-end">
             <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={begin}>
-              {mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : 'Play the tutorial →'}
+              {mode === 'story' ? 'Begin the story →' : mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : 'Play the tutorial →'}
             </Btn>
           </div>
         </div>
       </section>
+      {slots.length > 0 && (
+        <section className="panel">
+          <div className="panel-title">Named saves</div>
+          <ul className="space-y-1 p-4 text-[12px]">
+            {slots.map((x) => (
+              <li key={x.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <span className="min-w-0 truncate">
+                  <span className="text-white">{x.name}</span>{' '}
+                  <span className="text-ops-dim">
+                    · {x.story ? 'story' : x.mode === 'sandbox' ? 'sandbox' : SCENARIOS[x.scenario]?.name ?? x.scenario} · {dateLabel(x.day)} · saved {x.saved}
+                  </span>
+                </span>
+                <span className="flex gap-1">
+                  <Btn
+                    kind="primary"
+                    onClick={() => {
+                      const s = loadSlot(x.name);
+                      if (s) onStart(s);
+                      else setErr('That save could not be read.');
+                    }}
+                  >
+                    Load
+                  </Btn>
+                  <Btn
+                    kind="danger"
+                    onClick={() => {
+                      deleteSlot(x.name);
+                      setSlots(listSlots());
+                    }}
+                  >
+                    Delete
+                  </Btn>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="panel">
+        <div className="panel-title">Display</div>
+        <div className="p-4">
+          <DisplayOptions />
+        </div>
+      </section>
+
       <section className="panel">
         <div className="panel-title">Saves and settings</div>
         <div className="flex flex-wrap items-center gap-2 p-4 text-[12px]">

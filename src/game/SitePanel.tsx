@@ -8,6 +8,8 @@ import { MATERIALS, RECIPES, REGIONS, SITE_BY_ID, type LineId, type MaterialId }
 import { Bar, Btn, Chip, NumberInput, Segmented } from '../ui/kit';
 import { hardenCost } from '../sim/build';
 import PlantView from './PlantView';
+import { FOUNDABLE, FOUNDABLE_IDS, foundCost } from '../sim/industry';
+import { KIND_LABEL } from '../ui/map/icons';
 import { Explain } from '../ui/Explain';
 import { rateWhy } from './explain';
 import { money, qty } from '../ui/format';
@@ -22,6 +24,30 @@ function limitText(l: string | null): { text: string; tone: string } {
   if (l === 'damaged') return { text: 'stopped', tone: 'text-ops-red' };
   if (l === 'demand') return { text: 'no buyers', tone: 'text-ops-dim' };
   return { text: `short of ${MATERIALS[l as MaterialId]?.name.toLowerCase() ?? l}`, tone: 'text-ops-red' };
+}
+
+/** Founding a plant on an open plot. */
+function FoundHere({ state, plot, act }: { state: SimState; plot: string; act: (a: SimAction) => void }) {
+  const [recipe, setRecipe] = useState('motorCasting');
+  const a: SimAction = { type: 'found', plot, recipe };
+  return (
+    <section className="rounded border border-ops-cyan/40 p-2">
+      <div className="label mb-1">Found a plant here</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="input min-w-0 max-w-full py-0.5" value={recipe} onChange={(e) => setRecipe(e.target.value)} aria-label="What to make">
+          {FOUNDABLE_IDS.map((r) => (
+            <option key={r} value={r}>
+              {MATERIALS[RECIPES[r].output].name}
+            </option>
+          ))}
+        </select>
+        <Btn kind="primary" why={validate(state, a)} onClick={() => act(a)}>
+          Found · {money(foundCost(state, recipe))}
+        </Btn>
+      </div>
+      <p className="mt-1 text-[10px] text-ops-dim">About a year to build, with its own rail spur. It needs {FOUNDABLE[recipe].crew} people once built.</p>
+    </section>
+  );
 }
 
 export default function SitePanel({ state, siteId, act, onMaterial }: { state: SimState; siteId: string; act: (a: SimAction) => void; onMaterial: (m: MaterialId) => void }) {
@@ -45,15 +71,16 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
     <div className="space-y-3 p-3 text-[11px]">
       <header>
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-sans text-[18px] font-semibold text-white">{def.name}</h2>
+          <h2 className="font-sans text-[18px] font-semibold text-white">{site.plantName ?? def.name}</h2>
           <Chip tone={mine ? 'border-ops-amber/60 text-ops-amber' : def.owner === 'foreign' ? 'border-ops-violet/60 text-ops-violet' : 'border-ops-line text-ops-dim'}>{OWNER[def.owner]}</Chip>
         </div>
         <div className="text-[10px] text-ops-dim">
-          {def.nation ?? REGIONS[def.region].name} · {def.kind}
+          {def.nation ?? REGIONS[def.region].name} · {KIND_LABEL[site.plantKind ?? def.kind].toLowerCase()}
         </div>
         <p className="mt-1 text-ops-text">{def.blurb}</p>
         <div className="mt-1 flex flex-wrap gap-1">
-          {site.status !== 'active' && <Chip tone="border-ops-red/60 text-ops-red">{site.status}</Chip>}
+          {site.status !== 'active' && def.kind !== 'plot' && <Chip tone="border-ops-red/60 text-ops-red">{site.status}</Chip>}
+          {def.kind === 'plot' && site.status === 'building' && <Chip tone="border-ops-amber/60 text-ops-amber">building · {site.repairDays} d</Chip>}
           {site.disruptionDays > 0 && <Chip tone="border-ops-red/60 text-ops-red">disrupted {Math.round(site.disruptionFactor * 100)}% · {site.disruptionDays} d</Chip>}
           {site.embargoDays > 0 && <Chip tone="border-ops-red/60 text-ops-red">export ban · {site.embargoDays} d</Chip>}
           {!mine && !site.qualified && <Chip>{site.qualifyingDays !== null ? `qualifying · ${site.qualifyingDays} d` : 'not qualified'}</Chip>}
@@ -61,7 +88,9 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
         </div>
       </header>
 
-      {(mine || def.owner === 'private') && def.processes.length > 0 && (
+      {def.kind === 'plot' && site.processes.length === 0 && <FoundHere state={state} plot={siteId} act={act} />}
+
+      {(mine || def.owner === 'private') && site.processes.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div>
             <div className="label">Condition</div>
@@ -151,7 +180,7 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
         </section>
       )}
 
-      {mine && def.processes.length > 0 && (
+      {mine && site.processes.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           <NumberInput value={hire} onChange={setHire} label="Workers to hire" />
           <Btn why={why({ type: 'hire', site: siteId, count: hire })} onClick={() => act({ type: 'hire', site: siteId, count: hire })} title="Trainees count after 90 days">

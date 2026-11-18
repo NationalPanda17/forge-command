@@ -8,6 +8,7 @@ import type { Difficulty, Lot, MonthReport, ScenarioId, Settings, SimState, Site
 import { PEOPLE_START } from './people';
 import { setNetwork } from './graph';
 import { newRival } from './rival';
+import { newStory } from './story';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -21,6 +22,8 @@ export interface SimOptions {
   money?: { treasury?: number; appropriation?: number };
   /** Campaign (scored) or sandbox (free play). */
   mode?: 'campaign' | 'sandbox';
+  /** Play the four-chapter story. */
+  story?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false, dismissal: true };
@@ -58,6 +61,14 @@ export function migrate(s: SimState): SimState {
   s.programmes ??= [];
   s.policies ??= [];
   s.term ??= 1;
+  s.inhouse ??= [];
+  s.variants ??= {};
+  s.design ??= null;
+  s.story ??= null;
+  for (const def of SITES) {
+    // Saves from before plots existed: add the new open plots, closed until founded.
+    if (!s.sites[def.id]) s.sites[def.id] = blankSite(def.id);
+  }
   delete (s as { challenge?: unknown }).challenge;
   for (const site of Object.values(s.sites)) {
     site.skill ??= PEOPLE_START.skill;
@@ -113,7 +124,17 @@ function legacyLots(s: { rng: number }, line: LineId, qty: number, old = false):
   return lots.sort((a, b) => a.made - b.made);
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign' }: SimOptions): SimState {
+/** A site with nothing on it: used for open plots in older saves. */
+function blankSite(id: string): SiteState {
+  return { id, status: 'closed', condition: 100, repairDays: 0, processes: [], stock: {}, lots: {}, unserviceable: {}, workers: 0, trainees: [], extraCrew: 0, health: 100, qualified: true, qualifyingDays: null, embargoDays: 0, disruptionDays: 0, disruptionFactor: 1, ...PEOPLE_START };
+}
+
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false }: SimOptions): SimState {
+  if (story) {
+    scenario = 'standard';
+    months = 48;
+    mode = 'campaign';
+  }
   const rules: Settings = { ...(mode === 'sandbox' ? SANDBOX_SETTINGS : DEFAULT_SETTINGS), ...(settings ?? {}) };
   if (scenario === 'tutorial') {
     difficulty = 'easy';
@@ -166,6 +187,10 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     programmes: [],
     policies: [],
     term: 1,
+    inhouse: [],
+    variants: {},
+    design: null,
+    story: null,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -182,7 +207,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   for (const def of SITES) {
     const site: SiteState = {
       id: def.id,
-      status: 'active',
+      status: def.kind === 'plot' ? 'closed' : 'active',
       condition: def.owner === 'state' ? 85 : Math.round(70 + rand(state) * 25),
       repairDays: 0,
       processes: def.processes.map((p) => ({
@@ -265,6 +290,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   }
   if (!rules.crises && state.crisis) state.crisis = null;
   state.rival = newRival(state);
+  if (story) state.story = newStory(0);
   // The tutorial keeps the rival quiet for its first year.
   if (scenario === 'tutorial') state.rival.next = 420;
   setNetwork([], {});

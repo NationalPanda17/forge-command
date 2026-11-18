@@ -1,4 +1,4 @@
-# Forge Command 5.0: design
+# Forge Command 6.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -122,6 +122,34 @@ Physical figures follow public reference data where it exists, and are best gues
   - Pay deals add 7 to 15; refusals take away 10.
 - **Fatigue:** +0.35 a day on round-the-clock shifts, −0.25 on two shifts, and −0.4 on one shift or idle.
 - **Accidents:** daily odds of 0.00025 × events × (1 + fatigue/35) × (1.6 − condition) × (1 − 0.25 × safety).
+
+## Your own industry (`industry.ts`)
+- **Open plots:** five `kind: 'plot'` sites, closed and hidden until founded.
+  - Founding sets the plot's single line from eleven `FOUNDABLE` recipes, at half of today's need for its output.
+  - Building takes 360 days. It costs about 0.65 of a year's output value at today's prices.
+  - It lays the plot's rail spur (`plot-<id>` in `CANDIDATE_ROUTES`) and adds the crew it needs.
+- **In-house lines:** an arsenal gains the same kind of line for 0.8 of the cost. It sits at zero for 240 days while
+  being fitted out, then ramps up.
+- **Variants:** Extended-range, Lean build and Long-life change a round's bill of materials (`recipeInputs`), kill
+  odds (in the fight) and shelf life (new lots). A new design takes 120 days, one at a time.
+
+## Story (`story.ts`)
+- **Structure:** four 360-day chapters, each with a speaker, a briefing written from earlier results, three goals
+  checked on its last day, and an `open` step.
+- **What the `open` steps do:**
+  - budget ±5% after chapter one;
+  - the rival is brought forward in chapter two;
+  - a pay dispute and regional goodwill in chapter three;
+  - a northern crisis, with lower morale if chapter three missed its morale goal, in chapter four.
+- **Counting:** qualifications, awards, strikes and new plants are counted from each day's feed.
+- **Records:** each chapter's result is kept, confidence moves ±3 per goal against the middle, and a special Courier
+  edition is printed. The epilogue depends on the total goals met.
+
+## Accessibility
+- **Display:** preferences set `data-palette`, `data-text` and the `rm` class on `<html>`.
+  - The colour-blind palette redefines the status colour variables (Okabe–Ito).
+  - Text size uses `zoom` on `.fc-zoom` containers, never on the map.
+- **Named saves** live under `forge-command-slot:<name>`, with an index in `forge-command-slots`.
 
 ## The rival (`rival.ts`)
 - **Order:** six developments are drawn into a seed-dependent order at the start. Intel reports one every 180–270

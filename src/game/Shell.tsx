@@ -6,6 +6,11 @@ import BuildPanel from './BuildPanel';
 import NewsPanel from './NewsPanel';
 import SandboxPanel from './SandboxPanel';
 import IntelPanel from './IntelPanel';
+import IndustryPanel from './IndustryPanel';
+import StoryPanel, { Briefing } from './StoryPanel';
+import { KeyboardHelp } from './Options';
+import { saveSlot } from './saves';
+import { isFounded } from '../sim/industry';
 import PolicyPanel from './PolicyPanel';
 import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
@@ -31,7 +36,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -39,6 +44,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'material', label: 'Materials' },
   { id: 'markets', label: 'Markets' },
   { id: 'build', label: 'Build' },
+  { id: 'industry', label: 'Industry' },
   { id: 'intel', label: 'Intel' },
   { id: 'policy', label: 'Policy' },
   { id: 'stockpile', label: 'Stockpile' },
@@ -52,7 +58,7 @@ const PANELS: { id: PanelId; label: string }[] = [
 ];
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
 
-function markersFor(s: SimState): Record<string, MapMarker> {
+function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> {
   const out: Record<string, MapMarker> = {};
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
@@ -65,6 +71,15 @@ function markersFor(s: SimState): Record<string, MapMarker> {
     if (def.owner !== 'state' && !site.qualified && site.processes.length) badge = '?';
     const unserv = Object.values(site.unserviceable).reduce((a, q) => a + (q ?? 0), 0);
     if (unserv >= 1) badge = '!';
+    if (def.kind === 'plot') {
+      // Open plots show only while you are planning; a founded plant shows as what it now is.
+      if (!isFounded(s, site.id)) {
+        out[site.id] = { tone: 'idle', hidden: !showPlots };
+        continue;
+      }
+      out[site.id] = { tone: site.status === 'building' ? 'idle' : tone, kind: site.plantKind, name: site.plantName };
+      continue;
+    }
     out[site.id] = { tone, badge, pulse: s.crisis?.phase === 'active' && def.region === s.crisis.region && (def.kind === 'adBase' || def.kind === 'airBase' || def.kind === 'artillery') };
   }
   return out;
@@ -80,15 +95,35 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === ' ') {
         e.preventDefault();
         setSpeed(speed === 0 ? lastSpeed.current : 0);
       } else if (['1', '2', '3', '4'].includes(e.key)) setSpeed(([1, 2, 4, 8] as Speed[])[Number(e.key) - 1]);
+      else if (e.key === '[' || e.key === ']') {
+        const ids = tabsRef.current.map((t) => t.id);
+        const i = ids.indexOf(panelRef.current);
+        setPanel(ids[(i + (e.key === ']' ? 1 : ids.length - 1)) % ids.length]);
+      } else if (e.key === '?') setHelp((h) => !h);
+      else if (e.key === 'm' || e.key === 'M') document.querySelector<HTMLElement>('[role="region"][aria-label^="Map of"]')?.focus();
+      else if (e.key === 'Escape') setHelp(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [speed, setSpeed]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
+  const [help, setHelp] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const tabs = [...(state.story ? [{ id: 'story' as PanelId, label: 'Story' }] : []), ...(state.mode === 'sandbox' ? [{ id: 'sandbox' as PanelId, label: 'Sandbox' }] : []), ...PANELS];
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const panelRef = useRef(panel);
+  panelRef.current = panel;
+  // A chapter briefing stops the clock until it is read.
+  useEffect(() => {
+    if (state.story?.briefing !== null && state.story?.briefing !== undefined) setSpeed(0);
+  }, [state.story?.briefing, setSpeed]);
   const lastSpeed = useRef<Speed>(1);
   if (speed > 0) lastSpeed.current = speed;
 
@@ -159,7 +194,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
     [state.feed, state.day],
   );
   const lead = state.news.at(-1)?.headlines[0];
-  const markers = useMemo(() => markersFor(state), [state]);
+  const plansOn = panel === 'build' || panel === 'industry';
+  const markers = useMemo(() => markersFor(state, plansOn), [state, plansOn]);
   const shipments: MapShipment[] = useMemo(
     () =>
       state.shipments.slice(-250).map((sh) => ({
@@ -185,7 +221,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
 
   return (
     <div className="flex min-h-screen flex-col gap-2 p-2">
-      <header className="panel flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2">
+      <a href="#panels" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-ops-panel focus:px-2 focus:py-1">Skip to panels</a>
+      <header className="fc-zoom panel flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2">
         <button type="button" className="font-sans text-lg font-bold tracking-[0.2em] text-ops-amber" onClick={() => onMenu(state)} title="Main menu">
           FORGE COMMAND
         </button>
@@ -248,6 +285,12 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <Btn onClick={() => step(7)} why={speed !== 0 ? 'Pause first' : null} title="Advance one week">
             +7d
           </Btn>
+          <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" pressed={saving !== null}>
+            Save
+          </Btn>
+          <Btn onClick={() => setHelp(true)} title="Keyboard shortcuts and display options (?)">
+            ?
+          </Btn>
           <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
             Sound
           </Btn>
@@ -257,8 +300,33 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         </div>
       </header>
 
+      {saving !== null && (
+        <form
+          className="fc-zoom panel flex flex-wrap items-center gap-2 px-3 py-2 text-[12px]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const why = saveSlot(saving, state);
+            setSaveNote(why ?? `Saved as “${saving.trim()}”.`);
+            if (!why) setSaving(null);
+          }}
+        >
+          <label className="flex items-center gap-2">
+            <span className="label">Save as</span>
+            <input className="input w-56" value={saving} onChange={(e) => setSaving(e.target.value)} autoFocus maxLength={40} />
+          </label>
+          <Btn kind="primary">Save</Btn>
+          <Btn onClick={() => setSaving(null)}>Cancel</Btn>
+        </form>
+      )}
+      {saveNote && (
+        <div role="status" className="fc-zoom panel flex items-center justify-between gap-2 px-3 py-1 text-[12px] text-ops-green">
+          <span>{saveNote}</span>
+          <Btn onClick={() => setSaveNote(null)}>OK</Btn>
+        </div>
+      )}
+
       {lead && (
-        <button type="button" onClick={() => setPanel('news')} className="panel flex min-w-0 items-center gap-2 px-3 py-1 text-left text-[11px] hover:border-ops-dim">
+        <button type="button" onClick={() => setPanel('news')} className="fc-zoom panel flex min-w-0 items-center gap-2 px-3 py-1 text-left text-[11px] hover:border-ops-dim">
           <span className="label shrink-0">Courier</span>
           <span className="min-w-0 truncate text-ops-text">{lead.title}</span>
         </button>
@@ -314,9 +382,9 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             <MapLegend />
           </div>
         </div>
-        <aside className="panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
+        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
           <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 py-1" aria-label="Panels">
-            {(state.mode === 'sandbox' ? [{ id: 'sandbox' as PanelId, label: 'Sandbox' }, ...PANELS] : PANELS).map((p) => (
+            {tabs.map((p) => (
               <button
                 key={p.id}
                 type="button"
@@ -335,6 +403,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
             {panel === 'build' && <BuildPanel state={state} act={act} onHighlight={setHighlight} onSite={select} />}
             {panel === 'news' && <NewsPanel state={state} />}
+            {panel === 'industry' && <IndustryPanel state={state} act={act} onSite={select} onHighlight={setHighlight} />}
+            {panel === 'story' && <StoryPanel state={state} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
@@ -356,9 +426,11 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           </div>
         </aside>
       </div>
-      <footer className="panel max-h-28 overflow-y-auto">
+      <footer className="fc-zoom panel max-h-28 overflow-y-auto">
         <Feed state={state} onSite={select} limit={6} />
       </footer>
+      <Briefing state={state} act={act} />
+      {help && <KeyboardHelp onClose={() => setHelp(false)} />}
       {state.over && !reportClosed && (
         <TermReport
           state={state}

@@ -3,7 +3,7 @@ import { validate, type SimAction } from '../sim/actions';
 import { ICEBREAKER_COST, MAX_UPGRADE, hardenCost, linkCost, linkDays, liveRoutes, projectName, routeCap, upgradeCost, upgradeDays } from '../sim/build';
 import { pathBetween } from '../sim/graph';
 import type { SimState } from '../sim/types';
-import { CANDIDATE_ROUTES, MATERIALS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, routeKm } from '../sim/world';
+import { CANDIDATE_ROUTES, MATERIALS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, isPlotSpur, routeKm } from '../sim/world';
 import { Bar, Btn } from '../ui/kit';
 import { money, pct } from '../ui/format';
 
@@ -54,7 +54,7 @@ export default function BuildPanel({ state, act, onHighlight, onSite }: { state:
       <section>
         <h3 className="label mb-1">New links</h3>
         <ul className="space-y-2">
-          {CANDIDATE_ROUTES.map((c) => {
+          {CANDIDATE_ROUTES.filter((c) => !isPlotSpur(c.id)).map((c) => {
             const built = n.built.includes(c.id);
             const going = n.projects.some((p) => p.kind === 'link' && p.target === c.id);
             const now = pathBetween(c.a, c.b);

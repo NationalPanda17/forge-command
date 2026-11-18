@@ -22,7 +22,7 @@ export function watchList(s: SimState): Watch[] {
   if (s.strategy.decisions.length) out.push({ tone: 'warn', text: `${s.strategy.decisions.length} decision${s.strategy.decisions.length > 1 ? 's' : ''} waiting on the Board tab.`, panel: 'strategy' });
   if (s.crisis) out.push({ tone: s.crisis.phase === 'active' ? 'bad' : 'warn', text: `${s.crisis.name}: ${s.crisis.phase === 'warning' ? 'raise the depot target in' : 'keep feeding'} ${REGIONS[s.crisis.region].name}.`, panel: 'logistics' });
   // Your plants: what is holding them back.
-  for (const def of SITES.filter((x) => x.owner === 'state' && x.processes.length)) {
+  for (const def of SITES.filter((x) => x.owner === 'state' && s.sites[x.id].processes.length && s.sites[x.id].status !== 'closed')) {
     const site = s.sites[def.id];
     for (const p of site.processes) {
       if (p.run === 'idle' || !p.lastLimit || ['capacity', 'idle', 'demand'].includes(p.lastLimit)) continue;
@@ -55,7 +55,7 @@ export function watchList(s: SimState): Watch[] {
     if (r < 0.5) out.push({ tone: 'warn', text: `${MATERIALS[l].name} reserve at ${Math.round(r * 100)}% of the one-year goal.`, material: l });
   }
   // People in your plants.
-  for (const def of SITES.filter((x) => x.owner === 'state' && x.crew > 0 && x.processes.length)) {
+  for (const def of SITES.filter((x) => x.owner === 'state' && (x.crew > 0 || s.sites[x.id].extraCrew > 0) && s.sites[x.id].processes.length && s.sites[x.id].status !== 'closed')) {
     const site = s.sites[def.id];
     if (site.fatigue >= 50) out.push({ tone: 'warn', text: `Crews at ${def.name} are exhausted (fatigue ${Math.round(site.fatigue)}). Ease off the round-the-clock shifts before someone gets hurt.`, site: def.id });
     if (site.morale < 40) out.push({ tone: 'warn', text: `Morale is low at ${def.name} (${Math.round(site.morale)}). A safety programme or a pay deal would help.`, site: def.id });
@@ -210,6 +210,29 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li><b>Export orders</b> bring money and please industry, but are delivered from the central depot and never below half of target. Falling short costs a penalty.</Li>
         <Li><b>Developing situations:</b> pay disputes, suspect parts and mine accidents unfold in stages. What you decide at the first stage shapes the next.</Li>
         <Li><b>In a crisis</b> you get one chance to ask for a supplementary budget.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'industry',
+    title: 'Your own industry',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Open plots:</b> five plots show in the Build and Industry tabs. Found a plant on one to make a part you depend on. It takes about a year, lays its own rail spur, and needs a crew.</Li>
+        <Li><b>In-house lines:</b> fit a new line into one of your arsenals instead: cheaper and quicker, about eight months.</Li>
+        <Li><b>Round designs:</b> Extended-range, Lean build or Long-life, each with a trade-off. A design takes about four months.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'comfort',
+    title: 'Story, saves and display',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>The story:</b> four chapters, a year each. A briefing opens each one with three goals; what you achieve changes the chapters after.</Li>
+        <Li><b>Named saves:</b> the Save button by the clock keeps up to eight games side by side; load them from the title screen.</Li>
+        <Li><b>Display:</b> a colour-blind-safe palette, larger text and reduced motion, under ? or on the title screen.</Li>
+        <Li><b>Keyboard:</b> [ and ] switch tabs, M jumps to the map, ? lists everything.</Li>
       </ul>
     ),
   },

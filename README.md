@@ -55,6 +55,12 @@ manoeuvring warheads, decoys, heavier barrages and armour. Intel warns you, and 
 research. Multi-year programmes, standing policies and a second term make choices last. An advisor suggests the next
 best move, and most numbers explain themselves.
 
+## Your own industry, and a story
+
+Found plants on open plots, bring parts in-house at your arsenals, and choose each round's design. Play the
+four-chapter story with the people around you, or a scored campaign, a sandbox or the tutorial. A colour-blind-safe
+palette, larger text, keyboard shortcuts and named saves come as standard.
+
 ## Real time
 
 The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
@@ -69,6 +75,8 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Build:** links, upgrades, the icebreaker and resilience grants.
 - **Intel:** the rival's weapons, warnings and counters.
 - **Policy:** multi-year programmes and standing policies.
+- **Industry:** open plots, in-house lines and round designs.
+- **Story:** the chapter's goals and how earlier chapters went (story games only).
 - **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.

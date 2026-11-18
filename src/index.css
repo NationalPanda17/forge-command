@@ -82,3 +82,17 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 @media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
 
 html.rm *, html.rm *::before, html.rm *::after { animation: none !important; transition: none !important; }
+
+/* Colour-blind-safe palette (Okabe–Ito): every status colour stays distinct under the common colour-vision deficiencies. */
+html[data-palette='cb'] {
+  --ops-green: 0 158 115;
+  --ops-red: 213 94 0;
+  --ops-amber: 240 228 66;
+  --ops-cyan: 86 180 233;
+  --ops-blue: 0 114 178;
+  --ops-violet: 204 121 167;
+}
+
+/* Larger text for panels, headers and dialogs. The map keeps its own sizing so its labels stay collision-free. */
+html[data-text='large'] .fc-zoom { zoom: 1.15; }
+html[data-text='larger'] .fc-zoom { zoom: 1.3; }

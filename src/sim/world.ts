@@ -206,7 +206,7 @@ export type SiteKind =
   | 'mine' | 'quarry' | 'well' | 'forestry'
   | 'steelworks' | 'smelter' | 'refinery' | 'chemical' | 'explosives' | 'fab'
   | 'components' | 'motors' | 'arsenal' | 'testRange' | 'depot' | 'adBase' | 'artillery' | 'airBase'
-  | 'port' | 'airfield' | 'demil' | 'foreign';
+  | 'port' | 'airfield' | 'demil' | 'foreign' | 'plot';
 export type RegionId = 'north' | 'coast' | 'east' | 'isles' | 'central';
 export type Owner = 'state' | 'private' | 'foreign';
 
@@ -299,6 +299,12 @@ export const SITES: SiteDef[] = [
   s({ id: 'portLowmouth', name: 'Port of Lowmouth', kind: 'port', x: 335, y: 625, region: 'coast', owner: 'state', processes: [], crew: 0, blurb: 'Southern port, facing the open ocean.' }),
   s({ id: 'portSkerry', name: 'Skerry Harbour', kind: 'port', x: 125, y: 600, region: 'isles', owner: 'state', processes: [], crew: 0, blurb: 'Small island harbour.' }),
   s({ id: 'corranAirHub', name: 'Corran Air Logistics Hub', kind: 'airfield', x: 470, y: 265, region: 'central', owner: 'state', processes: [], crew: 0, blurb: 'Military airlift hub. Fast, but small and expensive.' }),
+  // Open plots: land you can build a plant on, each with a rail spur waiting to be laid.
+  s({ id: 'plotHalden', name: 'Halden Vale plot', kind: 'plot', x: 290, y: 330, region: 'central', owner: 'state', processes: [], crew: 0, blurb: 'Flat ground in the Halden vale, a short spur from the microwave works.' }),
+  s({ id: 'plotNorthgate', name: 'Northgate Heath plot', kind: 'plot', x: 450, y: 180, region: 'north', owner: 'state', processes: [], crew: 0, blurb: 'Heathland south of Northgate, close to the arsenal.' }),
+  s({ id: 'plotAshford', name: 'Ashford Fields plot', kind: 'plot', x: 655, y: 385, region: 'east', owner: 'state', processes: [], crew: 0, blurb: 'Old farmland between Ashford and the motor works.' }),
+  s({ id: 'plotRedmarl', name: 'Redmarl Downs plot', kind: 'plot', x: 370, y: 545, region: 'central', owner: 'state', processes: [], crew: 0, blurb: 'Open downland near the smelter and the road to Lowmouth.' }),
+  s({ id: 'plotMarches', name: 'Marches Ridge plot', kind: 'plot', x: 800, y: 255, region: 'east', owner: 'state', processes: [], crew: 0, blurb: 'A ridge near the eastern depot. Close to the border, and to the fighting.' }),
   // Foreign suppliers (reached by sea)
   s({ id: 'karskMetals', name: 'Karsk State Metals', kind: 'foreign', x: 760, y: -45, region: 'north', owner: 'foreign', nation: 'Karsk Federation', processes: [{ recipe: 'aluminaSmelting', share: 0.4 }, { recipe: 'zincSmelting', share: 1.2 }], crew: 0, blurb: 'Cheap gallium and germanium, and a government fond of export controls.' }),
   s({ id: 'sableCircuits', name: 'Sable Circuit Works', kind: 'foreign', x: 300, y: 735, region: 'coast', owner: 'foreign', nation: 'Ostrel Republic', processes: [{ recipe: 'siChipFab', share: 0.8 }, { recipe: 'ganChipFab', share: 0.7 }, { recipe: 'waferFab', share: 0.6 }], crew: 0, blurb: 'High volume, low price, one ocean away.' }),
@@ -411,7 +417,15 @@ export const CANDIDATE_ROUTES: CandidateRoute[] = [
   { ...rail('kestrel', 'tarnSmelter', 900), id: 'tarnCutoff', name: 'Tarn cut-off', blurb: 'A short line from the motor works to the Tarn smelter.' },
   { ...road('depotNorth', 'riverlineBrigade', 500), id: 'riverRoad', name: 'Riverline military road', blurb: 'An all-weather road from Meric Depot to the Riverline guns.' },
   { ...rail('lindellFuze', 'ashfordComplex', 1200), id: 'ashfordDirect', name: 'Corran–Ashford direct', blurb: 'Doubles the busiest corridor in the country.' },
+  // Spurs to the open plots, laid when a plant is founded there.
+  { ...rail('plotHalden', 'haldenMicrowave', 800), id: 'plot-plotHalden', name: 'Halden Vale spur', blurb: 'Serves a new plant in the Halden vale.' },
+  { ...rail('plotNorthgate', 'northgateCenter', 800), id: 'plot-plotNorthgate', name: 'Northgate Heath spur', blurb: 'Serves a new plant on Northgate Heath.' },
+  { ...rail('plotAshford', 'kestrel', 800), id: 'plot-plotAshford', name: 'Ashford Fields spur', blurb: 'Serves a new plant on Ashford Fields.' },
+  { ...rail('plotRedmarl', 'redmarlSmelter', 800), id: 'plot-plotRedmarl', name: 'Redmarl Downs spur', blurb: 'Serves a new plant on Redmarl Downs.' },
+  { ...rail('plotMarches', 'depotEast', 800), id: 'plot-plotMarches', name: 'Marches Ridge spur', blurb: 'Serves a new plant on Marches Ridge.' },
 ];
+/** Spurs that come with a plot rather than being built on their own. */
+export const isPlotSpur = (id: string) => id.startsWith('plot-');
 export const CANDIDATE_BY_ID: Record<string, CandidateRoute> = Object.fromEntries(CANDIDATE_ROUTES.map((c) => [c.id, c]));
 
 export const ROUTE_KEY = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
