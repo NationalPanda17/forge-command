@@ -34,6 +34,10 @@ import { resolveSecurity, securityMonth } from './security';
 import { townsDay, townsMonth } from './towns';
 import { accepted, resolveTesting, testingDay, testingMonth } from './testing';
 import { hotseatMonth } from './hotseat';
+import { banFactor, diplomacyMonth } from './diplomacy';
+import { closeStaleHearing, openHearing, promisesMonth } from './hearings';
+import { cyberDay, cyberMonth, resolveCyber } from './cyber';
+import { unionsMonth, wageOf } from './unions';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -58,7 +62,7 @@ export const DIFF = {
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
 
 // Decision cards from modules that strategy itself loads are registered here, once everything has loaded.
-registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed));
+registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed));
 
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
@@ -562,10 +566,10 @@ function world(s: SimState): void {
     if (def.owner !== 'state' && site.disruptionDays === 0 && rand(s) < (0.025 * eventScale(s) * (hardened ? 0.4 : 1)) / DAYS_PER_MONTH) {
       site.disruptionDays = Math.round(randInt(s, 20, 90) * (hardened ? 0.6 : 1));
       site.disruptionFactor = Math.round(randRange(s, hardened ? 0.5 : 0.2, hardened ? 0.8 : 0.6) * 100) / 100;
-      const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike', 'A cyber attack on the plant network'];
+      const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike'];
       feed(s, 'bad', `${pick(s, kinds)} at ${def.name}: output down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.round(site.disruptionDays / 7)} weeks.`, site.id, true);
     }
-    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * eventScale(s)) / DAYS_PER_MONTH) {
+    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * eventScale(s) * banFactor(s, def.nation)) / DAYS_PER_MONTH) {
       site.embargoDays = randInt(s, 90, 300);
       feed(s, 'bad', `Export ban: the ${def.nation} halts shipments from ${def.name}.`, site.id, true);
     }
@@ -577,7 +581,7 @@ function payDaily(s: SimState): void {
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
     if (def.owner !== 'state' || site.status === 'closed') continue;
-    ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY;
+    ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY * wageOf(s, site.id);
     // A mothballed plant keeps only a caretaker's upkeep; an idle line still pays for power and maintenance.
     const idle = site.mothballed ? 0.05 : 0.3;
     ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? idle : p.run === 'surge' ? 1.35 : 1), 0);
@@ -591,6 +595,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   const ready = readiness(s);
   const before = s.confidence;
   expireDecisions(s, feed);
+  closeStaleHearing(s, feed);
   strategyMonth(s, feed, { readiness: ready, excessLeaks: Math.max(0, fightTotals.leakSeverity - 2.5), burned: s.policy.demilMethod === 'burn' ? s.month.demilled : 0 });
   economyMonth(s, feed);
   livingMonth(s, feed);
@@ -600,8 +605,16 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   securityMonth(s, feed);
   townsMonth(s, feed);
   testingMonth(s, feed);
+  diplomacyMonth(s, feed);
+  cyberMonth(s, feed);
+  unionsMonth(s);
+  promisesMonth(s, feed);
+  // The fiscal year ends in a hearing before the Committee.
+  // No hearing in the term's last month: the Committee will judge you at the end instead.
+  if ((s.history.length + 1) % 12 === 0 && s.day < s.days) openHearing(s, s.appropriation, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
-  const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty];
+  // Each later term, the Committee expects a little more.
+  const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty] + 0.02 * Math.min(3, (s.term ?? 1) - 1);
   const parts = {
     readiness: (ready - expect) * 8,
     leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5),
@@ -653,6 +666,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   buildDay(s, feed);
   rivalDay(s, feed);
   industryDay(s, feed);
+  cyberDay(s, feed);
   townsDay(s, feed);
   testingDay(s, feed);
   peopleDay(s, feed, eventScale(s));

@@ -125,6 +125,23 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
         ))}
       </section>
 
+      {state.promises.length > 0 && (
+        <section>
+          <div className="label mb-1">Promises to the Committee</div>
+          <ul className="space-y-1">
+            {state.promises.map((p) => (
+              <li key={p.id} className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="text-white">{p.text}</span>
+                  <span className="block text-[10px] text-ops-dim">Made to the {FACTIONS[p.faction].name.toLowerCase()}.</span>
+                </span>
+                <span className="shrink-0 text-ops-dim">by {dateLabel(p.due)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <div className="label mb-1">Objectives</div>
         {st.objectives.map((o) => {

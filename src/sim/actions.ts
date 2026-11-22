@@ -13,6 +13,11 @@ import { MAX_CLEARANCE, vetCost } from './security';
 import { HOMES_PER_PROJECT, HOUSING_DAYS, hireRoom, housingCost, mothball, reopen, townOf } from './towns';
 import { prioritise } from './testing';
 import { controlBlock } from './hotseat';
+import { applyDiplomacy, validateDiplomacy } from './diplomacy';
+import { answer, request, validateHearing, type RequestLevel } from './hearings';
+import { applyCyber, validateCyber, type CyberArea } from './cyber';
+import { payDeal, surgeBanned, validatePayDeal } from './unions';
+import type { AllyId } from './types';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -56,7 +61,18 @@ export type SimAction =
   | { type: 'mothball'; site: string }
   | { type: 'reopen'; site: string }
   | { type: 'prioritiseTest'; test: number }
-  | { type: 'handover' };
+  | { type: 'handover' }
+  | { type: 'tradeMission'; who: string }
+  | { type: 'supplyGuarantee'; nation: string }
+  | { type: 'coproduce'; ally: AllyId; line: LineId }
+  | { type: 'endCoproduction'; id: number }
+  | { type: 'seekExport'; line: LineId }
+  | { type: 'hearingAnswer'; question: string; option: string }
+  | { type: 'hearingRequest'; level: RequestLevel }
+  | { type: 'cyberDefence'; area: CyberArea }
+  | { type: 'cyberBackups' }
+  | { type: 'cyberDrills' }
+  | { type: 'payDeal' };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -98,8 +114,24 @@ export function validate(s: SimState, a: SimAction): string | null {
   if ('site' in a && !site) return 'Unknown site.';
   const def = site ? SITE_BY_ID[site.id] : null;
   switch (a.type) {
+    case 'tradeMission':
+    case 'supplyGuarantee':
+    case 'coproduce':
+    case 'endCoproduction':
+    case 'seekExport':
+      return validateDiplomacy(s, a);
+    case 'hearingAnswer':
+    case 'hearingRequest':
+      return validateHearing(s, a);
+    case 'cyberDefence':
+    case 'cyberBackups':
+    case 'cyberDrills':
+      return validateCyber(s, a);
+    case 'payDeal':
+      return validatePayDeal(s);
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
+      if (a.run === 'surge' && surgeBanned(s, a.site)) return 'A union deal rules out round-the-clock shifts here for now.';
       return site!.processes[a.process] ? null : 'Unknown process.';
     case 'expand':
       if (def!.owner !== 'state') return 'Invest in a supplier to expand its capacity.';
@@ -404,6 +436,27 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     case 'prioritiseTest':
       prioritise(s, a.test);
+      break;
+    case 'tradeMission':
+    case 'supplyGuarantee':
+    case 'coproduce':
+    case 'endCoproduction':
+    case 'seekExport':
+      applyDiplomacy(s, a, feed);
+      break;
+    case 'hearingAnswer':
+      answer(s, a.question, a.option, feed);
+      break;
+    case 'hearingRequest':
+      request(s, a.level, feed);
+      break;
+    case 'cyberDefence':
+    case 'cyberBackups':
+    case 'cyberDrills':
+      applyCyber(s, a, feed);
+      break;
+    case 'payDeal':
+      payDeal(s, feed);
       break;
     case 'handover':
       s.hotseat!.handover = false;

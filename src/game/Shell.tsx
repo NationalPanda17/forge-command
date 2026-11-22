@@ -9,6 +9,8 @@ import IntelPanel from './IntelPanel';
 import IndustryPanel from './IndustryPanel';
 import TestingPanel from './TestingPanel';
 import TownsPanel from './TownsPanel';
+import AlliesPanel from './AlliesPanel';
+import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
 import { KeyboardHelp } from './Options';
@@ -40,7 +42,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -51,6 +53,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'industry', label: 'Industry' },
   { id: 'testing', label: 'Testing' },
   { id: 'towns', label: 'Towns' },
+  { id: 'allies', label: 'Allies' },
   { id: 'intel', label: 'Intel' },
   { id: 'policy', label: 'Policy' },
   { id: 'stockpile', label: 'Stockpile' },
@@ -94,7 +97,7 @@ function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> 
 export default function Shell({ initial, onMenu, autoPause }: { initial: SimState; onMenu: (s: SimState) => void; autoPause: boolean }) {
   const { state, speed, setSpeed: rawSetSpeed, act, step, clock } = useSim(initial, autoPause);
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
-  const held = !!state.hotseat?.handover || (state.story?.briefing !== null && state.story?.briefing !== undefined);
+  const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
   const setSpeed = useCallback((sp: Speed) => rawSetSpeed(held ? 0 : sp), [held, rawSetSpeed]);
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
@@ -133,6 +136,10 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   useEffect(() => {
     if (state.hotseat?.handover) setSpeed(0);
   }, [state.hotseat?.handover, setSpeed]);
+  // So does the budget hearing, until you have made your request.
+  useEffect(() => {
+    if (state.hearing) setSpeed(0);
+  }, [state.hearing, setSpeed]);
   // A chapter briefing stops the clock until it is read.
   useEffect(() => {
     if (state.story?.briefing !== null && state.story?.briefing !== undefined) setSpeed(0);
@@ -422,6 +429,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'story' && <StoryPanel state={state} />}
             {panel === 'testing' && <TestingPanel state={state} act={act} onSite={select} />}
             {panel === 'towns' && <TownsPanel state={state} act={act} onSite={select} />}
+            {panel === 'allies' && <AlliesPanel state={state} act={act} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
@@ -448,6 +456,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       </footer>
       <Briefing state={state} act={act} />
       <Handover state={state} act={act} />
+      {!state.hotseat?.handover && !state.over && <Hearing state={state} act={act} />}
       {help && <KeyboardHelp onClose={() => setHelp(false)} />}
       {state.over && !reportClosed && (
         <TermReport

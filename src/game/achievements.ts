@@ -27,6 +27,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'war', title: 'Trial by fire', text: 'Complete the War footing scenario.', check: (s) => s.outcome === 'complete' && s.scenario === 'warFooting' },
   { id: 'sanctions', title: 'Self-reliance', text: 'Complete the Sanctions scenario.', check: (s) => s.outcome === 'complete' && s.scenario === 'sanctions' },
   { id: 'tutorial', title: 'Quick study', text: 'Finish the tutorial.', check: (s) => s.scenario === 'tutorial' && (s.tutorial?.step ?? 0) >= 99 },
+  { id: 'guarantee', title: 'Good neighbours', text: 'Win a supply guarantee from a nation that sells you parts.', check: (s) => Object.keys(s.diplomacy?.guarantees ?? {}).length > 0 },
+  { id: 'coprod', title: 'Shared burden', text: 'Sign a co-production deal with an ally.', check: (s) => (s.diplomacy?.coprod.length ?? 0) > 0 },
+  { id: 'hearing', title: 'Persuasive', text: 'Win a budget increase at a hearing.', check: (s) => s.history.some((h) => h.won) },
+  { id: 'promises', title: 'True to your word', text: 'Keep three promises to the Committee.', check: (s) => (s.promisesKept ?? 0) >= 3 },
+  { id: 'cyber', title: 'Defence in depth', text: 'Raise every cyber defence to the highest level.', check: (s) => !!s.cyber && Object.values(s.cyber.levels).every((v) => v >= 3) },
+  { id: 'payDeal', title: 'Fair day’s pay', text: 'Agree a national pay deal.', check: (s) => (s.unions?.dealReady ?? 0) > 0 },
+  { id: 'career', title: 'Long service', text: 'Begin a third term as Director.', check: (s) => (s.term ?? 1) >= 3 },
+  { id: 'custom', title: 'Your own war', text: 'Complete a custom scenario.', check: (s) => s.outcome === 'complete' && s.scenario === 'custom' },
 ];
 
 const KEY = 'forge-command-achievements';

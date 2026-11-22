@@ -124,10 +124,23 @@ export function canSecondTerm(s: SimState): string | null {
 /** The Committee reappoints you: the game goes on with the reserve, plants and network you built. */
 export function startSecondTerm(s: SimState, feed: Feed): void {
   const r = termReport(s);
+  s.career = [...(s.career ?? []), { term: s.term ?? 1, score: r.score, grade: r.grade, outcome: s.outcome, months: s.history.length - (s.termMonth ?? 0), avgReadiness: Math.round(r.avgReadiness * 100) / 100 }];
   s.over = false;
   s.outcome = 'running';
   s.term = (s.term ?? 1) + 1;
+  s.termMonth = s.history.length;
   s.days = s.day + TERM_MONTHS * DAYS_PER_MONTH;
   s.confidence = clamp(45 + (r.score - 50) * 0.4, 30, 75);
-  feed(s, 'info', `Term ${s.term} begins. The Committee reappoints you with confidence at ${Math.round(s.confidence)}. Everything you built is still yours, and so is every old round in the depots.`, undefined, true);
+  // Your reputation sets the new budget; this term's objectives are behind you.
+  const rep = clamp(1 + (r.score - 60) / 400, 0.92, 1.08);
+  s.appropriation = Math.round(s.appropriation * rep);
+  s.strategy.baseBudget = Math.round(s.strategy.baseBudget * rep);
+  s.strategy.objectives = [];
+  feed(
+    s,
+    'info',
+    `Term ${s.term} begins. On a ${r.grade} record the Committee reappoints you with confidence at ${Math.round(s.confidence)} and ${rep >= 1 ? 'raises' : 'trims'} your budget to $${s.appropriation}M a month. It expects a little more this time, and the rival moves faster.`,
+    undefined,
+    true,
+  );
 }

@@ -9,6 +9,9 @@ import { crewNeed } from '../src/sim/selectors';
 import { routeByKey, routeCap } from '../src/sim/build';
 import { RESEARCH_IDS, STAFF_ROLE_IDS } from '../src/sim/strategy';
 import type { SimState } from '../src/sim/types';
+import { requestOdds } from '../src/sim/hearings';
+import { CYBER_AREA_IDS } from '../src/sim/cyber';
+import { supplierNations } from '../src/sim/diplomacy';
 import { FINISHED, RECIPES, SITES, SITE_BY_ID, type LineId } from '../src/sim/world';
 
 /** A competent but simple director: staff up, research, second sources, recycle, refurbish, chase crises, expand. */
@@ -28,7 +31,28 @@ export function active(s: SimState): SimAction[] {
     recall: rich ? 'recall' : 'accept',
     inspection: rich ? 'fund' : 'leave',
   };
-  for (const d of s.strategy.decisions) acts.push({ type: 'decide', decision: d.id, option: choose[d.kind] ?? d.fallback });
+  for (const d of s.strategy.decisions) {
+    // Union claims: settle what is affordable, talk otherwise.
+    const has = (o: string) => d.options.some((x) => x.id === o);
+    const pick = d.kind === 'labour' ? (has('pay') ? (rich ? 'pay' : 'talk') : has('agree') ? 'agree' : has('fund') && rich ? 'fund' : d.fallback) : d.kind === 'ransom' ? 'rebuild' : choose[d.kind];
+    acts.push({ type: 'decide', decision: d.id, option: pick ?? d.fallback });
+  }
+  // The budget hearing: answer for goodwill, promise only what is in hand, then ask for what the odds allow.
+  if (s.hearing) {
+    for (const q of s.hearing.questions) {
+      if (s.hearing.answers[q.id]) continue;
+      const safe = (o: (typeof q.options)[number]) =>
+        !o.promise || (o.promise.kind === 'readiness' && ready > 0.88) || (o.promise.kind === 'solvent' && s.treasury > 600) || (o.promise.kind === 'vetting' && s.treasury > 900);
+      const best = [...q.options].filter(safe).sort((a, b) => Object.values(b.sway).reduce((x, y) => x + y, 0) - Object.values(a.sway).reduce((x, y) => x + y, 0))[0] ?? q.options.find((o) => o.id === q.fallback)!;
+      acts.push({ type: 'hearingAnswer', question: q.id, option: best.id });
+    }
+    acts.push({ type: 'hearingRequest', level: requestOdds(s, 'bold') >= 0.45 ? 'bold' : 'modest' });
+  }
+  // Cyber: basic defences everywhere once the books allow, then backups.
+  for (const area of CYBER_AREA_IDS) if (s.cyber.levels[area] < (s.treasury > 1400 ? 2 : 1) && s.treasury > 800) acts.push({ type: 'cyberDefence', area });
+  if (!s.cyber.backups && s.treasury > 1000) acts.push({ type: 'cyberBackups' });
+  // Keep the nations that sell you parts friendly when a ban would hurt.
+  if (s.treasury > 900) for (const n of supplierNations()) if (s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
   // Re-tender contracts before they lapse, and award the cheapest dependable bid.
   for (const c of s.contracts) {
     if (c.endDay - s.day > 45 || s.tenders.some((t) => t.material === c.material)) continue;

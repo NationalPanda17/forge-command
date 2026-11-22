@@ -1,4 +1,5 @@
 // The rival: the Vardan Directorate fields new weapons over your term, and each one changes what you need to build.
+import { RIVAL_PACE } from './custom';
 import { pick, rand, randInt } from './rng';
 import type { FeedItem, SimState, ThreatId } from './types';
 import type { LineId } from './world';
@@ -169,7 +170,7 @@ export function rivalDay(s: SimState, feed: Feed): void {
   const d = DEVELOPMENTS[id];
   r.known.push({ id, announced: s.day, fielded: s.day + WARNING_DAYS });
   // Developments come faster as the term goes on, and a little faster on harder settings.
-  r.next = s.day + randInt(s, 180, 270) + (s.difficulty === 'hard' ? -30 : s.difficulty === 'easy' ? 120 : 0) + (rand(s) < 0.5 ? 0 : 15);
+  r.next = s.day + Math.round((randInt(s, 180, 270) + (s.difficulty === 'hard' ? -30 : s.difficulty === 'easy' ? 120 : 0) + (rand(s) < 0.5 ? 0 : 15)) * (s.custom ? RIVAL_PACE[s.custom.rivalPace] : 1) * (1 - 0.1 * Math.min(2, (s.term ?? 1) - 1)));
   feed(s, 'warn', `Intel: ${RIVAL_NAME} is preparing ${d.name.toLowerCase()}. ${d.intel} Expect them in the field in about three months. Counter: research “${COUNTER_NAMES[d.counter]}”.`, undefined, true);
 }
 

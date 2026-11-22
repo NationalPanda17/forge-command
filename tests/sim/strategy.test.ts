@@ -48,9 +48,9 @@ describe('staff, factions and decisions', () => {
     expect(after.strategy.decisions.some((x) => x.id === d!.id)).toBe(false);
   });
 
-  it('the fiscal year brings a budget review and a request card', () => {
+  it('the fiscal year ends in a budget hearing', () => {
     const s = advanceDays(start(4), 360);
-    expect(s.strategy.decisions.some((d) => d.kind === 'budget')).toBe(true);
+    expect(s.hearing?.questions.length).toBe(3);
   });
 
   it('objectives pay out when met', () => {

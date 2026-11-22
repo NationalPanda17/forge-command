@@ -2,6 +2,7 @@
 import { clamp, rand, randInt } from './rng';
 import type { FeedItem, SimState, SiteState } from './types';
 import { SITES, SITE_BY_ID } from './world';
+import { wageOf } from './unions';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
@@ -26,7 +27,7 @@ export const safetyCost = (s: SimState, site: string) => Math.round((8 + SITE_BY
 
 /** Where morale is heading: safety helps; fatigue and wages falling behind prices hurt. */
 export function moraleTarget(s: SimState, site: SiteState): number {
-  return clamp(62 + 6 * (site.safety ?? 0) - 0.35 * (site.fatigue ?? 0) - Math.max(0, s.priceIndex - 1) * 60 + (site.apprentices > 0 ? 3 : 0));
+  return clamp(62 + 6 * (site.safety ?? 0) - 0.35 * (site.fatigue ?? 0) - Math.max(0, s.priceIndex - wageOf(s, site.id)) * 60 + (site.apprentices > 0 ? 3 : 0));
 }
 
 /** Your plants with people in them, founded plants included. */

@@ -6,7 +6,7 @@ import { MATERIALS } from '../sim/world';
 import { Btn, COLORS, LineChart } from '../ui/kit';
 import { int, money, pct, qty } from '../ui/format';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
-import { recordScore } from './scores';
+import { entryKey, recordScore } from './scores';
 import { useMemo } from 'react';
 import { canSecondTerm } from '../sim/commitments';
 import { epilogue } from '../sim/story';
@@ -18,8 +18,8 @@ const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber
 export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { state: SimState; onClose: () => void; onMenu: () => void; onSecondTerm?: () => void }) {
   const r = termReport(state);
   const board = useMemo(() => recordScore(state), [state]);
-  const rank = board.findIndex((e) => e.key.startsWith(`${state.seed}-${state.scenario}-${state.difficulty}-${state.day}-`)) + 1;
-  const h = state.history;
+  const rank = board.findIndex((e) => e.key === entryKey(state)) + 1;
+  const h = state.history.slice(state.termMonth ?? 0);
   const x = h.length ? [monthLabel2(h[0].month), monthLabel2(h.at(-1)!.month)] : [];
   const earned = loadAchievements();
   const stat = (label: string, value: string, tone = 'text-white') => (
@@ -60,6 +60,25 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+        {(state.career?.length ?? 0) > 0 && (
+          <section>
+            <h3 className="label mb-1">Your career</h3>
+            <ol className="space-y-0.5">
+              {[...state.career, { term: state.term, score: r.score, grade: r.grade, outcome: state.outcome, months: h.length, avgReadiness: r.avgReadiness }].map((t) => (
+                <li key={t.term} className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-2">
+                  <span className="text-ops-dim">Term {t.term}</span>
+                  <span className="min-w-0 text-ops-text">
+                    {Math.round((t.months / 12) * 10) / 10} year{Math.round((t.months / 12) * 10) / 10 === 1 ? '' : 's'} · readiness {pct(t.avgReadiness)}
+                    {t.outcome === 'dismissed' ? <span className="text-ops-red"> · dismissed</span> : ''}
+                  </span>
+                  <span className={GRADE_TONE[t.grade as keyof typeof GRADE_TONE] ?? 'text-white'}>
+                    {t.grade} · {t.score}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </section>
         )}
         {state.story && <p className="rounded border border-ops-amber/40 bg-ops-amber/5 p-3 leading-relaxed text-ops-text">{epilogue(state)}</p>}
@@ -121,7 +140,7 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           <Btn onClick={onClose}>Look at the map</Btn>
           {onSecondTerm && canSecondTerm(state) === null && (
             <Btn kind="warn" onClick={onSecondTerm} title="Carry on with everything you built and every round you leave in the depots">
-              Serve a second term
+              Serve term {(state.term ?? 1) + 1}
             </Btn>
           )}
           <Btn kind="primary" onClick={onMenu}>
