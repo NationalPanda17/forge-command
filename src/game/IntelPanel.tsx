@@ -11,6 +11,8 @@ import { threatWhy } from './explain';
 import { CLEARANCE_NAME, activity, security, targets } from '../sim/security';
 import { SITE_BY_ID } from '../sim/world';
 import { dateLabel } from './useSim';
+import { BACKUPS_COST, CYBER_AREAS, CYBER_AREA_IDS, CYBER_LEVEL, DRILLS_COST, MAX_CYBER, attackOdds, cyberCost, railFactor, upkeep } from '../sim/cyber';
+import { pct } from '../ui/format';
 
 export default function IntelPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   const known = state.rival.known;
@@ -97,6 +99,51 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
             );
           })}
         </ul>
+      </section>
+
+      <section>
+        <h3 className="label mb-1">Cyber defence</h3>
+        <p className="mb-2 text-ops-dim">
+          The rival's hackers go after three systems, more often as its weapons programmes grow. Each level of defence makes an attack a quarter less likely. Backups bring a system back far sooner; drills keep crews and dispatchers working without computers.
+        </p>
+        {state.cyber.railDays > 0 && (
+          <p className="mb-2 text-ops-red">
+            The rail booking system is down: trains run at {pct(railFactor(state))} of capacity for about {Math.max(1, Math.round(state.cyber.railDays / 7))} more weeks.
+          </p>
+        )}
+        <ul className="space-y-2">
+          {CYBER_AREA_IDS.map((area) => {
+            const a: SimAction = { type: 'cyberDefence', area };
+            const lvl = state.cyber.levels[area];
+            return (
+              <li key={area} className="rounded border border-ops-line/60 p-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-white">{CYBER_AREAS[area].name}</span>
+                  <span className={lvl >= 2 ? 'text-ops-green' : lvl === 0 ? 'text-ops-amber' : 'text-ops-text'}>
+                    {CYBER_LEVEL[lvl]} · {pct(attackOdds(state, area))} a month
+                  </span>
+                </div>
+                <p className="text-[10px] text-ops-dim">{CYBER_AREAS[area].blurb}</p>
+                {lvl < MAX_CYBER && (
+                  <div className="mt-1 flex justify-end">
+                    <Btn why={validate(state, a)} onClick={() => act(a)}>
+                      Raise to {CYBER_LEVEL[lvl + 1].toLowerCase()} · {money(cyberCost(state, area))}
+                    </Btn>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          <Btn why={validate(state, { type: 'cyberBackups' })} onClick={() => act({ type: 'cyberBackups' })} pressed={state.cyber.backups}>
+            {state.cyber.backups ? 'Backups in place' : `Offline backups · ${money(BACKUPS_COST(state))}`}
+          </Btn>
+          <Btn why={validate(state, { type: 'cyberDrills' })} onClick={() => act({ type: 'cyberDrills' })} pressed={state.cyber.drills}>
+            {state.cyber.drills ? 'Crews drill for it' : `Manual fallback drills · ${money(DRILLS_COST(state))}`}
+          </Btn>
+          {upkeep(state) > 0 && <span className="text-[10px] text-ops-dim">Upkeep {money(upkeep(state))} a month</span>}
+        </div>
       </section>
     </div>
   );

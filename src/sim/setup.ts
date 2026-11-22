@@ -12,6 +12,10 @@ import { newStory } from './story';
 import { applyWorld } from './worldgen';
 import { newTowns } from './towns';
 import { newHotseat } from './hotseat';
+import { newDiplomacy } from './diplomacy';
+import { newCyber } from './cyber';
+import { newUnions } from './unions';
+import { RIVAL_PACE, tidy, type CustomScenario } from './custom';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -31,6 +35,8 @@ export interface SimOptions {
   world?: number | null;
   /** Two players' names, for a hot-seat game. */
   hotseat?: [string, string];
+  /** Your own starting situation. */
+  custom?: CustomScenario;
 }
 
 export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false, dismissal: true };
@@ -49,6 +55,7 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   sanctions: { name: 'Sanctions', blurb: 'Every foreign supplier is under an export ban for most of a year, and prices are already up.' },
   rebuild: { name: 'Rebuild', blurb: 'Years of neglect: the war reserve is half the usual size, but the Committee has opened its purse.' },
   tutorial: { name: 'Tutorial', blurb: 'A guided first two years on Easy, with no crisis for the first year.' },
+  custom: { name: 'Custom', blurb: 'Your own starting situation: money, reserve, prices, crises, the rival, bans. Share it as a code.' },
 };
 
 /** Fills in fields added after a save was made, so older saves keep working. */
@@ -91,6 +98,14 @@ export function migrate(s: SimState): SimState {
   setNetwork(s.network.built, s.network.upgrades);
   if (!(s.scenario in SCENARIOS)) s.scenario = 'standard';
   s.towns ??= newTowns(s);
+  s.diplomacy ??= newDiplomacy(s);
+  s.hearing ??= null;
+  s.promises ??= [];
+  s.cyber ??= newCyber();
+  s.unions ??= newUnions();
+  s.career ??= [];
+  s.custom ??= null;
+  s.termMonth ??= 0;
   return s;
 }
 
@@ -141,7 +156,7 @@ function blankSite(id: string): SiteState {
   return { id, status: 'closed', condition: 100, repairDays: 0, processes: [], stock: {}, lots: {}, unserviceable: {}, workers: 0, trainees: [], extraCrew: 0, health: 100, qualified: true, qualifyingDays: null, embargoDays: 0, disruptionDays: 0, disruptionFactor: 1, ...PEOPLE_START };
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null, hotseat }: SimOptions): SimState {
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null, hotseat, custom: customIn }: SimOptions): SimState {
   // The story and the tutorial are written for the classic map.
   if (story || scenario === 'tutorial') world = null;
   applyWorld(world);
@@ -150,7 +165,10 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     months = 48;
     mode = 'campaign';
   }
-  const rules: Settings = { ...(mode === 'sandbox' ? SANDBOX_SETTINGS : DEFAULT_SETTINGS), ...(settings ?? {}) };
+  const custom = customIn && !story ? tidy(customIn) : null;
+  if (custom) scenario = 'custom';
+  else if (scenario === 'custom') scenario = 'standard';
+  const rules: Settings = { ...(mode === 'sandbox' ? SANDBOX_SETTINGS : DEFAULT_SETTINGS), ...(settings ?? {}), ...(custom ? { events: custom.events } : {}) };
   if (scenario === 'tutorial') {
     difficulty = 'easy';
     months = Math.min(months, 24);
@@ -210,6 +228,14 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     towns: [],
     tests: [],
     hotseat: hotseat ? newHotseat(hotseat) : null,
+    diplomacy: { nations: {}, guarantees: {}, missions: {}, coprod: [], deskReady: 0 },
+    hearing: null,
+    promises: [],
+    cyber: newCyber(),
+    unions: newUnions(),
+    termMonth: 0,
+    career: [],
+    custom,
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -269,7 +295,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   // Legacy rounds: the central depot, regional depots and bases.
   for (const line of START_LINES) {
     const daily = nationalDailyDraw(state, line);
-    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * (['gmlrs', 'shell155'].includes(line) ? 300 : 240) * (scenario === 'rebuild' ? 0.5 : 1), true);
+    state.sites.depotCentral.lots[line] = legacyLots(state, line, daily * (['gmlrs', 'shell155'].includes(line) ? 300 : 240) * (scenario === 'rebuild' ? 0.5 : custom ? custom.reserve : 1), true);
     for (const region of FIGHTING_REGIONS) {
       const depot = REGIONS[region].depot;
       const rd = regionDailyDraw(state, region as RegionId, line);
@@ -307,8 +333,24 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     state.appropriation = Math.round(state.appropriation * 1.1);
     state.strategy.baseBudget = state.appropriation;
   }
+  if (custom) {
+    state.treasury = custom.treasury + (extra?.treasury ?? 0);
+    state.appropriation = custom.appropriation + (extra?.appropriation ?? 0);
+    state.strategy.baseBudget = state.appropriation;
+    state.confidence = custom.confidence;
+    state.priceIndex = custom.prices;
+    state.allies = { merrow: custom.allies, calder: custom.allies };
+    for (const def of SITES) if (def.owner === 'foreign' && def.nation && custom.bans[def.nation]) state.sites[def.id].embargoDays = custom.bans[def.nation] * DAYS_PER_MONTH;
+    const c = CRISES.find((x) => x.id === custom.crisis);
+    if (c) {
+      state.crisis = { id: c.id, name: c.name, region: c.region, family: c.family, phase: 'active', days: 240, intensity: 1.1, mix: { ...c.mix } };
+      state.supplemented.push(c.id);
+    }
+  }
   if (!rules.crises && state.crisis) state.crisis = null;
   state.rival = newRival(state);
+  if (custom) state.rival.next = Math.round(state.rival.next * RIVAL_PACE[custom.rivalPace]);
+  state.diplomacy = newDiplomacy(state);
   if (story) state.story = newStory(0);
   state.towns = newTowns(state);
   // The tutorial keeps the rival quiet for its first year.

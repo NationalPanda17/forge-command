@@ -169,14 +169,14 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom';
   title: string;
   body: string;
   options: DecisionOption[];
   fallback: string;
   site?: string;
   value?: number;
-  data?: { line?: LineId; material?: MaterialId; qty?: number; price?: number; ally?: AllyId; customer?: string; chain?: number; contract?: number; months?: number };
+  data?: { line?: LineId; material?: MaterialId; qty?: number; price?: number; ally?: AllyId; customer?: string; chain?: number; contract?: number; months?: number; claim?: string; town?: number };
 }
 
 // ---------- Objectives ----------
@@ -278,20 +278,9 @@ export function strategyMonth(s: SimState, feed: Feed, input: { readiness: numbe
   if ((s.history.length + 1) % 12 === 0) {
     // Budgets keep up with most, but not all, of inflation.
     const next = Math.round(s.strategy.baseBudget * (1 + (s.priceIndex - 1) * 0.7) * (0.85 + s.confidence / 333));
-    feed(s, next >= s.appropriation ? 'good' : 'bad', `Fiscal-year review: the Committee sets your budget at $${next}M a month.`, undefined, true);
+    // The Committee's provisional figure; the hearing (see hearings.ts) settles the final one.
     s.appropriation = next;
-    s.strategy.decisions.push({
-      id: s.nextId++,
-      kind: 'budget',
-      title: 'Your budget request',
-      body: `The provisional appropriation is $${next}M a month. Accept it, ask for less to please the treasury bench, or push for more.`,
-      options: [
-        { id: 'accept', label: 'Accept it', detail: 'No fuss.' },
-        { id: 'lean', label: 'Ask for 5% less', detail: 'The treasury bench will remember it.' },
-        { id: 'push', label: 'Push for 12% more', detail: `About ${Math.round((f.hawks + f.treasury) / 2 * 0.9)}% odds; failure costs 3% and some confidence.` },
-      ],
-      fallback: 'accept',
-    });
+    void f;
   }
 }
 

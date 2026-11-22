@@ -1,4 +1,4 @@
-# Forge Command 8.0: design
+# Forge Command 9.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -154,6 +154,78 @@ Physical figures follow public reference data where it exists, and are best gues
 - **Designs:** need 3 passes at 85% odds, with test articles costing 1.5× the round price each.
 - **Failures:** pause the programme 20–35 days. A design fix costs 20 × the price index, adds 12% odds and one
   firing.
+
+## Diplomacy (`diplomacy.ts`)
+- **Relations:** relations with each supplier nation start at 50 (35 in Sanctions) and drift back toward 50 by 3% a
+  month. They rise by 1 in any month with exports.
+- **Ban odds:** export-ban odds are multiplied by clamp(2 − relations/50, 0.2, 2), or 0 while a guarantee holds.
+- **Trade mission:** $15M × price index; +12 relations with a nation, +8 with an ally; once every 90 days.
+- **Guarantee:** needs relations of 65; $40M × price index; no bans for 360 days.
+- **Co-production:** needs ally relations of 60; $30M × price index up front.
+  - **Deliveries:** 15% of a month's national draw, landed at Lowmouth each month at 90% of the round price, for 24
+    months.
+  - **Factions:** industry −4, regions −2.
+  - **Lapse:** below 35 relations.
+- **Export desk:** $5M, then 60 days before it can look again. It finds a 6-, 9- or 12-month order at 130% of the
+  round price.
+
+## Hearings (`hearings.ts`)
+- **When:** every 12th month end opens a hearing with three questions, drawn by weight from those that fit your record.
+- **Answers:** each sways factions; promises are judged within 360 days.
+  - **Can break any month:** solvent, no exports, no strikes.
+  - **Can be kept early:** a new line, a counter researched, cyber level 2 everywhere, vetting everywhere.
+  - **Judged on the due date:** average readiness of 80% or better.
+- **Promises:** kept: confidence +4, faction +5. Broken: confidence −6, faction −8.
+- **Requests:**
+  - **Lean:** −5%, treasury +8.
+  - **Accept:** the provisional figure.
+  - **Modest:** +6% at odds of clamp(1.3v, 0.1, 0.95).
+  - **Bold:** +15% at odds of clamp(0.95v − 0.1, 0.05, 0.85).
+  - **The value v:** weighted faction support/100 + (readiness over the year − 0.7) × 0.5.
+  - **Failure:** −1% (modest) or −3% and −3 confidence (bold).
+- **Unanswered hearings:** a hearing still open at the next month end takes default answers and the provisional
+  figure.
+
+## Cyber (`cyber.ts`)
+- **Attack odds:** a month for each system: 0.012 × (1 + 0.4 × known rival weapons) × trouble scale × (1 − 0.25 ×
+  level). Plants are attacked ×1.5 for a year after a ransom is paid.
+- **Plants:**
+  - **With backups:** 5–10 days at 50% (70% with drills).
+  - **Without backups:** 20–35 days at 50% (70% with drills), and a choice to pay $15M × price index to unlock in
+    3 days (hawks −4).
+- **Rail:** 10–25 days (halved with backups) at 50% rail capacity (80% with drills).
+- **Suppliers:** a private plant at 50% for 15–30 days. A (40% − 10% × level) chance of stolen data brings the
+  rival's next report 40 days sooner.
+- **Costs:**
+  - **Defence level:** (25 + 20 × level) × price index.
+  - **Backups:** $20M, then $2M a month.
+  - **Drills:** $10M, then $1M a month.
+
+## Unions (`unions.ts`)
+- **Strength:** each town's union changes each month by (55 − average morale) × 0.06 + max(0, prices − pay) × 6 −
+  0.6, between 5 and 95.
+- **Wages:** each town's pay multiplies its wages. Morale's price penalty uses prices − pay.
+- **Claims:** odds of 5% a month × trouble × max(0.5, strongest union/45). The claim is pay if prices lead pay by 3%,
+  else hours where crews are tired, else safety.
+- **Settlements:**
+  - **Pay:** 4%, union −12.
+  - **Counter-offer:** 2% at odds of 1 − strength/130.
+  - **Hours:** no surge for 180 days.
+  - **Safety:** the next stage now.
+- **Unsettled after 30 days:**
+  - **Strength under 50:** work to rule, 75% for 30–45 days.
+  - **Otherwise:** a strike at 30% for 25–50 days. Each other plant in town joins with odds of strength/150, at 50%
+    for half as long.
+- **National deal:** 3% pay everywhere, every union −10, morale +5, once a year.
+
+## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
+- **Each new term:**
+  - **Score:** the term report scores only the term's own months.
+  - **Budget:** × clamp(1 + (score − 60)/400, 0.92, 1.08).
+  - **Expectations:** the Committee expects 2 points more readiness per earlier term (at most 6).
+  - **The rival:** reports come 10% sooner per term (at most 20%).
+- **Custom scenarios:** every field is clamped on reading. Codes are `FC1-` + base64url JSON.
+- **Rival pace:** slow, normal or fast multiplies the rival's report intervals by 1.5, 1 or 0.6.
 
 ## Hot-seat (`hotseat.ts`)
 - **Control:** sites are controlled by region (Corran's arsenal goes west). Actions on the other player's sites

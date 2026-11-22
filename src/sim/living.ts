@@ -1,9 +1,10 @@
 // The world around the industry: seasons, allies, export customers and events that unfold in stages.
 import { eventScale, takeLots } from './tick';
-import { unhappiest } from './people';
+import { claimBoost, industrialAction, resolveClaim, unionClaim } from './unions';
+import { railFactor } from './cyber';
 import { hasPolicy } from './commitments';
 import { pathBetween } from './graph';
-import { clamp, pick, rand, randInt } from './rng';
+import { clamp, pick, rand } from './rng';
 import { registerResolver } from './strategy';
 import { DAYS_PER_MONTH, lotQty, nationalDailyDraw, nationalStock, reserveTarget } from './selectors';
 import type { AllyId, Chain, FeedItem, SimState } from './types';
@@ -32,6 +33,11 @@ const NORTH_SEA = new Set(SITES.filter((d) => d.region === 'north').map((d) => d
 
 /** How much of a route's daily tonnage the weather allows. */
 export function legCapFactor(s: SimState, from: string, to: string, mode: string): number {
+  const cyber = mode === 'rail' ? railFactor(s) : 1;
+  return cyber * weatherFactor(s, from, to, mode);
+}
+
+function weatherFactor(s: SimState, from: string, to: string, mode: string): number {
   if (s.settings && !s.settings.seasons) return 1;
   const season = seasonOf(s.day);
   const m = monthOfYear(s.day);
@@ -197,9 +203,8 @@ export function livingMonth(s: SimState, feed: Feed): void {
   }
   // Event chains start.
   // Disputes are likelier where morale is low.
-  const low = unhappiest(s);
-  const moraleBoost = low ? Math.max(0.5, 1 + (55 - s.sites[low].morale) / 25) : 1;
-  if (!calm && s.day > 120 && rand(s) < 0.05 * ev * moraleBoost) startChain(s, 'labour', feed);
+  // Claims are likelier where a union is strong.
+  if (!calm && s.day > 120 && rand(s) < 0.05 * ev * claimBoost(s)) startChain(s, 'labour', feed);
   if (!calm && s.day > 120 && rand(s) < 0.04 * ev) startChain(s, 'quality', feed);
   if (!calm && s.day > 120 && rand(s) < 0.03 * ev) startChain(s, 'safety', feed);
 }
@@ -208,29 +213,7 @@ export function livingMonth(s: SimState, feed: Feed): void {
 
 export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
   if (s.chains.some((c) => c.kind === kind)) return;
-  if (kind === 'labour') {
-    const low = unhappiest(s);
-    const def = low && rand(s) < 0.7 ? SITE_BY_ID[low] : pick(s, SITES.filter((d) => d.owner === 'state' && d.kind === 'arsenal'));
-    const cost = Math.round(def.crew * 0.0095 * 6 * s.priceIndex);
-    const c: Chain = { id: s.nextId++, kind, site: def.id, stage: 0, due: s.day + 30 };
-    s.chains.push(c);
-    s.strategy.decisions.push({
-      id: s.nextId++,
-      kind: 'labour',
-      title: `Pay dispute at ${def.name}`,
-      body: `The union at ${def.name} wants a rise to keep up with prices, up ${Math.round((s.priceIndex - 1) * 100)}% since you started. They will strike in a month if nothing is offered.`,
-      options: [
-        { id: 'pay', label: `Meet the claim ($${cost}M)`, detail: 'The dispute ends. The regions approve.' },
-        { id: 'talk', label: `Offer half ($${Math.round(cost / 2)}M)`, detail: 'Even odds they accept.' },
-        { id: 'refuse', label: 'Refuse', detail: 'A strike is likely.' },
-      ],
-      fallback: 'refuse',
-      site: def.id,
-      value: cost,
-      data: { chain: c.id },
-    });
-    feed(s, 'warn', `Pay dispute at ${def.name}. A decision is waiting.`, def.id, true);
-  }
+  if (kind === 'labour') unionClaim(s, feed);
   if (kind === 'quality') {
     const def = pick(s, SITES.filter((d) => d.owner === 'private' && d.kind === 'components' && s.sites[d.id].qualified));
     const m = RECIPES[def.processes[0].recipe].output;
@@ -265,14 +248,10 @@ export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
 
 function advanceChain(s: SimState, c: Chain, feed: Feed): void {
   const def = SITE_BY_ID[c.site];
-  const site = s.sites[c.site];
   const done = () => (s.chains = s.chains.filter((x) => x.id !== c.id));
   if (c.kind === 'labour') {
-    // Reached only if the dispute was not settled: the strike begins.
-    site.disruptionDays = randInt(s, 25, 50);
-    site.disruptionFactor = 0.3;
-    s.strategy.factions.regions = clamp(s.strategy.factions.regions - 3);
-    feed(s, 'bad', `Strike at ${def.name}: production down to 30% for about ${Math.round(site.disruptionDays / 7)} weeks.`, c.site, true);
+    // Reached only if the claim was not settled.
+    industrialAction(s, c, feed);
     done();
   } else if (c.kind === 'quality') {
     // Reached only if the risk was accepted: suspect rounds fail surveillance.
@@ -359,30 +338,9 @@ export function resolveLiving(s: SimState, d: Dec, opt: string, feed: Feed): boo
       } else s.strategy.factions.industry = clamp(s.strategy.factions.industry - 1);
       return true;
     }
-    case 'labour': {
-      if (!chain) return true;
-      const site = s.sites[chain.site];
-      const settle = (morale: number) => {
-        s.chains = s.chains.filter((c) => c.id !== chain.id);
-        s.strategy.factions.regions = clamp(s.strategy.factions.regions + 2);
-        site.morale = clamp(site.morale + morale);
-      };
-      if (opt === 'pay') {
-        pay(d.value ?? 0);
-        settle(15);
-        feed(s, 'good', `Pay deal agreed at ${SITE_BY_ID[chain.site].name}.`, chain.site);
-      } else if (opt === 'talk') {
-        pay(Math.round((d.value ?? 0) / 2));
-        if (rand(s) < 0.5) {
-          settle(7);
-          feed(s, 'good', `The union at ${SITE_BY_ID[chain.site].name} accepts half.`, chain.site);
-        } else feed(s, 'warn', `The union at ${SITE_BY_ID[chain.site].name} rejects the offer. A strike is coming.`, chain.site);
-      } else {
-        site.morale = clamp(site.morale - 10);
-        feed(s, 'warn', `You refuse the claim at ${SITE_BY_ID[chain.site].name}. A strike is coming.`, chain.site);
-      }
+    case 'labour':
+      resolveClaim(s, d as Parameters<typeof resolveClaim>[1], opt, feed);
       return true;
-    }
     case 'recall': {
       if (!chain) return true;
       if (opt === 'recall') {

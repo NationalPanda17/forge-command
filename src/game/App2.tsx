@@ -1,7 +1,9 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
 import { useRef, useState } from 'react';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
-import { loadScores } from './scores';
+import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
+import { CustomEditor } from './CustomEditor';
+import { DEFAULT_CUSTOM, type CustomScenario } from '../sim/custom';
 import { makeSpec } from '../sim/worldgen';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
@@ -44,15 +46,19 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [mapKind, setMapKind] = useState<'classic' | 'new'>('new');
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2']);
   const world = mapKind === 'new' ? seedFrom(seed || '0') : null;
-  const scores = loadScores().slice(0, 5);
+  const allScores = loadScores();
+  const best = bests(allScores);
+  const totals = loadTotals();
+  const [custom, setCustom] = useState<CustomScenario>(DEFAULT_CUSTOM);
+  const mine = scenario === 'custom' ? custom : undefined;
   const [slots, setSlots] = useState(listSlots);
   const begin = () => {
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
     if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true })));
-    if (mode === 'hotseat') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, hotseat: names })));
-    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world })));
-    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world })));
+    if (mode === 'hotseat') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, hotseat: names, custom: mine })));
+    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world, custom: mine })));
+    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, custom: mine })));
   };
   const rule = (k: 'inflation' | 'seasons' | 'crises' | 'endless' | 'dismissal', label: string) => (
     <label className="flex items-center gap-2">
@@ -79,6 +85,11 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             </button>
           ))}
       </div>
+      {scenario === 'custom' && (
+        <div className="mt-2">
+          <CustomEditor value={custom} onChange={setCustom} />
+        </div>
+      )}
     </div>
   );
   return (
@@ -347,22 +358,49 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </div>
       </section>
 
-      {scores.length > 0 && (
+      {allScores.length > 0 && (
         <section className="panel">
-          <div className="panel-title">Your best campaigns</div>
-          <ol className="space-y-1 p-4 text-[11px]">
-            {scores.map((e, i) => (
-              <li key={e.key} className="grid grid-cols-[20px_minmax(0,1fr)_auto] gap-2">
-                <span className="text-ops-dim">{i + 1}.</span>
-                <span className="min-w-0 truncate text-ops-text">
-                  {SCENARIOS[e.scenario]?.name ?? e.scenario} · {e.difficulty} <span className="text-ops-dim">· {e.date}</span>
-                </span>
-                <span className="text-white">
-                  {e.grade} · {e.score}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <div className="panel-title">Record book</div>
+          <div className="space-y-4 p-4 text-[11px]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ['Terms served', totals.terms],
+                ['Terms completed', totals.completed],
+                ['Dismissals', totals.dismissed],
+                ['Longest career', `${totals.longestCareer} term${totals.longestCareer === 1 ? '' : 's'}`],
+                ['Rounds made', totals.roundsMade.toLocaleString('en-US')],
+                ['Rounds exported', totals.exported.toLocaleString('en-US')],
+                ['Promises kept', totals.promisesKept],
+                ['Best score', allScores[0]?.score ?? 0],
+              ].map(([label, v]) => (
+                <div key={label as string} className="min-w-0">
+                  <div className="label truncate">{label}</div>
+                  <div className="text-[15px] text-white">{v}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="label mb-1">Best by game and difficulty</div>
+              <ol className="space-y-1">
+                {best.map(({ kind, difficulty, entry: e }) => (
+                  <li key={`${kind}-${difficulty}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <span className="min-w-0 break-words text-ops-text">
+                      {KIND_NAME[kind]} · {difficulty}
+                      <span className="text-ops-dim">
+                        {' '}
+                        · {e.custom ?? SCENARIOS[e.scenario]?.name ?? e.scenario}
+                        {e.world === 'generated' ? ' · new country' : ''}
+                        {(e.term ?? 1) > 1 ? ` · term ${e.term}` : ''} · {e.date}
+                      </span>
+                    </span>
+                    <span className="text-white">
+                      {e.grade} · {e.score}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
         </section>
       )}
 

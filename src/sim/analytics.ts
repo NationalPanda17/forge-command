@@ -179,7 +179,7 @@ export interface TermReport {
 }
 
 export function termReport(s: SimState): TermReport {
-  const h = s.history;
+  const h = s.history.slice(s.termMonth ?? 0);
   const avg = h.length ? h.reduce((a, x) => a + x.readiness, 0) / h.length : 0;
   const min = h.length ? Math.min(...h.map((x) => x.readiness)) : 0;
   const sum = (f: (x: (typeof h)[number]) => number) => h.reduce((a, x) => a + f(x), 0);

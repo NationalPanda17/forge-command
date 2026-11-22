@@ -1,5 +1,58 @@
 # Changelog
 
+## 9.0.0: allies, hearings, hackers, unions, careers and your own scenarios
+
+### Allies and exports
+- **Relations with the nations that sell you parts:** the colder they are, the likelier an export ban. Selling rounds
+  abroad warms them a little.
+- **Trade missions:** warm a nation or an ally.
+- **Supply guarantees:** at relations of 65 or more, a nation promises no export bans for a year.
+- **Co-production:** at relations of 60 or more, an ally lands a share of a round every month for two years, at 90%
+  of the price. The work goes abroad, so industry and the regions grumble, and the deal lapses if relations fall
+  below 35.
+- **Export desk:** goes looking for buyers, who pay better than the ones who come to you.
+- **New Allies tab.**
+
+### Budget hearings
+- **The hearing:** the fiscal-year budget is now set at a hearing before the Defence Committee. Three members ask
+  about your record: readiness, overspending, exports, jobs, the rival, strikes, hackers or spies.
+- **Answers:** each sways the factions, and some are promises, checked a year later. A kept promise earns
+  confidence; a broken one costs more.
+- **Your request:** ask for less, accept the figure, or ask for 6% or 15% more, with the odds shown.
+- **Where to see it:** the clock stops for the hearing, and the Board tab lists your open promises.
+
+### Cyber and IT attacks
+- **Targets:** the rival's hackers go after plant control systems (ransomware: rebuild, or pay and invite them back),
+  the rail booking system (trains run at half capacity), and suppliers' networks (output halved, and design data
+  stolen).
+- **Defences:** three levels for each system, offline backups, and manual fallback drills. They are in the Intel tab.
+
+### Unions and strikes
+- **Unions:** each town's union grows stronger when pay trails prices and morale sags.
+- **Claims:** for pay, hours (no round-the-clock shifts for six months) or safety.
+- **Industrial action:** a refused claim ends in a strike where the union is strong, which can spread to the town's
+  other plants, or a work-to-rule where it is weak.
+- **National pay deal:** once a year, it cools every union.
+- **Where to see it:** union strength and pay against prices are in the Towns tab.
+
+### Career and records
+- **Terms:** each term is now graded on its own months. Your record sets the next term's budget, the Committee expects
+  a little more each term, and the rival moves faster. The term report lists your whole career.
+- **Record book:** on the title screen, your best run for each kind of game and difficulty, plus lifetime totals.
+- **Eight new achievements.**
+
+### Scenario editor
+- **Settings:** a Custom scenario sets starting money and budget, the war reserve, Committee confidence, prices, a
+  crisis on day one, the rival's pace, export bans on each supplier nation, how often trouble comes, and relations
+  with allies.
+- **Sharing:** share it as a short code; paste a code to play someone else's.
+
+### Balance
+- **Private suppliers:** their random disruptions no longer include cyber attacks; those are the new cyber system now.
+- **Pay disputes** became union claims.
+- **The test player** answers hearings, buys basic cyber defences and backups, sends trade missions to cold nations, and
+  settles claims when it can afford to.
+
 ## 8.0.1: display fixes
 - **Generated worlds:** ordinary words that begin a sentence in a site's description (such as "Short", "Open" or
   "Over") were mistaken for place names and renamed, garbling messages like "Short of infrared seekers". Only

@@ -61,6 +61,12 @@ The rival's agents sabotage, steal and leak; vet your staff. Plants draw their p
 limits how fast you can hire. New rounds and designs are fired at the test ranges before they are accepted. Two
 players can share one device, each running half the country.
 
+## Allies, hearings, hackers and unions
+
+Keep the nations you buy from friendly, co-produce rounds with allies and sell abroad. Face the Defence Committee at a
+budget hearing every year, and keep your promises. Defend your plants, railways and suppliers against hackers, and keep
+the unions on side. Serve term after term, keep a record book, and build your own scenarios to share as codes.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -85,17 +91,18 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Materials:** any material traced from finished round down to the mine.
 - **Markets:** prices, tenders and bids, contracts, exports, allies and developing situations.
 - **Build:** links, upgrades, the icebreaker and resilience grants.
-- **Intel:** the rival's weapons, warnings and counters.
+- **Intel:** the rival's weapons, warnings and counters, spies and cyber defence.
 - **Policy:** multi-year programmes and standing policies.
 - **Industry:** open plots, in-house lines and round designs.
 - **Story:** the chapter's goals and how earlier chapters went (story games only).
 - **Testing:** the test ranges, the queue and what awaits acceptance.
-- **Towns:** housing, jobs and mothballing.
+- **Towns:** housing, jobs, mothballing and the unions.
+- **Allies:** allies and co-production, supplier nations, guarantees and the export desk.
 - **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.
 - **Fight:** threats, leakers, doctrine.
-- **Board:** research, staff, the Committee, decisions and objectives.
+- **Board:** research, staff, the Committee, your promises, decisions and objectives.
 - **Money**, **Feed** and **Guide.**
 
 ## Develop

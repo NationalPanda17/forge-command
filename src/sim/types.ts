@@ -7,9 +7,14 @@ import type { HotseatState } from './hotseat';
 import type { Decision, FactionId, Person, ResearchId, StaffRole } from './strategy';
 import type { RivalState } from './rival';
 import type { PolicyId, Programme } from './commitments';
+import type { DiplomacyState } from './diplomacy';
+import type { CommitteePromise, HearingState } from './hearings';
+import type { CyberState } from './cyber';
+import type { UnionState } from './unions';
+import type { CustomScenario } from './custom';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial';
+export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
 export type AllyId = 'merrow' | 'calder';
 /** idle, one shift, two shifts (normal), or round the clock (surge). */
 export type RunLevel = 'idle' | 'single' | 'normal' | 'surge';
@@ -195,6 +200,22 @@ export interface MonthReport {
   why?: { readiness: number; leaks: number; land: number; debt: number; other: number };
   /** Espionage incidents that got through. */
   incidents?: number;
+  /** Cyber attacks that got through. */
+  cyber?: number;
+  /** Strikes at your plants, sympathy strikes included. */
+  strikes?: number;
+  /** A budget request granted at this month's hearing. */
+  won?: boolean;
+}
+
+/** One finished term as Director. */
+export interface CareerTerm {
+  term: number;
+  score: number;
+  grade: string;
+  outcome: 'complete' | 'dismissed' | 'running';
+  months: number;
+  avgReadiness: number;
 }
 
 /** One supplier's offer in a tender. */
@@ -328,6 +349,21 @@ export interface SimState {
   tests: TestProgramme[];
   /** Two players sharing the country, when playing hot-seat. */
   hotseat: HotseatState | null;
+  /** Relations with supplier nations, guarantees and co-production deals. */
+  diplomacy: DiplomacyState;
+  /** The fiscal year's budget hearing, while it sits. */
+  hearing: HearingState | null;
+  /** Promises made to the Committee and not yet judged. */
+  promises: CommitteePromise[];
+  promisesKept?: number;
+  cyber: CyberState;
+  unions: UnionState;
+  /** The month (history index) this term began. */
+  termMonth?: number;
+  /** Earlier terms as Director in this game. */
+  career: CareerTerm[];
+  /** A custom scenario's settings, when playing one. */
+  custom: CustomScenario | null;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

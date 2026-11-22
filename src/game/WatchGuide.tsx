@@ -2,13 +2,15 @@
 import { useState, type ReactNode } from 'react';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
+import { unionTowns } from '../sim/unions';
+import { guaranteed, supplierNations } from '../sim/diplomacy';
 import type { SimState } from '../sim/types';
 import { monthsTo } from '../sim/analytics';
 import { DEVELOPMENTS } from '../sim/rival';
 import { tr } from '../sim/worldgen';
-import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
+import { CITIES, FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
-export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns';
+export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns' | 'allies';
 interface Watch {
   tone: 'bad' | 'warn' | 'info';
   text: string;
@@ -63,6 +65,18 @@ export function watchList(s: SimState): Watch[] {
   }
   for (const l of FINISHED as LineId[]) if (s.lines[l].unlocked && s.lines[l].accepted === false) out.push({ tone: 'info', text: `${MATERIALS[l].name} awaits acceptance at the test ranges: made, but not issued yet (Testing tab).`, panel: 'testing' });
   for (const p of s.network.projects) if (p.days <= 14) out.push({ tone: 'info', text: `A building project finishes in ${p.days} days (Build tab).`, panel: 'build' });
+  // Cyber, unions, promises and the nations you buy from.
+  if (s.cyber?.railDays > 0) out.push({ tone: 'bad', text: `The rail booking system is down for about ${Math.max(1, Math.round(s.cyber.railDays / 7))} more weeks: trains run slower (Intel tab).`, panel: 'intel' });
+  for (const i of unionTowns(s)) {
+    const u = s.unions.towns[i];
+    if (u.strength >= 70) out.push({ tone: 'warn', text: `The union in ${CITIES[i].name} is strong (${Math.round(u.strength)}): a refused claim there means a strike that can spread. A pay deal cools it (Towns tab).`, panel: 'towns' });
+  }
+  for (const p of s.promises ?? []) if (p.due - s.day <= 60) out.push({ tone: 'warn', text: `Promise due in ${Math.max(0, Math.ceil((p.due - s.day) / 30))} month${p.due - s.day > 30 ? 's' : ''}: ${p.text} (Board tab).`, panel: 'strategy' });
+  for (const n of supplierNations()) {
+    const v = s.diplomacy?.nations[n] ?? 50;
+    if (v < 35 && !guaranteed(s, n)) out.push({ tone: 'warn', text: `Relations with the ${n} are cold (${Math.round(v)}): export bans are likelier. Send a trade mission (Allies tab).`, panel: 'allies' });
+  }
+  for (const c of s.diplomacy?.coprod ?? []) if (s.allies[c.ally] < 45) out.push({ tone: 'warn', text: `Relations with your co-production partner are slipping (${Math.round(s.allies[c.ally])}). Below 35 the deal lapses (Allies tab).`, panel: 'allies' });
   // A year ahead: rounds that will run low before you can react.
   for (const l of FINISHED as LineId[]) {
     if (!s.lines[l].unlocked || reserveTarget(s, l) <= 0) continue;
@@ -175,6 +189,19 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li>Everything moves on the network: rail (cheap, big), road (everywhere, smaller), sea (cheap, slow, to islands and abroad) and air (fast, tiny, expensive). Each route carries only so many tonnes a day.</Li>
         <Li>Sites pull what they need: plants keep days of inputs, bases keep ready rounds, depots keep days of their region's draw. Set depot targets on the Logistics tab, and raise the one a crisis is heading for.</Li>
         <Li>Foreign suppliers are reached by sea and can be hit by export bans.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'committee',
+    title: 'Allies, the Committee, hackers and unions',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Allies:</b> trade missions warm the nations you buy from, which makes export bans rarer; a friendly nation will guarantee its supplies for a year. Allies will co-produce rounds with you. Your export desk finds buyers who pay well (Allies tab).</Li>
+        <Li><b>Budget hearings:</b> every fiscal year the Committee questions you. Answers sway its factions, and promises are checked a year later. Then ask for more money, or less.</Li>
+        <Li><b>Cyber:</b> hackers hit plant control systems, the rail booking system and suppliers' networks. Raise defences, keep backups and drill for working without computers (Intel tab).</Li>
+        <Li><b>Unions:</b> each town's union grows when pay trails prices. Claims are for pay, hours or safety; refused ones end in strikes that can spread through a town. A national pay deal cools them all (Towns tab).</Li>
+        <Li><b>Career:</b> serve term after term; each is graded on its own, the Committee expects a little more each time, and your record book keeps your best runs. Build your own scenarios and share them as codes.</Li>
       </ul>
     ),
   },
