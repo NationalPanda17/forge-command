@@ -1,4 +1,4 @@
-# Forge Command 9.0: design
+# Forge Command 10.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -217,6 +217,54 @@ Physical figures follow public reference data where it exists, and are best gues
   - **Otherwise:** a strike at 30% for 25–50 days. Each other plant in town joins with odds of strength/150, at 50%
     for half as long.
 - **National deal:** 3% pay everywhere, every union −10, morale +5, once a year.
+
+## Energy (`energy.ts`)
+- **Grids:** each region's grid has a price (0.7–2.2 against normal) and a reserve (0–0.4). Reserves start at 0.12–0.22
+  and thin by 0.001 a month.
+- **Price each month:** moves 35% of the way toward 1 + fuel shock + 0.08 in winter (outside the heartland) + (0.18 −
+  reserve) × 0.3, with ±2% noise.
+- **Fuel shocks:** 1.8% a month × trouble scale; they add 25–60% for 90–210 days.
+- **Running cost of a line:** capacity value × (0.09 + 0.03 × intensity × power price) × run factor. At normal prices
+  and an arsenal's intensity of 1, that is the old 0.12. Power is booked as its own spending category.
+- **Intensity:** smelter 3, steelworks 2.6, chip fab 2.2, refinery and chemical 1.8, explosives 1.4, motors 1.2,
+  arsenal and components 1, mines 0.8, quarries 0.6, wells 0.5, forestry 0.3.
+- **Supplier prices:** spot prices and bids × (1 + 0.06 × intensity × (grid price − 1)).
+- **Blackout odds:** a day: (0.004 + 0.03 × thinness) × 1.5 in winter × 3 in an active crisis region × trouble scale,
+  over 30. Thinness is clamp((0.2 − reserve)/0.2).
+- **Blackouts:** last 1–4 days. Output is 25% without generators (private plants 30%), and 70% with them, at double
+  the power cost.
+- **Costs:**
+  - **Generators:** (6 + 4 × intensity) × the price index.
+  - **Power contract:** fixes the price at 1.05 × today's for 24 months.
+  - **Grid upgrade:** $60M × the price index; +0.08 reserve after 180 days.
+
+## Oversight (`audit.ts`)
+- **Waste:**
+  - spot premiums (30% over list when buying without a contract);
+  - 30% running costs of idle lines (mothballed plants excepted);
+  - ransoms;
+  - export penalties;
+  - overbilling.
+- **Overbilling:** each contract has a 0.6% chance a month × the trouble scale of turning fraudulent, adding 12% to
+  every delivery.
+- **Internal team:** $5M, then $2M a month. It finds each fraud with 30% odds a month and counts waste at 70%.
+- **Review:** every six months, at the end of the 6th and 12th month of each fiscal year. Waste over those six months
+  against spending: clean below 5% (Easy 8%,
+  Hard 4%), damning from 12% (Easy 18%, Hard 10%).
+  - **Clean:** confidence +2, treasury bench +4.
+  - **Concerns or damning:** a decision to accept (damning: confidence −1/−2/−3 by difficulty) or contest (even odds;
+    otherwise −3, or −3/−5/−6 if damning).
+  - **Fraud:** the Auditor-General finds each remaining case with 70% odds. A case you let go costs confidence −4 when
+    found again.
+- **Fraud decisions:**
+  - **Prosecute:** recover 80%, end the contract, supplier health −30.
+  - **Settle:** recover 40%, and billing turns honest.
+
+## Statistics (`StatsPanel.tsx`)
+- **Records:** each month records the value of every one of your plants' output, every decision taken, and its
+  immediate effect on confidence and the treasury.
+- **Display:** the panel charts these, with the existing spending, output, threat and confidence-driver records, over
+  a year, the term, or the whole game.
 
 ## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
 - **Each new term:**

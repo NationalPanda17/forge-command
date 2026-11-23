@@ -1,4 +1,5 @@
 // The money side of the industry: inflation, tenders with competing bids, supplier finances and supplementary budgets.
+import { supplierEnergyFactor } from './energy';
 import { clamp, rand, randRange } from './rng';
 import { registerResolver } from './strategy';
 import { DAYS_PER_MONTH } from './selectors';
@@ -48,7 +49,7 @@ export function makeTender(s: SimState, material: MaterialId, perDay: number, mo
     const offer = Math.max(0, Math.min(perDay, cap * 0.9 - claimed));
     const hungry = site.health < 40;
     const foreign = def.owner === 'foreign';
-    let price = priceNow(s, material) * CONTRACT_DISCOUNT[months] * competition * randRange(s, 0.95, 1.05);
+    let price = priceNow(s, material) * CONTRACT_DISCOUNT[months] * competition * randRange(s, 0.95, 1.05) * supplierEnergyFactor(s, id);
     if (hungry) price *= 0.93;
     if (foreign) price *= 0.95;
     const reliability = clamp(0.45 * (site.health / 100) + 0.45 * (site.condition / 100) + (foreign ? -0.12 : 0.08) + (site.embargoDays > 0 ? -0.3 : 0), 0.05, 0.98);

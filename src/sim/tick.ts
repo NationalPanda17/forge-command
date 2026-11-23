@@ -38,6 +38,8 @@ import { banFactor, diplomacyMonth } from './diplomacy';
 import { closeStaleHearing, openHearing, promisesMonth } from './hearings';
 import { cyberDay, cyberMonth, resolveCyber } from './cyber';
 import { unionsMonth, wageOf } from './unions';
+import { POWER_SHARE, energyDay, energyMonth, intensityOf, powerFactor, powerPrice, supplierEnergyFactor } from './energy';
+import { FRAUD_MARKUP, addWaste, oversightMonth, resolveOversight } from './audit';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -62,7 +64,7 @@ export const DIFF = {
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
 
 // Decision cards from modules that strategy itself loads are registered here, once everything has loaded.
-registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed));
+registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed) || resolveOversight(s, d, opt, feed));
 
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
@@ -100,7 +102,7 @@ function produce(s: SimState): void {
         p.lastLimit = 'idle';
         continue;
       }
-      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe);
+      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe) * powerFactor(s, site);
       let limit: typeof p.lastLimit = site.status !== 'active' ? 'damaged' : 'capacity';
       if (def.owner === 'state' && crewNeed(site) > site.workers * 1.02) limit = 'crew';
       // Private producers stop when nobody is buying.
@@ -136,6 +138,10 @@ function produce(s: SimState): void {
       else site.stock[rec.output] = (site.stock[rec.output] ?? 0) + whole;
       for (const [m, q] of Object.entries(rec.extra ?? {}) as [MaterialId, number][]) site.stock[m] = (site.stock[m] ?? 0) + gross * frac * q;
       s.month.made[rec.output] = (s.month.made[rec.output] ?? 0) + whole;
+      if (def.owner === 'state') {
+        const po = (s.month.plantOutput ??= {});
+        po[site.id] = (po[site.id] ?? 0) + whole * MATERIALS[rec.output].price * s.priceIndex;
+      }
       // Wear: surging wears plants down; normal running holds steady.
       if (def.owner === 'state') site.condition = clamp(site.condition + (p.run === 'surge' ? -0.12 : p.run === 'single' ? 0.04 : 0.02));
     }
@@ -267,9 +273,18 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
     s.treasury -= freight;
     if (SITE_BY_ID[from].owner !== 'state') {
       const k = s.contracts.find((c) => c.site === from && c.material === m && c.endDay > s.day);
-      const price = (k ? k.price : priceNow(s, m) * SPOT_PREMIUM) * (1 - 0.04 * skillOf(s, 'procurement'));
+      const skill = 1 - 0.04 * skillOf(s, 'procurement');
+      // Without a contract you pay the spot premium, and the supplier passes on its power bill.
+      const spot = priceNow(s, m) * supplierEnergyFactor(s, from);
+      const price = (k ? k.price * (k.fraud ? 1 + FRAUD_MARKUP : 1) : spot * SPOT_PREMIUM) * skill;
       s.treasury -= qty * price;
       s.month.spend.purchases += qty * price;
+      if (!k) addWaste(s, 'spot', qty * spot * (SPOT_PREMIUM - 1) * skill);
+      else if (k.fraud) {
+        const extra = qty * k.price * FRAUD_MARKUP * skill;
+        k.overbilled = (k.overbilled ?? 0) + extra;
+        addWaste(s, 'fraud', extra);
+      }
     }
   }
   return qty;
@@ -578,17 +593,31 @@ function world(s: SimState): void {
 
 function payDaily(s: SimState): void {
   let ops = 0;
+  let power = 0;
+  let idleCost = 0;
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
     if (def.owner !== 'state' || site.status === 'closed') continue;
     ops += (site.workers + site.trainees.reduce((a, t) => a + t.count, 0)) * WAGE_PER_DAY * wageOf(s, site.id);
     // A mothballed plant keeps only a caretaker's upkeep; an idle line still pays for power and maintenance.
     const idle = site.mothballed ? 0.05 : 0.3;
-    ops += site.processes.reduce((a, p) => a + p.capacity * MATERIALS[RECIPES[p.recipe].output].price * 0.12 * (p.run === 'idle' ? idle : p.run === 'surge' ? 1.35 : 1), 0);
+    // A line's running cost: maintenance and materials, plus power by how hungry the plant is, at its grid's price.
+    const kw = POWER_SHARE * intensityOf(site) * powerPrice(s, def.region) * (s.energy?.grids[def.region].outage > 0 && s.energy.generators.includes(site.id) ? 2 : 1);
+    for (const p of site.processes) {
+      const value = p.capacity * MATERIALS[RECIPES[p.recipe].output].price;
+      const run = p.run === 'idle' ? idle : p.run === 'surge' ? 1.35 : 1;
+      ops += value * (0.12 - POWER_SHARE) * run;
+      power += value * kw * run;
+      if (p.run === 'idle' && !site.mothballed) idleCost += value * (0.12 - POWER_SHARE + kw) * run;
+    }
   }
-  ops *= s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1);
-  s.treasury -= ops;
+  const scale = s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1);
+  ops *= scale;
+  power *= scale;
+  s.treasury -= ops + power;
   s.month.spend.operations += ops;
+  s.month.spend.energy = (s.month.spend.energy ?? 0) + power;
+  addWaste(s, 'idle', idleCost * scale);
 }
 
 function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort: number }): void {
@@ -609,6 +638,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   cyberMonth(s, feed);
   unionsMonth(s);
   promisesMonth(s, feed);
+  energyMonth(s, feed);
+  oversightMonth(s, feed);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   if ((s.history.length + 1) % 12 === 0 && s.day < s.days) openHearing(s, s.appropriation, feed);
@@ -667,6 +698,7 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   rivalDay(s, feed);
   industryDay(s, feed);
   cyberDay(s, feed);
+  energyDay(s, feed);
   townsDay(s, feed);
   testingDay(s, feed);
   peopleDay(s, feed, eventScale(s));

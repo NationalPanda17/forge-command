@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
+import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from '../sim/audit';
 import { unionTowns } from '../sim/unions';
 import { guaranteed, supplierNations } from '../sim/diplomacy';
 import type { SimState } from '../sim/types';
@@ -10,7 +11,7 @@ import { DEVELOPMENTS } from '../sim/rival';
 import { tr } from '../sim/worldgen';
 import { CITIES, FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
-export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns' | 'allies';
+export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns' | 'allies' | 'power' | 'money';
 interface Watch {
   tone: 'bad' | 'warn' | 'info';
   text: string;
@@ -75,6 +76,19 @@ export function watchList(s: SimState): Watch[] {
   for (const n of supplierNations()) {
     const v = s.diplomacy?.nations[n] ?? 50;
     if (v < 35 && !guaranteed(s, n)) out.push({ tone: 'warn', text: `Relations with the ${n} are cold (${Math.round(v)}): export bans are likelier. Send a trade mission (Allies tab).`, panel: 'allies' });
+  }
+  // Power and oversight.
+  if (s.energy) {
+    for (const [r, g] of Object.entries(s.energy.grids)) {
+      const dark = SITES.filter((d) => d.owner === 'state' && d.region === r && s.sites[d.id].processes.length && s.sites[d.id].status !== 'closed' && !s.sites[d.id].mothballed && !s.energy.generators.includes(d.id));
+      if (g.outage > 0 && dark.length) out.push({ tone: 'bad', text: `Blackout in ${REGIONS[r as keyof typeof REGIONS].name}: ${dark.length} of your plants there are down to a quarter of their output. Generators would keep them going (Power tab).`, panel: 'power' });
+    }
+    if (s.energy.shock) out.push({ tone: 'warn', text: `Fuel shock: power is about ${Math.round(s.energy.shock.size * 100)}% dearer for a few months. Prices ease when it passes, so this is a bad time to sign a power contract (Power tab).`, panel: 'power' });
+  }
+  if (s.oversight && (s.history.length + 1) % REVIEW_MONTHS === 0) {
+    const w = wasteSince(s, REVIEW_MONTHS - 1);
+    const ratio = counted(s, w.total) / Math.max(1, w.spend);
+    if (ratio >= AUDIT_LIMITS[s.difficulty][0]) out.push({ tone: 'warn', text: `The Auditor-General reviews your spending at the end of this month, and waste is running at ${Math.round(ratio * 100)}% (Money tab).`, panel: 'money' });
   }
   for (const c of s.diplomacy?.coprod ?? []) if (s.allies[c.ally] < 45) out.push({ tone: 'warn', text: `Relations with your co-production partner are slipping (${Math.round(s.allies[c.ally])}). Below 35 the deal lapses (Allies tab).`, panel: 'allies' });
   // A year ahead: rounds that will run low before you can react.
@@ -189,6 +203,17 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li>Everything moves on the network: rail (cheap, big), road (everywhere, smaller), sea (cheap, slow, to islands and abroad) and air (fast, tiny, expensive). Each route carries only so many tonnes a day.</Li>
         <Li>Sites pull what they need: plants keep days of inputs, bases keep ready rounds, depots keep days of their region's draw. Set depot targets on the Logistics tab, and raise the one a crisis is heading for.</Li>
         <Li>Foreign suppliers are reached by sea and can be hit by export bans.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'power',
+    title: 'Power, audits and the statistics room',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Power:</b> every region has its own grid. Plants pay for power by how hungry they are, and suppliers pass their power bills on. Fuel shocks raise prices; thin reserves, winter and the rival's strikes in a crisis bring blackouts. Generators keep a plant at 70%; power contracts fix the price for two years; grid upgrades add reserve (Power tab).</Li>
+        <Li><b>Audits:</b> every six months the Auditor-General reviews your waste: spot premiums, idle lines, ransoms, penalties and supplier overbilling. An internal audit team catches overbilling sooner (Money tab).</Li>
+        <Li><b>Statistics:</b> the Stats tab charts spending, output by round and by plant, what got through, and where your confidence came from, decision by decision.</Li>
       </ul>
     ),
   },

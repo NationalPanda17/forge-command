@@ -1,5 +1,45 @@
 # Changelog
 
+## 10.0.0: power, audits and the statistics room
+
+### Energy and the grid
+- **Grids:** every region has its own grid, with a power price and a reserve margin.
+- **Power bills:** your plants pay for power by how hungry they are: a smelter uses three times what an arsenal does.
+  Private suppliers pass part of their power bills on in their prices and bids.
+- **Prices:** they rise in winter, when reserves thin, and in a fuel shock (a pipeline outage, a cold snap abroad),
+  which lasts for months.
+- **Blackouts:** thin reserves, winter and the rival's strikes on the grid during a crisis bring blackouts. A plant
+  without its own generators falls to a quarter of its output.
+- **Your tools:**
+  - **Backup generators:** keep a plant at 70% through a blackout.
+  - **Power contracts:** fix a region's price for two years.
+  - **Grid upgrades:** add reserve after about six months.
+- **New Power tab;** each plant view shows its power and generators.
+
+### Audits and oversight
+- **The review:** every six months the Auditor-General reviews your waste: premiums paid for buying without a
+  contract, running costs of idle lines, ransoms, penalties, and suppliers quietly overbilling their contracts.
+- **The verdict:** a clean review earns confidence. A critical one comes to you to accept or contest. The thresholds
+  are gentler on Easy and stricter on Hard.
+- **Overbilling:** when it is found, prosecute (recover most of it, lose the contract), settle quietly, or let it go
+  and hope it never comes out.
+- **Internal audit team:** catches overbilling within months and softens the Auditor-General's findings.
+- **Where to see it:** waste so far and the last review are in the Money tab. A critical audit can come up at the next
+  budget hearing, where you can promise a clean one.
+
+### Statistics room
+- **New Stats tab,** covering the last year, this term, or the whole game:
+  - spending by category, power included;
+  - rounds made each month, and output by plant;
+  - what got through, threat by threat;
+  - where your confidence came from;
+  - every decision and what it did to confidence and the treasury.
+
+### Balance
+- **Running costs:** a quarter of a line's running cost is now its power bill, the same as before at normal prices.
+- **The test player** buys generators for its arsenals, signs power contracts while power is cheap, hires an audit
+  team once money allows, accepts audits and settles overbilling quietly.
+
 ## 9.0.0: allies, hearings, hackers, unions, careers and your own scenarios
 
 ### Allies and exports

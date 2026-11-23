@@ -18,6 +18,8 @@ import { answer, request, validateHearing, type RequestLevel } from './hearings'
 import { applyCyber, validateCyber, type CyberArea } from './cyber';
 import { payDeal, surgeBanned, validatePayDeal } from './unions';
 import type { AllyId } from './types';
+import { applyEnergy, validateEnergy } from './energy';
+import { applyOversight, validateOversight } from './audit';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -72,7 +74,12 @@ export type SimAction =
   | { type: 'cyberDefence'; area: CyberArea }
   | { type: 'cyberBackups' }
   | { type: 'cyberDrills' }
-  | { type: 'payDeal' };
+  | { type: 'payDeal' }
+  | { type: 'generator'; site: string }
+  | { type: 'powerContract'; region: RegionId }
+  | { type: 'gridUpgrade'; region: RegionId }
+  | { type: 'auditTeam' }
+  | { type: 'disbandAuditTeam' };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -129,6 +136,13 @@ export function validate(s: SimState, a: SimAction): string | null {
       return validateCyber(s, a);
     case 'payDeal':
       return validatePayDeal(s);
+    case 'generator':
+    case 'powerContract':
+    case 'gridUpgrade':
+      return validateEnergy(s, a);
+    case 'auditTeam':
+    case 'disbandAuditTeam':
+      return validateOversight(s, a);
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
       if (a.run === 'surge' && surgeBanned(s, a.site)) return 'A union deal rules out round-the-clock shifts here for now.';
@@ -457,6 +471,15 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     case 'payDeal':
       payDeal(s, feed);
+      break;
+    case 'generator':
+    case 'powerContract':
+    case 'gridUpgrade':
+      applyEnergy(s, a, feed);
+      break;
+    case 'auditTeam':
+    case 'disbandAuditTeam':
+      applyOversight(s, a, feed);
       break;
     case 'handover':
       s.hotseat!.handover = false;

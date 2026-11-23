@@ -16,6 +16,8 @@ import { newDiplomacy } from './diplomacy';
 import { newCyber } from './cyber';
 import { newUnions } from './unions';
 import { RIVAL_PACE, tidy, type CustomScenario } from './custom';
+import { newEnergy } from './energy';
+import { newOversight } from './audit';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -106,6 +108,9 @@ export function migrate(s: SimState): SimState {
   s.career ??= [];
   s.custom ??= null;
   s.termMonth ??= 0;
+  s.energy ??= newEnergy();
+  s.oversight ??= newOversight();
+  s.month.spend.energy ??= 0;
   return s;
 }
 
@@ -122,7 +127,7 @@ export const emptyMonth = (month: number): MonthReport => ({
   arrived: { drone: 0, rocket: 0, cruise: 0, ballistic: 0, aircraft: 0 },
   stopped: { drone: 0, rocket: 0, cruise: 0, ballistic: 0, aircraft: 0 },
   leaked: { drone: 0, rocket: 0, cruise: 0, ballistic: 0, aircraft: 0 },
-  spend: { purchases: 0, operations: 0, transport: 0, projects: 0, demil: 0 },
+  spend: { purchases: 0, operations: 0, transport: 0, projects: 0, demil: 0, energy: 0 },
   income: { appropriation: 0, sales: 0 },
   interceptorSpend: 0,
   threatValueStopped: 0,
@@ -236,6 +241,8 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     termMonth: 0,
     career: [],
     custom,
+    energy: newEnergy(),
+    oversight: newOversight(),
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },

@@ -1,5 +1,7 @@
 // A live schematic of one of your plants: each line's inputs, its bay and its output, with the crew below.
 import { automateCost } from '../sim/build';
+import { SITE_BY_ID } from '../sim/world';
+import { generatorCost, powerPrice } from '../sim/energy';
 import { validate, type SimAction } from '../sim/actions';
 import { APPRENTICE_COST, MAX_SAFETY, moraleTarget, safetyCost } from '../sim/people';
 import { CLEARANCE_NAME, MAX_CLEARANCE, security, vetCost } from '../sim/security';
@@ -145,6 +147,17 @@ export default function PlantView({ state, siteId, act }: { state: SimState; sit
         )}
       </div>
       <p className="mt-0.5 text-[10px] text-ops-dim">Workers come from {townOf(siteId)} (Towns tab).</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-ops-text">
+          Power: <span className="text-white">{state.energy.generators.includes(siteId) ? 'grid, with backup generators' : 'grid only'}</span>{' '}
+          <span className="text-ops-dim">· pays {Math.round(powerPrice(state, SITE_BY_ID[siteId].region) * 100)}% of normal</span>
+        </span>
+        {!state.energy.generators.includes(siteId) && (
+          <Btn why={why({ type: 'generator', site: siteId })} onClick={() => act({ type: 'generator', site: siteId })} title="Keeps 70% of output through a blackout (Power tab).">
+            Generators · {money(generatorCost(state, siteId))}
+          </Btn>
+        )}
+      </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-ops-text">Apprentices a month</span>
         <Segmented<string>

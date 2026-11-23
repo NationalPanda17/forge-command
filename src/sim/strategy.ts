@@ -169,7 +169,7 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud';
   title: string;
   body: string;
   options: DecisionOption[];
@@ -296,6 +296,17 @@ export function resolveDecision(s: SimState, id: number, option: string, feed: F
   if (!d) return;
   s.strategy.decisions = s.strategy.decisions.filter((x) => x.id !== id);
   const opt = d.options.some((o) => o.id === option) ? option : d.fallback;
+  const before = { confidence: s.confidence, treasury: s.treasury };
+  resolveInner(s, d, opt, feed);
+  (s.month.decisions ??= []).push({
+    title: d.title,
+    option: d.options.find((o) => o.id === opt)?.label ?? opt,
+    confidence: Math.round((s.confidence - before.confidence) * 10) / 10,
+    treasury: Math.round((s.treasury - before.treasury) * 10) / 10,
+  });
+}
+
+function resolveInner(s: SimState, d: Decision, opt: string, feed: Feed): void {
   for (const r of RESOLVERS) if (r(s, d, opt, feed)) return;
   if (d.kind === 'bailout' && d.site) {
     const site = s.sites[d.site];

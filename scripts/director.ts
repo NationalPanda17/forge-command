@@ -12,6 +12,7 @@ import type { SimState } from '../src/sim/types';
 import { requestOdds } from '../src/sim/hearings';
 import { CYBER_AREA_IDS } from '../src/sim/cyber';
 import { supplierNations } from '../src/sim/diplomacy';
+import { GRID_REGIONS, regionPlants } from '../src/sim/energy';
 import { FINISHED, RECIPES, SITES, SITE_BY_ID, type LineId } from '../src/sim/world';
 
 /** A competent but simple director: staff up, research, second sources, recycle, refurbish, chase crises, expand. */
@@ -34,7 +35,12 @@ export function active(s: SimState): SimAction[] {
   for (const d of s.strategy.decisions) {
     // Union claims: settle what is affordable, talk otherwise.
     const has = (o: string) => d.options.some((x) => x.id === o);
-    const pick = d.kind === 'labour' ? (has('pay') ? (rich ? 'pay' : 'talk') : has('agree') ? 'agree' : has('fund') && rich ? 'fund' : d.fallback) : d.kind === 'ransom' ? 'rebuild' : choose[d.kind];
+    const pick =
+      d.kind === 'labour' ? (has('pay') ? (rich ? 'pay' : 'talk') : has('agree') ? 'agree' : has('fund') && rich ? 'fund' : d.fallback)
+      : d.kind === 'ransom' ? 'rebuild'
+      : d.kind === 'audit' ? 'accept'
+      : d.kind === 'fraud' ? 'settle'
+      : choose[d.kind];
     acts.push({ type: 'decide', decision: d.id, option: pick ?? d.fallback });
   }
   // The budget hearing: answer for goodwill, promise only what is in hand, then ask for what the odds allow.
@@ -51,6 +57,10 @@ export function active(s: SimState): SimAction[] {
   // Cyber: basic defences everywhere once the books allow, then backups.
   for (const area of CYBER_AREA_IDS) if (s.cyber.levels[area] < (s.treasury > 1400 ? 2 : 1) && s.treasury > 800) acts.push({ type: 'cyberDefence', area });
   if (!s.cyber.backups && s.treasury > 1000) acts.push({ type: 'cyberBackups' });
+  // Power: generators at the arsenals, a contract while power is cheap, an audit team once the books allow.
+  if (s.treasury > 700) for (const def of SITES.filter((x) => x.owner === 'state' && x.kind === 'arsenal')) if (!s.energy.generators.includes(def.id)) acts.push({ type: 'generator', site: def.id });
+  for (const r of GRID_REGIONS) if (regionPlants(s, r).length && s.energy.grids[r].price <= 1.05) acts.push({ type: 'powerContract', region: r });
+  if (!s.oversight.team && s.treasury > 900) acts.push({ type: 'auditTeam' });
   // Keep the nations that sell you parts friendly when a ban would hurt.
   if (s.treasury > 900) for (const n of supplierNations()) if (s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
   // Re-tender contracts before they lapse, and award the cheapest dependable bid.

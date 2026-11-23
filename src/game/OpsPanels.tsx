@@ -1,5 +1,7 @@
 // Command panels: stockpile lifecycle, logistics, the fight, money and the live feed.
 import { THREATS, THREAT_IDS } from '../sim/fight';
+import { AUDITOR, AUDIT_LIMITS, REVIEW_MONTHS, WASTE_IDS, WASTE_NAME, counted, teamCost, teamUpkeep, wasteSince } from '../sim/audit';
+import { validate } from '../sim/actions';
 import { MODES, ROUTES, ROUTE_KEY, MATERIALS, REGIONS, FIGHTING_REGIONS, SITE_BY_ID, FINISHED, type LineId, type MaterialId, type RegionId } from '../sim/world';
 import { lotQty, nationalDailyDraw, nationalStock, readiness, regionDailyDraw, reserveTarget, unserviceableTotal } from '../sim/selectors';
 import type { SimAction } from '../sim/actions';
@@ -227,15 +229,19 @@ export function FightPanel({ state, act }: { state: SimState; act: (a: SimAction
   );
 }
 
-export function MoneyPanel({ state }: { state: SimState }) {
+export function MoneyPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
+  const waste = wasteSince(state, REVIEW_MONTHS);
+  const last = state.oversight.findings.at(-1);
+  const flagged = state.contracts.filter((c) => c.flagged);
   const h = state.history;
   const x = h.map((r) => monthLabel2(r.month));
   const m = state.month;
   const rows: [string, number][] = [
     ['Appropriation', m.income.appropriation],
-    ['Sales and recycling', m.income.sales],
+    ['Sales, recycling and recoveries', m.income.sales],
     ['Purchases', -m.spend.purchases],
     ['Operations and wages', -m.spend.operations],
+    ['Power', -(m.spend.energy ?? 0)],
     ['Transport', -m.spend.transport],
     ['Projects', -m.spend.projects],
     ['Demilitarization', -m.spend.demil],
@@ -276,6 +282,52 @@ export function MoneyPanel({ state }: { state: SimState }) {
           { label: 'Confidence', values: h.map((r) => r.confidence), color: COLORS.amber },
         ]}
       />
+      <section className="space-y-2 rounded border border-ops-line/60 p-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="label">Oversight</span>
+          <span className="text-[10px] text-ops-dim">{AUDITOR}</span>
+        </div>
+        <p className="text-ops-dim">
+          Every six months the Auditor-General reviews your spending. Waste counts against you: premiums for buying without a contract, idle lines, ransoms, penalties, and suppliers quietly overbilling. A clean review earns the Committee's trust.
+        </p>
+        {last && (
+          <p className={last.verdict === 'clean' ? 'text-ops-green' : last.verdict === 'concerns' ? 'text-ops-amber' : 'text-ops-red'}>
+            Last review ({monthLabel2(last.month)}): {last.verdict === 'clean' ? 'clean' : last.verdict === 'concerns' ? 'concerns raised' : 'damning'} · waste {money(last.waste)}, {pct(last.waste / Math.max(1, last.spend))} of spending.
+          </p>
+        )}
+        <table className="w-full">
+          <tbody>
+            {WASTE_IDS.map((k) => (
+              <tr key={k}>
+                <td className="text-ops-dim">{WASTE_NAME[k]}</td>
+                <td className="text-right text-ops-text">{money(waste.by[k])}</td>
+              </tr>
+            ))}
+            <tr>
+              <td className="text-ops-text">Waste over the last six months</td>
+              <td className={`text-right ${counted(state, waste.total) / Math.max(1, waste.spend) >= AUDIT_LIMITS[state.difficulty][0] ? 'text-ops-amber' : 'text-white'}`}>
+                {money(waste.total)} · {pct(waste.total / Math.max(1, waste.spend))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {flagged.length > 0 && <p className="text-ops-red">Overbilling found at {flagged.map((c) => SITE_BY_ID[c.site].name).join(', ')}: a decision is waiting on the Board.</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-ops-dim">
+            {state.oversight.team ? `Your internal audit team costs ${money(teamUpkeep(state))} a month and checks every contract.` : 'An internal audit team finds overbilling within months and softens the Auditor-General’s findings.'}
+            {(state.fraudsCaught ?? 0) > 0 ? ` Overbilling caught: ${state.fraudsCaught}.` : ''}
+          </span>
+          {state.oversight.team ? (
+            <Btn why={validate(state, { type: 'disbandAuditTeam' })} onClick={() => act({ type: 'disbandAuditTeam' })}>
+              Disband the team
+            </Btn>
+          ) : (
+            <Btn why={validate(state, { type: 'auditTeam' })} onClick={() => act({ type: 'auditTeam' })}>
+              Hire an audit team · {money(teamCost(state))}
+            </Btn>
+          )}
+        </div>
+      </section>
       <p className="text-[10px] text-ops-dim">
         You pay for everything delivered to your arsenals and depots (contract or spot price), the freight to get it there, and your own plants' wages and running costs. Upstream companies buy from each other on their own account. Calm draw:{' '}
         {linesOf(state)
