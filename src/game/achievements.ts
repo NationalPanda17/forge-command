@@ -1,6 +1,9 @@
 // Achievements: earned across campaigns and remembered in this browser.
 import { termReport } from '../sim/analytics';
 import type { SimState } from '../sim/types';
+import { STEPS } from './Tutorial';
+
+const TUTORIAL_STEPS = STEPS.length;
 
 export interface AchievementDef {
   id: string;
@@ -26,7 +29,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'hard', title: 'Iron director', text: 'Complete a campaign on Hard.', check: (s) => s.outcome === 'complete' && s.difficulty === 'hard' },
   { id: 'war', title: 'Trial by fire', text: 'Complete the War footing scenario.', check: (s) => s.outcome === 'complete' && s.scenario === 'warFooting' },
   { id: 'sanctions', title: 'Self-reliance', text: 'Complete the Sanctions scenario.', check: (s) => s.outcome === 'complete' && s.scenario === 'sanctions' },
-  { id: 'tutorial', title: 'Quick study', text: 'Finish the tutorial.', check: (s) => s.scenario === 'tutorial' && (s.tutorial?.step ?? 0) >= 99 },
+  { id: 'tutorial', title: 'Quick study', text: 'Finish the tutorial.', check: (s) => s.scenario === 'tutorial' && (s.tutorial?.step ?? 0) >= TUTORIAL_STEPS && (s.tutorial?.step ?? 0) <= 99 },
   { id: 'guarantee', title: 'Good neighbours', text: 'Win a supply guarantee from a nation that sells you parts.', check: (s) => Object.keys(s.diplomacy?.guarantees ?? {}).length > 0 },
   { id: 'coprod', title: 'Shared burden', text: 'Sign a co-production deal with an ally.', check: (s) => (s.diplomacy?.coprod.length ?? 0) > 0 },
   { id: 'hearing', title: 'Persuasive', text: 'Win a budget increase at a hearing.', check: (s) => s.history.some((h) => h.won) },

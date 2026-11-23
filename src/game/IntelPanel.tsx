@@ -120,7 +120,7 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-white">{CYBER_AREAS[area].name}</span>
                   <span className={lvl >= 2 ? 'text-ops-green' : lvl === 0 ? 'text-ops-amber' : 'text-ops-text'}>
-                    {CYBER_LEVEL[lvl]} · {pct(attackOdds(state, area))} a month
+                    {CYBER_LEVEL[lvl]} · {(attackOdds(state, area) * 100).toFixed(1)}% a month
                   </span>
                 </div>
                 <p className="text-[10px] text-ops-dim">{CYBER_AREAS[area].blurb}</p>

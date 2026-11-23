@@ -21,7 +21,7 @@ export function Explain({ children, title, lines }: { children: ReactNode; title
       tabIndex={0}
       role="button"
       aria-describedby={visible ? id : undefined}
-      aria-label={`${title}: explain`}
+      title={`${title}: press to explain`}
       onMouseEnter={show}
       onMouseLeave={() => setOpen(false)}
       onFocus={show}

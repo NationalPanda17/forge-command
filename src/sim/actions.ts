@@ -13,6 +13,7 @@ import { MAX_CLEARANCE, vetCost } from './security';
 import { HOMES_PER_PROJECT, HOUSING_DAYS, hireRoom, housingCost, mothball, reopen, townOf } from './towns';
 import { prioritise } from './testing';
 import { controlBlock } from './hotseat';
+import { storyCount } from './storyCount';
 import { applyDiplomacy, validateDiplomacy } from './diplomacy';
 import { answer, request, validateHearing, type RequestLevel } from './hearings';
 import { applyCyber, validateCyber, type CyberArea } from './cyber';
@@ -98,7 +99,9 @@ export const TRAINING_DAYS = 90;
 export function expandCost(s: SimState, site: string, process: number): number {
   const p = s.sites[site].processes[process];
   const out = RECIPES[p.recipe].output;
-  const yearly = (p.capacity / (1 + 0.25 * p.expansions)) * MATERIALS[out].price * 360;
+  // Priced on the plant's base size, counting capacity still ramping up from earlier expansions.
+  const total = p.capacity + (p.ramp ?? []).reduce((x, r) => x + r.cap, 0);
+  const yearly = (total / (1 + 0.25 * p.expansions)) * MATERIALS[out].price * 360;
   return Math.max(8, Math.round(yearly * 0.12 * s.priceIndex));
 }
 export const investCost = (s: SimState, site: string, process: number) => Math.round(expandCost(s, site, process) * 1.4);
@@ -114,7 +117,11 @@ export function validate(s: SimState, a: SimAction): string | null {
   if (s.over) return 'The campaign is over.';
   // Hot-seat: each player runs only their own half of the country.
   if (a.type !== 'handover') {
-    const blocked = controlBlock(s, 'site' in a ? a.site : a.type === 'found' ? a.plot : undefined);
+    // The site an action touches: its own, a plot, a build target, or the site a decision is about.
+    const dec = a.type === 'decide' ? s.strategy.decisions.find((d) => d.id === a.decision) : undefined;
+    const decSite = dec ? (dec.site ?? s.chains.find((c) => c.id === dec.data?.chain)?.site) : undefined;
+    const target = 'site' in a ? a.site : a.type === 'found' ? a.plot : a.type === 'build' ? a.target : decSite;
+    const blocked = controlBlock(s, target);
     if (blocked) return blocked;
   }
   const site = 'site' in a ? s.sites[a.site] : null;
@@ -145,6 +152,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return validateOversight(s, a);
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
+      if (site!.mothballed && a.run !== 'idle') return 'Reopen the plant first.';
       if (a.run === 'surge' && surgeBanned(s, a.site)) return 'A union deal rules out round-the-clock shifts here for now.';
       return site!.processes[a.process] ? null : 'Unknown process.';
     case 'expand':
@@ -154,7 +162,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, expandCost(s, a.site, a.process));
     case 'hire': {
       if (def!.owner !== 'state') return 'Only your own sites hire directly.';
-      if (!(a.count > 0)) return 'Hire at least one person.';
+      if (!Number.isInteger(a.count) || a.count < 1) return 'Hire at least one person.';
       if (site!.mothballed) return 'Reopen the plant first.';
       const room = hireRoom(s, townOf(a.site));
       if (a.count > room) return room <= 0 ? `${townOf(a.site)} has no one left to hire: build housing there.` : `${townOf(a.site)} can supply only ${room} more people: hire fewer, or build housing.`;
@@ -166,6 +174,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, repairCost(s, a.site));
     case 'signContract': {
       if (def!.owner === 'state') return 'You do not contract with yourself.';
+      if (site!.status === 'closed') return `${def!.name} has closed.`;
       if (!site!.qualified) return `${def!.name} is not qualified to supply your arsenals yet.`;
       if (!def!.processes.some((p) => RECIPES[p.recipe].output === a.material || RECIPES[p.recipe].extra?.[a.material])) return `${def!.name} does not make that.`;
       return a.perDay > 0 ? null : 'Quantity must be above zero.';
@@ -174,15 +183,19 @@ export function validate(s: SimState, a: SimAction): string | null {
       return s.contracts.some((c) => c.id === a.contract) ? null : 'No such contract.';
     case 'qualify':
       if (def!.owner === 'state') return 'Your own sites need no qualification.';
+      if (site!.status === 'closed') return `${def!.name} has closed.`;
       if (site!.qualified) return 'Already qualified.';
       if (site!.qualifyingDays !== null) return 'Qualification already under way.';
       return funds(s, qualifyCost(a.site));
     case 'invest':
       if (def!.owner !== 'private') return 'You can only invest in domestic companies.';
+      if (site!.status === 'closed') return `${def!.name} has closed.`;
       if (!site!.processes[a.process]) return 'Unknown process.';
       if (site!.processes[a.process].expansions >= 3) return 'This plant cannot grow any further.';
       return funds(s, investCost(s, a.site, a.process));
     case 'refurbish': {
+      // Rounds are refurbished where they wait: your depots, arsenals and bases, not at the demilitarization site.
+      if (def!.owner !== 'state' || def!.kind === 'demil') return 'Refurbish rounds at a depot, an arsenal or a base.';
       const q = site!.unserviceable[a.line] ?? 0;
       if (q < 1) return 'Nothing waiting for refurbishment here.';
       if (a.line === 'shell155') return 'Old shells are not worth refurbishing.';
@@ -203,8 +216,11 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (!p) return 'That candidate has taken another job.';
       return funds(s, p.salary * 3);
     }
-    case 'fireStaff':
-      return s.strategy.staff[a.role] ? null : 'Nobody holds that post.';
+    case 'fireStaff': {
+      const p = s.strategy.staff[a.role];
+      if (!p) return 'Nobody holds that post.';
+      return funds(s, p.salary * 3);
+    }
     case 'decide':
       return s.strategy.decisions.some((d) => d.id === a.decision) ? null : 'That decision is gone.';
     case 'openTender':
@@ -214,9 +230,10 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, TENDER_COST);
     case 'awardTender': {
       const t = s.tenders.find((x) => x.id === a.tender);
-      if (!t) return 'That tender has closed.';
+      if (!t || t.expires <= s.day) return 'That tender has closed.';
       const b = t.bids.find((x) => x.site === a.site);
       if (!b) return 'No such bid.';
+      if (s.sites[b.site].status === 'closed') return `${SITE_BY_ID[b.site].name} has closed.`;
       return b.perDay > 0 ? null : 'That supplier has no capacity to offer.';
     }
     case 'tutorial':
@@ -376,6 +393,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       s.contracts.push({ id: s.nextId++, site: b.site, material: t.material, perDay: b.perDay, price: b.price, endDay: s.day + t.months * DAYS_PER_MONTH });
       s.tenders = s.tenders.filter((x) => x.id !== t.id);
       s.sites[b.site].health = Math.min(100, s.sites[b.site].health + 6);
+      storyCount(s, 'awarded');
       feed(s, 'good', `Contract awarded to ${SITE_BY_ID[b.site].name}: ${b.perDay} ${MATERIALS[t.material].name} a day at $${b.price.toFixed(3)}M.`, b.site);
       break;
     }
@@ -500,7 +518,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       const op = a.op;
       if (op.kind === 'rules') {
         s.settings = { ...s.settings, ...op.settings };
-        if (op.settings.endless === false) s.days = Math.max(s.day + 30, 48 * DAYS_PER_MONTH);
+        if (op.settings.endless === false) s.days = Math.max(s.day + 30, s.plannedDays ?? 48 * DAYS_PER_MONTH);
         if (op.settings.endless) s.days = 100 * 360;
       } else if (op.kind === 'money') {
         s.treasury += op.amount;

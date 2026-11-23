@@ -83,7 +83,8 @@ export function baseDailyDraw(s: SimState, siteId: string, line: LineId): number
 export function nationalStock(s: SimState, line: LineId): number {
   let n = 0;
   for (const site of Object.values(s.sites)) n += lotQty(site.lots[line]);
-  for (const sh of s.shipments) if (sh.material === line) n += sh.qty;
+  // Retired rounds on their way to the demilitarization site are not stock.
+  for (const sh of s.shipments) if (sh.material === line && sh.to !== 'karrowDemil') n += sh.qty;
   return n;
 }
 

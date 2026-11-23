@@ -185,6 +185,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     rng: seed >>> 0,
     day: 0,
     days: rules.endless ? ENDLESS_DAYS : months * DAYS_PER_MONTH,
+    plannedDays: months * DAYS_PER_MONTH,
     difficulty,
     scenario,
     treasury: money.treasury + (extra?.treasury ?? 0),

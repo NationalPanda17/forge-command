@@ -3,6 +3,7 @@
 // on the grid during a crisis bring blackouts, which stop lines unless a plant has its own backup generators.
 import { clamp, pick, rand, randInt, randRange } from './rng';
 import { troubleScale } from './scale';
+import { controllerOf } from './hotseat';
 import { DAYS_PER_MONTH } from './selectors';
 import type { FeedItem, SimState, SiteState } from './types';
 import { REGIONS, SITES, SITE_BY_ID, type RegionId, type SiteKind } from './world';
@@ -114,7 +115,8 @@ export function blackoutOdds(s: SimState, region: RegionId): number {
 export function validateEnergy(s: SimState, a: { type: string; site?: string; region?: RegionId }): string | null {
   // Two players: each runs only the grids in their own half of the country.
   const h = s.hotseat;
-  if (h && a.region && !h.players[h.active].regions.includes(a.region)) {
+  const mine = (r: RegionId) => h!.players[h!.active].regions.includes(r) || SITES.some((d) => d.owner === 'state' && d.region === r && s.sites[d.id].processes.length > 0 && controllerOf(h!, d.id) === h!.active);
+  if (h && a.region && !mine(a.region)) {
     const other = h.players[1 - h.active];
     return `${other.name} (${other.command}) runs that grid.`;
   }

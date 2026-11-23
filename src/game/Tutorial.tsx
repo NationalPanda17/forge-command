@@ -15,6 +15,8 @@ interface Step {
 }
 
 export const TUTORIAL_DONE = 99;
+/** Skipped rather than finished: no achievement. */
+export const TUTORIAL_SKIPPED = 100;
 
 export const STEPS: Step[] = [
   {
@@ -68,7 +70,7 @@ export function TutorialCard({ state, onStep }: { state: SimState; onStep: (step
     <section className="border-b border-ops-cyan/40 bg-ops-cyan/5 px-3 py-2 text-[11px]" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="label text-ops-cyan">{finished ? 'Tutorial complete' : `Tutorial · step ${step + 1} of ${STEPS.length}`}</span>
-        <Btn onClick={() => onStep(TUTORIAL_DONE)}>{finished ? 'Close' : 'Skip tutorial'}</Btn>
+        <Btn onClick={() => onStep(finished ? TUTORIAL_DONE : TUTORIAL_SKIPPED)}>{finished ? 'Close' : 'Skip tutorial'}</Btn>
       </div>
       {finished ? (
         <p className="mt-1 text-ops-text">That is the job. The first crisis can come any time after the first year. The Guide tab has the rest. Good luck.</p>

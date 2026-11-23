@@ -53,8 +53,11 @@ export function Btn({
   title,
   pressed,
   id,
+  type = 'button',
 }: {
   id?: string;
+  /** A button inside a form can submit it. */
+  type?: 'button' | 'submit';
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
@@ -69,7 +72,7 @@ export function Btn({
   return (
     <button
       id={id}
-      type="button"
+      type={type}
       className={`btn ${k} ${pressed ? 'btn-active' : ''} ${className}`}
       onClick={onClick}
       disabled={disabled || !!why}

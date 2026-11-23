@@ -1,5 +1,65 @@
 # Changelog
 
+## 10.1.0: an in-depth review
+
+Three independent reviews of the whole game (the simulation core, the feature systems and the interface) found these,
+now fixed with regression tests.
+
+### Simulation
+- **Threats that got through could be forgiven:** any action taken late in a month made the Committee forget that
+  month's threats, and land-war shortfalls likewise. The month's totals are now kept in the month itself.
+- **Stock counts:** retired rounds on their way to be destroyed no longer count as stock.
+- **Refurbishing:** it is limited to depots, arsenals and bases. At the demilitarization site it made stock that could
+  never be used.
+- **Prices and rules:**
+  - Expansions are priced on capacity still ramping up, as they are built.
+  - A mothballed plant can't be set running.
+  - A hire is whole people.
+  - Closed suppliers take no contracts, investment or qualification.
+  - An expired tender can't be awarded.
+- **Sales:** parts your own plants send to private companies are now paid for.
+- **Hearings:** a budget hearing no longer throws away a budget change made while it sits, from a story chapter or
+  the stockpile law.
+- **Promises:** the "no exports" promise now covers new orders only, and strikes earlier in the month no longer break a
+  "no strikes" promise.
+- **Mothballed plants:** a plant mothballed since its union's claim doesn't strike, and a new research line at a
+  mothballed plant starts idle.
+- **Smaller fixes:**
+  - A quality scandal can't start at a closed supplier.
+  - The "Full racks" objective uses this month's readiness.
+  - A sandbox that stops being endless keeps the term you chose.
+  - The turned spy ring's option text matches what it does.
+
+### Story and two players
+- **Story goals:** three of them could never be met. A tender awarded, a plant founded and a line brought in-house now
+  count.
+- **Two players:** neither director can automate the other's plants or answer decisions about them. A director can sign
+  for the grid that powers their own plants.
+
+### Interface
+- **Dialogs:** keyboard shortcuts no longer fire behind a dialog, and Space presses the focused button instead of the
+  clock. A story briefing and a budget hearing never open at once, and keyboard help shows above the term report.
+- **The clock:** it stops when a hearing, a handover or a briefing begins, and the +1d and +7d buttons wait for them.
+- **Fixed controls:**
+  - The Save button in the save form works.
+  - A closed term report can be reopened.
+  - Two-player games have a term picker.
+- **Costs shown:**
+  - Contract prices include inflation.
+  - Hiring and letting go of key staff show their cost, and severance needs the money.
+- **Smaller fixes:**
+  - Research progress uses the real duration.
+  - Small cyber odds show a decimal.
+  - The tender picker can't go stale.
+  - Explained numbers are read out by screen readers.
+  - Skipping the tutorial no longer earns "Quick study".
+  - Several labels are corrected.
+
+### Tests
+- **New coverage:** every panel, site view, material view and dialog renders without crashing and without NaN or
+  undefined; every player action and decision type is tested; and the Courier, lots, determinism, named saves (including
+  saves from before the newer systems), the record book and achievements have tests.
+
 ## 10.0.0: power, audits and the statistics room
 
 ### Energy and the grid

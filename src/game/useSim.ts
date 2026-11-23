@@ -58,7 +58,7 @@ export function useSim(initial: SimState, autoPause: boolean) {
       if (due >= 1 && !c.pending) {
         c.pending = true;
         setState((s) => {
-          const next = advanceDays(s, Math.min(due, 8));
+          const next = advanceDays(s, Math.min(due, 8), { stopOnHold: true });
           if (next.over || (autoPause && next.alert)) setSpeed(0);
           if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) saveSim(next);
           return next;
@@ -71,7 +71,7 @@ export function useSim(initial: SimState, autoPause: boolean) {
   }, [speed, autoPause]);
 
   const act = useCallback((a: SimAction) => setState((s) => apply(s, a)), []);
-  const step = useCallback((days: number) => setState((s) => advanceDays(s, days)), []);
+  const step = useCallback((days: number) => setState((s) => advanceDays(s, days, { stopOnHold: true })), []);
   /** Continuous simulated time for drawing: today plus how far through it we are. */
   const clock = useCallback(() => {
     const c = sim.current;

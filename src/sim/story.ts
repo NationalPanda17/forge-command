@@ -156,9 +156,7 @@ export function storyDay(s: SimState, feed: Feed): void {
   for (const f of s.feed) {
     if (f.day !== s.day) continue;
     if (f.text.includes('is qualified to supply')) st.counts.qualified = (st.counts.qualified ?? 0) + 1;
-    if (f.text.startsWith('Contract awarded')) st.counts.awarded = (st.counts.awarded ?? 0) + 1;
     if (f.text.startsWith('Strike at')) st.counts.strikes = (st.counts.strikes ?? 0) + 1;
-    if (f.text.startsWith('Ground is broken') || /line is going in at/.test(f.text)) st.counts.founded = (st.counts.founded ?? 0) + 1;
   }
   if (s.day < st.started + CHAPTER_DAYS || st.chapter >= CHAPTERS.length) return;
   const ch = CHAPTERS[st.chapter];
@@ -167,7 +165,7 @@ export function storyDay(s: SimState, feed: Feed): void {
   const who = CHARACTERS[ch.speaker];
   s.confidence = clamp(s.confidence + (results.met.length - 1.5) * 3);
   feed(s, results.met.length >= 2 ? 'good' : 'bad', `Chapter ${st.chapter + 1}, “${ch.title}”, ends: ${results.met.length} of ${ch.goals.length} goals met.`, undefined, true);
-  s.news.push({ month: Math.floor(s.day / 30), special: `${ch.title}: the year in review`, headlines: chapterHeadlines(s, st.chapter, results.met.length, who.name) });
+  s.news.push({ month: Math.floor((s.day - 1) / 30), special: `${ch.title}: the year in review`, headlines: chapterHeadlines(s, st.chapter, results.met.length, who.name) });
   st.chapter++;
   st.started = s.day;
   st.counts = {};
