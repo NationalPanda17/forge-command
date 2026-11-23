@@ -95,7 +95,8 @@ export function recipeScrap(s: SimState, recipe: string, owner: string): number 
 export function startResearch(s: SimState, r: ResearchId): void {
   s.treasury -= RESEARCH[r].cost;
   s.month.spend.projects += RESEARCH[r].cost;
-  s.strategy.research.active = { id: r, days: Math.round(RESEARCH[r].days * (1 - 0.12 * skillOf(s, 'research'))) };
+  const days = Math.round(RESEARCH[r].days * (1 - 0.12 * skillOf(s, 'research')));
+  s.strategy.research.active = { id: r, days, total: days };
 }
 
 function finishResearch(s: SimState, r: ResearchId, feed: Feed): void {
@@ -110,7 +111,7 @@ function finishResearch(s: SimState, r: ResearchId, feed: Feed): void {
     queueTest(s, nl.line, undefined, feed);
     const site = s.sites[nl.site];
     const rate = LINE_RATE[nl.line];
-    site.processes.push({ recipe: nl.line, capacity: rate, maturity: 0.1, run: 'normal', partial: 0, lastOutput: 0, lastLimit: null, expansions: 0 });
+    site.processes.push({ recipe: nl.line, capacity: rate, maturity: 0.1, run: site.mothballed ? 'idle' : 'normal', partial: 0, lastOutput: 0, lastLimit: null, expansions: 0 });
     site.extraCrew += nl.crew;
     feed(s, 'info', `${MATERIALS[nl.line].name} line installed at ${SITE_BY_ID[nl.site].name}. Hire ${nl.crew} more workers there to run it.`, nl.site);
   }
@@ -196,7 +197,7 @@ export const OBJECTIVES: ObjectiveDef[] = [
   { id: 'recycle', title: 'Clean hands', text: 'Switch demilitarization to recycling.', by: 270, check: (s) => s.policy.demilMethod === 'recycle', money: 40 },
   { id: 'drones', title: 'Cheap shots', text: 'Get an APKWS or Coyote line running.', by: 900, check: (s) => s.lines.apkws.unlocked || s.lines.coyote.unlocked, money: 150 },
   { id: 'team', title: 'Build the team', text: 'Fill all five key staff posts.', by: 360, check: (s) => STAFF_ROLE_IDS.every((r) => s.strategy.staff[r]), money: 60 },
-  { id: 'ready', title: 'Full racks', text: 'Reach 95% readiness.', by: 720, check: (s) => (s.history.at(-1)?.readiness ?? 0) >= 0.95, money: 200 },
+  { id: 'ready', title: 'Full racks', text: 'Reach 95% readiness.', by: 720, check: (s) => (s.month.readiness || 0) >= 0.95, money: 200 },
 ];
 
 // ---------- Monthly strategy ----------

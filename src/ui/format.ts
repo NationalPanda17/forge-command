@@ -6,8 +6,9 @@ export const shortMonth = (m: number) => `${MONTHS[m % 12]} Y${Math.floor(m / 12
 
 /** $M in, short money string out. */
 export function money(m: number): string {
-  const sign = m < 0 ? '−' : '';
+  if (!Number.isFinite(m)) return '—';
   const a = Math.abs(m);
+  const sign = m < 0 && a >= 0.000001 ? '−' : '';
   if (a >= 1000) return `${sign}$${(a / 1000).toFixed(2)}B`;
   if (a >= 10) return `${sign}$${a.toFixed(0)}M`;
   if (a >= 1) return `${sign}$${a.toFixed(1)}M`;

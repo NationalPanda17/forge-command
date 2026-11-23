@@ -206,7 +206,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                   </div>
                   <p className="mt-1 text-[10px] text-ops-dim">{DIFF[difficulty]}</p>
                 </div>
-                {(mode === 'campaign' || !rules.endless) && (
+                {(mode !== 'sandbox' || !rules.endless) && (
                   <div>
                     <div className="label mb-1">Term</div>
                     <div className="flex gap-1">

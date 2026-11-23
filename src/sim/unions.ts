@@ -170,6 +170,8 @@ export function industrialAction(s: SimState, chain: Chain, feed: Feed): void {
   const u = s.unions.towns[town];
   const site = s.sites[chain.site];
   const name = SITE_BY_ID[chain.site].name;
+  // A plant mothballed since the claim has nobody left to walk out.
+  if (site.mothballed || site.status === 'closed') return;
   if (u.strength < 50) {
     site.disruptionDays = Math.max(site.disruptionDays, randInt(s, 30, 45));
     site.disruptionFactor = Math.min(site.disruptionFactor, 0.75);

@@ -20,8 +20,9 @@ export interface CommitteePromise {
   faction: FactionId;
   made: number;
   due: number;
-  /** For new plants: how many lines you had when you promised. */
+  /** For new plants: how many lines you had when you promised; for peace, strikes already this month. */
   base?: number;
+  baseMonth?: number;
   research?: ResearchId;
 }
 
@@ -56,7 +57,7 @@ export type RequestLevel = 'lean' | 'accept' | 'modest' | 'bold';
 export const REQUESTS: Record<RequestLevel, { label: string; change: number; detail: string }> = {
   lean: { label: 'Ask for 5% less', change: -0.05, detail: 'Certain. The treasury bench will remember it.' },
   accept: { label: 'Accept it', change: 0, detail: 'Certain. No fuss.' },
-  modest: { label: 'Ask for 6% more', change: 0.06, detail: 'Good odds with a friendly Committee.' },
+  modest: { label: 'Ask for 6% more', change: 0.06, detail: 'Failure costs 1% of the budget and a little confidence.' },
   bold: { label: 'Ask for 15% more', change: 0.15, detail: 'A gamble: failure costs budget and confidence.' },
 };
 
@@ -123,7 +124,7 @@ function candidates(s: SimState): { weight: number; q: Omit<HearingQuestion, 'me
         text: `You sent ${Math.round(exported)} rounds abroad this year while our own racks were short. Explain yourself.`,
         options: [
           { id: 'pay', label: 'Exports pay for our lines', detail: 'Industry approves; the hawks do not.', sway: { industry: 4, hawks: -3 } },
-          { id: 'promise', label: 'Promise no exports next year', detail: 'Hawks pleased; industry not. Any export next year breaks it.', sway: { hawks: 5, industry: -3 }, promise: { kind: 'noExports', text: 'No rounds exported over the next year.', faction: 'hawks' } },
+          { id: 'promise', label: 'Promise no new export orders', detail: 'Hawks pleased; industry not. Orders already signed may finish; any new one next year breaks it.', sway: { hawks: 5, industry: -3 }, promise: { kind: 'noExports', text: 'No new export orders over the next year.', faction: 'hawks' } },
         ],
         fallback: 'pay',
       },
@@ -251,6 +252,7 @@ export function openHearing(s: SimState, provisional: number, feed: Feed): void 
     const names = MEMBERS[q.faction];
     chosen.push({ ...q, member: names[chosen.filter((c) => c.faction === q.faction).length % names.length] });
   }
+  s.appropriation = provisional;
   s.hearing = { opened: s.day, provisional, questions: chosen, answers: {} };
   feed(s, 'info', `Budget hearing: the Defence Committee wants answers before it sets next year's budget. The provisional figure is $${provisional}M a month.`, undefined, true);
 }
@@ -290,15 +292,16 @@ export function answer(s: SimState, question: string, option: string, feed: Feed
   h.answers[q.id] = o.id;
   for (const [f, v] of Object.entries(o.sway) as [FactionId, number][]) s.strategy.factions[f] = clamp(s.strategy.factions[f] + v);
   if (o.promise) {
-    s.promises.push({ id: s.nextId++, kind: o.promise.kind, text: o.promise.text, faction: o.promise.faction, made: s.day, due: s.day + 360, base: ownLines(s), research: o.promise.research });
+    const peace = o.promise.kind === 'peace';
+    s.promises.push({ id: s.nextId++, kind: o.promise.kind, text: o.promise.text, faction: o.promise.faction, made: s.day, due: s.day + 360, base: peace ? s.month.strikes ?? 0 : ownLines(s), baseMonth: s.month.month, research: o.promise.research });
     feed(s, 'info', `You promise the Committee: ${o.promise.text}`);
   }
 }
 
 export function request(s: SimState, level: RequestLevel, feed: Feed): void {
-  const h = s.hearing!;
   const f = s.strategy.factions;
-  let budget = h.provisional;
+  // The provisional figure as it stands now: a story chapter or the stockpile law may have moved it since the hearing opened.
+  let budget = s.appropriation;
   if (level === 'lean') {
     budget = Math.round(budget * 0.95);
     f.treasury = clamp(f.treasury + 8);
@@ -339,10 +342,10 @@ export function promisesMonth(s: SimState, feed: Feed): void {
         if (s.treasury < 0) verdict = 'broken';
         break;
       case 'noExports':
-        if ((s.month.exported ?? 0) > 0) verdict = 'broken';
+        if (s.exports.some((x) => x.start >= p.made)) verdict = 'broken';
         break;
       case 'peace':
-        if ((s.month.strikes ?? 0) > 0) verdict = 'broken';
+        if ((s.month.strikes ?? 0) - (s.month.month === p.baseMonth ? (p.base ?? 0) : 0) > 0) verdict = 'broken';
         break;
       case 'newPlant':
         if (ownLines(s) > (p.base ?? 0)) verdict = 'kept';

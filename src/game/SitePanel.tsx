@@ -350,7 +350,7 @@ function ContractButton({ state, siteId, material, act }: { state: SimState; sit
         <option value={36}>36 mo</option>
       </select>
       <Btn kind="primary" why={validate(state, a)} onClick={() => { act(a); setOpen(false); }}>
-        Sign · {money(perDay * MATERIALS[material].price * CONTRACT_DISCOUNT[months] * 30)}/mo
+        Sign · {money(perDay * MATERIALS[material].price * state.priceIndex * CONTRACT_DISCOUNT[months] * 30)}/mo
       </Btn>
     </span>
   );

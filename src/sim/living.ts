@@ -218,7 +218,7 @@ export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
   if (s.chains.some((c) => c.kind === kind)) return;
   if (kind === 'labour') unionClaim(s, feed);
   if (kind === 'quality') {
-    const def = pick(s, SITES.filter((d) => d.owner === 'private' && d.kind === 'components' && s.sites[d.id].qualified));
+    const def = pick(s, SITES.filter((d) => d.owner === 'private' && d.kind === 'components' && s.sites[d.id].qualified && s.sites[d.id].status === 'active'));
     const m = RECIPES[def.processes[0].recipe].output;
     const c: Chain = { id: s.nextId++, kind, site: def.id, stage: 0, due: s.day + 45, material: m };
     s.chains.push(c);

@@ -46,7 +46,7 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
               <span className="text-white">{RESEARCH[st.research.active.id].name}</span>
               <span className="text-ops-cyan">{st.research.active.days} days left</span>
             </div>
-            <Bar ratio={1 - st.research.active.days / RESEARCH[st.research.active.id].days} tone="bg-ops-cyan" className="mt-1" />
+            <Bar ratio={1 - st.research.active.days / Math.max(1, st.research.active.total ?? RESEARCH[st.research.active.id].days)} tone="bg-ops-cyan" className="mt-1" />
           </div>
         ) : (
           <p className="mb-2 text-ops-amber">Your engineers are idle.</p>
@@ -87,8 +87,14 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
                   {p ? (
                     <span>
                       <span className="text-white">{p.name}</span> <span className="text-ops-green">· {STAFF_ROLES[role].effect(p.skill)}</span>{' '}
-                      <button type="button" className="text-ops-red hover:underline" onClick={() => act({ type: 'fireStaff', role })}>
-                        let go
+                      <button
+                        type="button"
+                        className="text-ops-red hover:underline disabled:opacity-50"
+                        disabled={!!validate(state, { type: 'fireStaff', role })}
+                        title={validate(state, { type: 'fireStaff', role }) ?? `Severance: three months' salary, ${money(p.salary * 3)}`}
+                        onClick={() => act({ type: 'fireStaff', role })}
+                      >
+                        let go · {money(p.salary * 3)}
                       </button>
                     </span>
                   ) : (
@@ -100,8 +106,8 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
                     <span>
                       {c.name} · skill {c.skill} · {money(c.salary)}/mo
                     </span>
-                    <Btn why={validate(state, { type: 'hireStaff', candidate: c.id })} onClick={() => act({ type: 'hireStaff', candidate: c.id })}>
-                      Hire
+                    <Btn why={validate(state, { type: 'hireStaff', candidate: c.id })} onClick={() => act({ type: 'hireStaff', candidate: c.id })} title="A signing bonus of three months' salary">
+                      Hire · {money(c.salary * 3)}
                     </Btn>
                   </div>
                 ))}

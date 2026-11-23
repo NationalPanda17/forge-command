@@ -222,6 +222,9 @@ export interface MonthReport {
   blackoutDays?: number;
   /** Value of what each of your plants made, $M. */
   plantOutput?: Record<string, number>;
+  /** Running totals of the month's fighting: how badly threats got through, and land shortfall (day fractions). */
+  fightLeak?: number;
+  fightLand?: number;
   /** Decisions taken this month and what they did to confidence and the treasury. */
   decisions?: { title: string; option: string; confidence: number; treasury: number }[];
 }
@@ -376,6 +379,8 @@ export interface SimState {
   promisesKept?: number;
   cyber: CyberState;
   unions: UnionState;
+  /** The term length chosen at the start, for a sandbox that stops being endless. */
+  plannedDays?: number;
   /** The month (history index) this term began. */
   termMonth?: number;
   /** Earlier terms as Director in this game. */
@@ -388,7 +393,7 @@ export interface SimState {
   oversight: OversightState;
   fraudsCaught?: number;
   strategy: {
-    research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
+    research: { done: ResearchId[]; active: { id: ResearchId; days: number; total?: number } | null };
     staff: Record<StaffRole, Person | null>;
     candidates: Person[];
     factions: Record<FactionId, number>;

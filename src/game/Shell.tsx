@@ -112,6 +112,9 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       const el = e.target as HTMLElement | null;
       if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
+      // While a dialog is open, only Escape works; Space presses the focused button, never the clock.
+      if (document.querySelector('[role="dialog"]') && e.key !== 'Escape' && e.key !== '?') return;
+      if (e.key === ' ' && el?.closest('button, [role="button"], a')) return;
       if (e.key === ' ') {
         e.preventDefault();
         setSpeed(speed === 0 ? lastSpeed.current : 0);
@@ -262,7 +265,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         <HotseatChip state={state} />
         <div>
           <div className="label">Season</div>
-          <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above the start of your term.`}>
+          <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
             <Explain title="Season and prices" lines={() => seasonWhy(state)}>
               {seasonOf(state.day)[0].toUpperCase() + seasonOf(state.day).slice(1)} <span className="text-ops-dim">· prices +{Math.round((state.priceIndex - 1) * 100)}%</span>
             </Explain>
@@ -304,12 +307,17 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
               {sp === 0 ? '❚❚' : `${sp}×`}
             </Btn>
           ))}
-          <Btn onClick={() => step(1)} why={speed !== 0 ? 'Pause first' : null} title="Advance one day">
+          <Btn onClick={() => step(1)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one day">
             +1d
           </Btn>
-          <Btn onClick={() => step(7)} why={speed !== 0 ? 'Pause first' : null} title="Advance one week">
+          <Btn onClick={() => step(7)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one week">
             +7d
           </Btn>
+          {state.over && reportClosed && (
+            <Btn kind="warn" onClick={() => setReportClosed(false)} title="Your grade, the term in charts, and the next term">
+              Term report
+            </Btn>
+          )}
           <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" pressed={saving !== null}>
             Save
           </Btn>
@@ -339,7 +347,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             <span className="label">Save as</span>
             <input className="input w-56" value={saving} onChange={(e) => setSaving(e.target.value)} autoFocus maxLength={40} />
           </label>
-          <Btn kind="primary">Save</Btn>
+          <Btn kind="primary" type="submit">Save</Btn>
           <Btn onClick={() => setSaving(null)}>Cancel</Btn>
         </form>
       )}
@@ -462,8 +470,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
       </footer>
       <Briefing state={state} act={act} />
       <Handover state={state} act={act} />
-      {!state.hotseat?.handover && !state.over && <Hearing state={state} act={act} />}
-      {help && <KeyboardHelp onClose={() => setHelp(false)} />}
+      {!state.hotseat?.handover && !state.over && (state.story?.briefing === null || state.story?.briefing === undefined) && <Hearing state={state} act={act} />}
       {state.over && !reportClosed && (
         <TermReport
           state={state}
@@ -475,6 +482,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           }}
         />
       )}
+      {help && <KeyboardHelp onClose={() => setHelp(false)} />}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
     </div>
   );

@@ -1,6 +1,7 @@
 // Build your own industry: found plants on open plots, bring parts in-house at your arsenals, and design round variants.
 import { setNetwork } from './graph';
 import { queueTest } from './testing';
+import { storyCount } from './storyCount';
 import { clamp } from './rng';
 import type { FeedItem, SimState } from './types';
 import { MATERIALS, RECIPES, SITES, SITE_BY_ID, processCapacity, type LineId, type MaterialId, type SiteKind } from './world';
@@ -83,6 +84,7 @@ export function foundPlant(s: SimState, plot: string, recipe: string, feed: Feed
   setNetwork(s.network.built, s.network.upgrades);
   s.strategy.factions.regions = clamp(s.strategy.factions.regions + 3);
   s.strategy.factions.industry = clamp(s.strategy.factions.industry + 2);
+  storyCount(s, 'founded');
   feed(s, 'good', `Ground is broken at ${SITE_BY_ID[plot].name}: a new ${MATERIALS[RECIPES[recipe].output].name.toLowerCase()} plant, ready in about a year. Hire ${FOUNDABLE[recipe].crew} people to run it.`, plot, true);
 }
 
@@ -97,6 +99,7 @@ export function addInhouseLine(s: SimState, site: string, recipe: string, feed: 
   st.processes.push(p);
   st.extraCrew += FOUNDABLE[recipe].crew;
   s.inhouse.push({ site, recipe, days: INHOUSE_DAYS });
+  storyCount(s, 'founded');
   feed(s, 'info', `A ${RECIPES[recipe].name.toLowerCase()} line is going in at ${SITE_BY_ID[site].name}: about eight months to fit out. Hire ${FOUNDABLE[recipe].crew} more people there.`, site);
 }
 

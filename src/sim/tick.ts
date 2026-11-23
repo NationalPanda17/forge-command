@@ -267,6 +267,12 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
     modes: path.legs.map((l) => l.mode),
   });
   const toState = SITE_BY_ID[to].owner === 'state';
+  // Parts your own plants send to private companies are sold at the list price.
+  if (!toState && SITE_BY_ID[from].owner === 'state' && !isLine(m)) {
+    const sale = qty * priceNow(s, m);
+    s.treasury += sale;
+    s.month.income.sales += sale;
+  }
   if (toState) {
     const freight = qty * w * path.costPerT * s.priceIndex * (1 - 0.1 * skillOf(s, 'logistics'));
     s.month.spend.transport += freight;
@@ -622,6 +628,8 @@ function payDaily(s: SimState): void {
 
 function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort: number }): void {
   const ready = readiness(s);
+  // This month's readiness, for checks that run before the month is filed (the 'Full racks' objective).
+  s.month.readiness = Math.round(ready * 100) / 100;
   const before = s.confidence;
   expireDecisions(s, feed);
   closeStaleHearing(s, feed);
@@ -685,10 +693,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   }
 }
 
-/** Running fight totals for the month (kept outside the state to keep saves small). */
-const monthFight = new WeakMap<object, { leakSeverity: number; landShort: number }>();
-
-function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }): void {
+function stepDay(s: SimState): void {
   s.day++;
   s.routeLoad = {};
   world(s);
@@ -705,15 +710,12 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   produce(s);
   logistics(s);
   const f = fight(s);
-  acc.leakSeverity += f.leakSeverity;
-  acc.landShort += f.landShort;
+  // The month's fighting is kept in the month itself, so it survives actions, saves and repeated steps.
+  s.month.fightLeak = (s.month.fightLeak ?? 0) + f.leakSeverity;
+  s.month.fightLand = (s.month.fightLand ?? 0) + f.landShort;
   lifecycle(s);
   payDaily(s);
-  if (s.day % DAYS_PER_MONTH === 0) {
-    closeMonth(s, acc);
-    acc.leakSeverity = 0;
-    acc.landShort = 0;
-  }
+  if (s.day % DAYS_PER_MONTH === 0) closeMonth(s, { leakSeverity: s.month.fightLeak ?? 0, landShort: s.month.fightLand ?? 0 });
   storyDay(s, feed);
   if (!s.over && !s.settings.endless && s.day >= s.days) {
     s.over = true;
@@ -722,16 +724,20 @@ function stepDay(s: SimState, acc: { leakSeverity: number; landShort: number }):
   }
 }
 
-/** Advances the simulation by n days. Never mutates its input. Stops early on game over. */
-export function advanceDays(prev: SimState, n = 1): SimState {
-  if (prev.over) return prev;
+/** Something the player must deal with before time moves on: a budget hearing, a hot-seat handover or a story briefing. */
+export const onHold = (s: SimState) => !!s.hearing || !!s.hotseat?.handover || (s.story?.briefing !== null && s.story?.briefing !== undefined);
+
+/** Advances the simulation by n days. Never mutates its input. Stops early on game over, and (for the live clock) when a hold begins. */
+export function advanceDays(prev: SimState, n = 1, opts?: { stopOnHold?: boolean }): SimState {
+  if (prev.over || (opts?.stopOnHold && onHold(prev))) return prev;
   applyWorld(prev.world ?? null);
   const s = structuredClone(prev);
   s.alert = null;
   setNetwork(s.network.built, s.network.upgrades);
-  const acc = monthFight.get(prev) ?? { leakSeverity: 0, landShort: 0 };
-  for (let i = 0; i < n && !s.over; i++) stepDay(s, acc);
-  monthFight.set(s, { ...acc });
+  for (let i = 0; i < n && !s.over; i++) {
+    stepDay(s);
+    if (opts?.stopOnHold && onHold(s)) break;
+  }
   return s;
 }
 

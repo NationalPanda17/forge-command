@@ -28,7 +28,9 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
     () => (Object.keys(MATERIALS) as MaterialId[]).filter((m) => !FINISHED.includes(m) && (need[m] ?? 0) > 0 && bidders(state, m).length > 0).sort((a, b) => MATERIALS[a].name.localeCompare(MATERIALS[b].name)),
     [state, need],
   );
-  const [material, setMaterial] = useState<MaterialId>(tenderable[0] ?? 'steel');
+  const [chosen, setMaterial] = useState<MaterialId>(tenderable[0] ?? 'steel');
+  // If the chosen material drops off the list, fall back to the first one still on it.
+  const material = tenderable.includes(chosen) ? chosen : (tenderable[0] ?? chosen);
   const [perDay, setPerDay] = useState<number>(() => Math.round((need[tenderable[0] ?? 'steel'] ?? 1) * 1000) / 1000);
   const [months, setMonths] = useState<'12' | '24' | '36'>('24');
   const tenderAction: SimAction = { type: 'openTender', material, perDay, months: Number(months) as 12 | 24 | 36 };
@@ -45,7 +47,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
           <Explain title="Prices" lines={() => seasonWhy(state)}>
             <span className={state.priceIndex > 1.08 ? 'text-ops-amber' : 'text-white'}>{pct(state.priceIndex - 1)}</span>
           </Explain>{' '}
-          since you took office. Spot buying costs 30% over list; contracts lock today's price.
+          over normal prices. Spot buying costs 30% over list; contracts lock today's price.
         </p>
         {hist.length >= 2 && (
           <LineChart height={70} min={1} max={Math.max(1.05, ...hist.map((h) => h.priceIndex ?? 1)) + 0.01} xLabels={[monthLabel2(hist[0].month), monthLabel2(hist.at(-1)!.month)]} format={(v) => v.toFixed(3)} series={[{ label: 'Price index', values: hist.map((h) => h.priceIndex ?? 1), color: COLORS.amber }]} />
@@ -166,7 +168,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
                     {qty(x.delivered)} of {qty(x.qty)} · due {dateLabel(x.endDay)}
                   </span>
                 </div>
-                <Bar ratio={x.delivered / x.qty} tone="bg-ops-cyan" />
+                <Bar ratio={x.delivered / Math.max(1, x.qty)} tone="bg-ops-cyan" />
               </li>
             ))}
           </ul>

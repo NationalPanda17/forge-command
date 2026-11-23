@@ -43,7 +43,7 @@ export function securityMonth(s: SimState, feed: Feed): void {
         body: `Security officers at ${name} have caught a small ring working for ${RIVAL_NAME} before it could act. What now?`,
         options: [
           { id: 'expose', label: 'Expose it publicly', detail: 'The Committee is impressed; the rival is embarrassed.' },
-          { id: 'turn', label: 'Turn them into double agents', detail: 'Feed them false papers: your next warning of a new weapon comes much earlier.' },
+          { id: 'turn', label: 'Turn them into double agents', detail: 'Feed them false papers: the rival’s next weapon is delayed, and you have longer to prepare.' },
           { id: 'quiet', label: 'Dismiss them quietly', detail: 'No fuss, and no gain.' },
         ],
         fallback: 'quiet',
@@ -80,7 +80,7 @@ export function resolveSecurity(s: SimState, d: { kind: string; site?: string },
     s.strategy.factions.hawks = clamp(s.strategy.factions.hawks + 2);
     feed(s, 'good', 'The spy ring is exposed in the press. The Committee is pleased.');
   } else if (opt === 'turn') {
-    // Double agents: the next weapon is reported much sooner, so there is longer to prepare.
+    // Double agents: false papers delay the rival's next weapon, so there is longer to prepare.
     const k = s.rival?.known.find((x) => x.fielded > s.day);
     if (k) k.fielded += 60;
     else if (s.rival) s.rival.next = Math.max(s.day + 30, s.rival.next + 45);

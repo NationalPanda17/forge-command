@@ -20,7 +20,7 @@ export function Hearing({ state, act }: { state: SimState; act: (a: SimAction) =
           Budget hearing
         </h2>
         <p className="text-ops-text">
-          The provisional budget is <span className="text-white">${h.provisional}M a month</span>. Answer the members' questions, then make your request. Promises are checked a year from now: keep them and the Committee warms to you; break them and it will not forget.
+          The provisional budget is <span className="text-white">${state.appropriation}M a month</span>. Answer the members' questions, then make your request. Promises are checked a year from now: keep them and the Committee warms to you; break them and it will not forget.
         </p>
         <ol className="space-y-3">
           {h.questions.map((q, i) => {
@@ -79,7 +79,7 @@ export function Hearing({ state, act }: { state: SimState; act: (a: SimAction) =
               return (
                 <Btn key={level} kind={level === 'accept' ? 'primary' : undefined} why={why} onClick={() => act(a)} className="flex flex-col items-start gap-0.5 p-2 text-left normal-case tracking-normal">
                   <span className="text-[12px]">
-                    {r.label} · ${Math.round(h.provisional * (1 + r.change))}M
+                    {r.label} · ${Math.round(state.appropriation * (1 + r.change))}M
                   </span>
                   <span className="text-[10px] text-ops-dim">{level === 'modest' || level === 'bold' ? `About ${pct(odds)} odds. ${r.detail}` : r.detail}</span>
                 </Btn>
