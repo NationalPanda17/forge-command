@@ -10,6 +10,8 @@ import IndustryPanel from './IndustryPanel';
 import TestingPanel from './TestingPanel';
 import TownsPanel from './TownsPanel';
 import AlliesPanel from './AlliesPanel';
+import PowerPanel from './PowerPanel';
+import StatsPanel from './StatsPanel';
 import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
@@ -42,7 +44,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -54,6 +56,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'testing', label: 'Testing' },
   { id: 'towns', label: 'Towns' },
   { id: 'allies', label: 'Allies' },
+  { id: 'power', label: 'Power' },
   { id: 'intel', label: 'Intel' },
   { id: 'policy', label: 'Policy' },
   { id: 'stockpile', label: 'Stockpile' },
@@ -61,6 +64,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'fight', label: 'Fight' },
   { id: 'strategy', label: 'Board' },
   { id: 'money', label: 'Money' },
+  { id: 'stats', label: 'Stats' },
   { id: 'news', label: 'Courier' },
   { id: 'feed', label: 'Feed' },
   { id: 'guide', label: 'Guide' },
@@ -430,6 +434,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'testing' && <TestingPanel state={state} act={act} onSite={select} />}
             {panel === 'towns' && <TownsPanel state={state} act={act} onSite={select} />}
             {panel === 'allies' && <AlliesPanel state={state} act={act} />}
+            {panel === 'power' && <PowerPanel state={state} act={act} onSite={select} />}
+            {panel === 'stats' && <StatsPanel state={state} onSite={select} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
@@ -439,7 +445,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'logistics' && <LogisticsPanel state={state} act={act} onSite={select} />}
             {panel === 'fight' && <FightPanel state={state} act={act} />}
             {panel === 'strategy' && <StrategyPanel state={state} act={act} />}
-            {panel === 'money' && <MoneyPanel state={state} />}
+            {panel === 'money' && <MoneyPanel state={state} act={act} />}
             {panel === 'feed' && <Feed state={state} onSite={select} />}
             {panel === 'watch' && (
               <>

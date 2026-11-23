@@ -10,7 +10,7 @@ import { FINISHED, MATERIALS, SITES, type LineId } from './world';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
-export type PromiseKind = 'readiness' | 'solvent' | 'noExports' | 'newPlant' | 'counter' | 'peace' | 'cyber' | 'vetting';
+export type PromiseKind = 'readiness' | 'solvent' | 'noExports' | 'newPlant' | 'counter' | 'peace' | 'cyber' | 'vetting' | 'cleanAudit';
 
 export interface CommitteePromise {
   id: number;
@@ -192,6 +192,21 @@ function candidates(s: SimState): { weight: number; q: Omit<HearingQuestion, 'me
         fallback: 'happens',
       },
     });
+  const audit = s.oversight?.findings.at(-1);
+  if (audit && audit.verdict !== 'clean' && s.month.month - audit.month <= 7)
+    out.push({
+      weight: audit.verdict === 'damning' ? 9 : 5,
+      q: {
+        id: 'audit',
+        faction: 'treasury',
+        text: `The Auditor-General found $${Math.round(audit.waste)}M of waste in your accounts. Why should we trust you with more?`,
+        options: [
+          { id: 'promise', label: 'Promise a clean audit', detail: 'The treasury bench is pleased. The next review must find you clean.', sway: { treasury: 6 }, promise: { kind: 'cleanAudit', text: 'A clean review from the Auditor-General.', faction: 'treasury' } },
+          { id: 'context', label: 'Put it in context', detail: 'A little goodwill, if they believe you.', sway: { treasury: 1 } },
+        ],
+        fallback: 'context',
+      },
+    });
   const spies = h.reduce((a, x) => a + (x.incidents ?? 0), 0);
   if (spies > 0)
     out.push({
@@ -338,6 +353,11 @@ export function promisesMonth(s: SimState, feed: Feed): void {
       case 'cyber':
         if (s.cyber && Object.values(s.cyber.levels).every((v) => v >= 2)) verdict = 'kept';
         break;
+      case 'cleanAudit': {
+        const f = s.oversight?.findings.at(-1);
+        if (f && f.month * 30 > p.made) verdict = f.verdict === 'clean' ? 'kept' : 'broken';
+        break;
+      }
       case 'vetting':
         if (SITES.filter((d) => d.owner === 'state' && s.sites[d.id].processes.length && !s.sites[d.id].mothballed).every((d) => (s.sites[d.id].clearance ?? 0) >= 1)) verdict = 'kept';
         break;

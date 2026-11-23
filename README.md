@@ -67,6 +67,12 @@ Keep the nations you buy from friendly, co-produce rounds with allies and sell a
 budget hearing every year, and keep your promises. Defend your plants, railways and suppliers against hackers, and keep
 the unions on side. Serve term after term, keep a record book, and build your own scenarios to share as codes.
 
+## Power, audits and statistics
+
+Every region runs on its own grid: power prices swing, fuel shocks bite, and blackouts stop lines unless your plants
+have generators. The Auditor-General reviews your spending twice a year, and suppliers sometimes overbill. A
+statistics room charts where the money went, what every plant made, and where your confidence came from.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -98,12 +104,15 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Testing:** the test ranges, the queue and what awaits acceptance.
 - **Towns:** housing, jobs, mothballing and the unions.
 - **Allies:** allies and co-production, supplier nations, guarantees and the export desk.
+- **Power:** grids, prices, blackouts, power contracts, grid upgrades and generators.
 - **Courier:** the monthly newspaper.
 - **Stockpile:** age profiles, surveillance and demilitarization.
 - **Logistics:** depot targets, traffic and busy routes.
 - **Fight:** threats, leakers, doctrine.
 - **Board:** research, staff, the Committee, your promises, decisions and objectives.
-- **Money**, **Feed** and **Guide.**
+- **Money:** income and spending, and oversight: waste, audits and the internal audit team.
+- **Stats:** spending, output by round and plant, losses by threat, confidence and decisions over time.
+- **Feed** and **Guide.**
 
 ## Develop
 

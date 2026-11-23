@@ -44,11 +44,11 @@ export function confidenceWhy(s: SimState): string[] {
 export function treasuryWhy(s: SimState): string[] {
   const h = s.history.at(-1);
   const cur = s.month;
-  const spend = (x: typeof cur) => Object.values(x.spend).reduce((a, b) => a + b, 0);
+  const spend = (x: typeof cur) => Object.values(x.spend).reduce((a, b) => a + (b ?? 0), 0);
   const out = [`Cash on hand. This month so far: ${m(cur.income.appropriation + cur.income.sales)} in, ${m(spend(cur))} out.`];
   if (h) {
-    out.push(`Last month in: budget ${m(h.income.appropriation)}, sales and refunds ${m(h.income.sales)}.`);
-    out.push(`Last month out: purchases ${m(h.spend.purchases)}, wages and running costs ${m(h.spend.operations)}, freight ${m(h.spend.transport)}, projects ${m(h.spend.projects)}, disposal ${m(h.spend.demil)}.`);
+    out.push(`Last month in: budget ${m(h.income.appropriation)}, sales, refunds and recoveries ${m(h.income.sales)}.`);
+    out.push(`Last month out: purchases ${m(h.spend.purchases)}, wages and running costs ${m(h.spend.operations)}, power ${m(h.spend.energy ?? 0)}, freight ${m(h.spend.transport)}, projects ${m(h.spend.projects)}, disposal ${m(h.spend.demil)}.`);
   }
   out.push(`Your budget is ${m(s.appropriation)} a month. Going below zero costs confidence.`);
   return out;

@@ -12,6 +12,8 @@ import type { CommitteePromise, HearingState } from './hearings';
 import type { CyberState } from './cyber';
 import type { UnionState } from './unions';
 import type { CustomScenario } from './custom';
+import type { EnergyState } from './energy';
+import type { OversightState, WasteKind } from './audit';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
@@ -153,6 +155,14 @@ export interface Contract {
   /** $M per unit. */
   price: number;
   endDay: number;
+  /** The supplier is quietly overbilling. */
+  fraud?: boolean;
+  /** Overbilled so far, $M. */
+  overbilled?: number;
+  /** Already found and waiting on your decision. */
+  flagged?: boolean;
+  /** Found, and you let it go. */
+  ignored?: boolean;
 }
 
 export interface FeedItem {
@@ -181,7 +191,7 @@ export interface MonthReport {
   arrived: Record<ThreatId, number>;
   stopped: Record<ThreatId, number>;
   leaked: Record<ThreatId, number>;
-  spend: { purchases: number; operations: number; transport: number; projects: number; demil: number };
+  spend: { purchases: number; operations: number; transport: number; projects: number; demil: number; energy?: number };
   income: { appropriation: number; sales: number };
   interceptorSpend: number;
   threatValueStopped: number;
@@ -206,6 +216,14 @@ export interface MonthReport {
   strikes?: number;
   /** A budget request granted at this month's hearing. */
   won?: boolean;
+  /** Money the Auditor-General would call waste, by kind. */
+  waste?: Partial<Record<WasteKind, number>>;
+  /** Region-days of blackout. */
+  blackoutDays?: number;
+  /** Value of what each of your plants made, $M. */
+  plantOutput?: Record<string, number>;
+  /** Decisions taken this month and what they did to confidence and the treasury. */
+  decisions?: { title: string; option: string; confidence: number; treasury: number }[];
 }
 
 /** One finished term as Director. */
@@ -364,6 +382,11 @@ export interface SimState {
   career: CareerTerm[];
   /** A custom scenario's settings, when playing one. */
   custom: CustomScenario | null;
+  /** Regional grids, power contracts and generators. */
+  energy: EnergyState;
+  /** The Auditor-General and your internal audit team. */
+  oversight: OversightState;
+  fraudsCaught?: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number } | null };
     staff: Record<StaffRole, Person | null>;

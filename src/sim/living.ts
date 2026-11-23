@@ -2,6 +2,7 @@
 import { eventScale, takeLots } from './tick';
 import { claimBoost, industrialAction, resolveClaim, unionClaim } from './unions';
 import { railFactor } from './cyber';
+import { addWaste } from './audit';
 import { hasPolicy } from './commitments';
 import { pathBetween } from './graph';
 import { clamp, pick, rand } from './rng';
@@ -16,7 +17,8 @@ type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, a
 
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
 /** 0 = January. */
-export const monthOfYear = (day: number) => Math.floor(day / DAYS_PER_MONTH) % 12;
+/** Days 1 to 30 are January. */
+export const monthOfYear = (day: number) => Math.floor(Math.max(0, day - 1) / DAYS_PER_MONTH) % 12;
 export function seasonOf(day: number): Season {
   const m = monthOfYear(day);
   return m === 11 || m <= 1 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn';
@@ -116,6 +118,7 @@ export function livingDay(s: SimState, feed: Feed): void {
       const fee = Math.round(short * x.price * 0.15);
       s.treasury -= fee;
       s.month.spend.projects += fee;
+      addWaste(s, 'penalties', fee);
       s.confidence = clamp(s.confidence - 2);
       feed(s, 'bad', `The order for ${x.customer} closes ${Math.round(short)} ${MATERIALS[x.line].name} short. Penalty: $${fee}M.`, undefined, true);
     } else feed(s, 'good', `The ${MATERIALS[x.line].name} order for ${x.customer} is delivered in full.`);

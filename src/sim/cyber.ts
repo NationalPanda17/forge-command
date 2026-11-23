@@ -3,6 +3,7 @@
 // moving while the systems are down.
 import { clamp, pick, rand, randInt } from './rng';
 import { troubleScale } from './scale';
+import { addWaste } from './audit';
 import type { FeedItem, SimState } from './types';
 import { SITES, SITE_BY_ID } from './world';
 
@@ -154,6 +155,7 @@ export function resolveCyber(s: SimState, d: { kind: string; site?: string; valu
     s.month.spend.projects += d.value ?? 0;
     site.disruptionDays = Math.min(site.disruptionDays, 3);
     s.cyber.ransomPaid = s.day + 360;
+    addWaste(s, 'ransom', d.value ?? 0);
     s.strategy.factions.hawks = clamp(s.strategy.factions.hawks - 4);
     feed(s, 'warn', `The ransom is paid. ${SITE_BY_ID[d.site!].name} is unlocked within days.`, d.site);
   } else if (site) feed(s, 'info', `Engineers rebuild the control systems at ${SITE_BY_ID[d.site!].name}.`, d.site);
