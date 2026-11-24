@@ -14,6 +14,7 @@ import type { UnionState } from './unions';
 import type { CustomScenario } from './custom';
 import type { EnergyState } from './energy';
 import type { OversightState, WasteKind } from './audit';
+import type { CommunityState } from './communities';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
@@ -214,6 +215,8 @@ export interface MonthReport {
   cyber?: number;
   /** Strikes at your plants, sympathy strikes included. */
   strikes?: number;
+  /** Protests at your plants' gates. */
+  protests?: number;
   /** A budget request granted at this month's hearing. */
   won?: boolean;
   /** Money the Auditor-General would call waste, by kind. */
@@ -379,6 +382,8 @@ export interface SimState {
   promisesKept?: number;
   cyber: CyberState;
   unions: UnionState;
+  /** Recycling chosen by you rather than forced by a court (false while a court ban forces it). */
+  recycleChosen?: boolean;
   /** The term length chosen at the start, for a sandbox that stops being endless. */
   plannedDays?: number;
   /** The month (history index) this term began. */
@@ -391,6 +396,8 @@ export interface SimState {
   energy: EnergyState;
   /** The Auditor-General and your internal audit team. */
   oversight: OversightState;
+  /** Towns' moods toward you, permits on hold and the burning ban. */
+  communities: CommunityState;
   fraudsCaught?: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number; total?: number } | null };

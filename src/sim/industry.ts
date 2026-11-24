@@ -2,6 +2,7 @@
 import { setNetwork } from './graph';
 import { queueTest } from './testing';
 import { storyCount } from './storyCount';
+import { permitHeld, seekPermit } from './communities';
 import { clamp } from './rng';
 import type { FeedItem, SimState } from './types';
 import { MATERIALS, RECIPES, SITES, SITE_BY_ID, processCapacity, type LineId, type MaterialId, type SiteKind } from './world';
@@ -85,6 +86,7 @@ export function foundPlant(s: SimState, plot: string, recipe: string, feed: Feed
   s.strategy.factions.regions = clamp(s.strategy.factions.regions + 3);
   s.strategy.factions.industry = clamp(s.strategy.factions.industry + 2);
   storyCount(s, 'founded');
+  seekPermit(s, 'plant', plot, plot, feed);
   feed(s, 'good', `Ground is broken at ${SITE_BY_ID[plot].name}: a new ${MATERIALS[RECIPES[recipe].output].name.toLowerCase()} plant, ready in about a year. Hire ${FOUNDABLE[recipe].crew} people to run it.`, plot, true);
 }
 
@@ -108,6 +110,8 @@ export function industryDay(s: SimState, feed: Feed): void {
   for (const id of PLOT_IDS) {
     const site = s.sites[id];
     if (site.status !== 'building') continue;
+    // Nothing is built while the town's objection stands.
+    if (permitHeld(s, id)) continue;
     site.repairDays--;
     if (site.repairDays <= 0) {
       site.status = 'active';

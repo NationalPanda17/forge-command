@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
 import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from '../sim/audit';
+import { MOOD_WORD, communityTowns } from '../sim/communities';
 import { unionTowns } from '../sim/unions';
 import { guaranteed, supplierNations } from '../sim/diplomacy';
 import type { SimState } from '../sim/types';
@@ -76,6 +77,14 @@ export function watchList(s: SimState): Watch[] {
   for (const n of supplierNations()) {
     const v = s.diplomacy?.nations[n] ?? 50;
     if (v < 35 && !guaranteed(s, n)) out.push({ tone: 'warn', text: `Relations with the ${n} are cold (${Math.round(v)}): export bans are likelier. Send a trade mission (Allies tab).`, panel: 'allies' });
+  }
+  // Towns.
+  if (s.communities) {
+    for (const t of communityTowns(s)) {
+      const m = s.communities.mood[t];
+      if (m < 30) out.push({ tone: 'bad', text: `${CITIES[t].name} is ${MOOD_WORD(m)} with you (${Math.round(m)}): expect protests at your gates. A community fund would help (Towns tab).`, panel: 'towns' });
+    }
+    if (s.communities.burnBanUntil > s.day) out.push({ tone: 'info', text: `A court order bans open burning until ${Math.ceil((s.communities.burnBanUntil - s.day) / 30)} months from now: old rounds are recycled.`, panel: 'stockpile' });
   }
   // Power and oversight.
   if (s.energy) {
@@ -203,6 +212,18 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li>Everything moves on the network: rail (cheap, big), road (everywhere, smaller), sea (cheap, slow, to islands and abroad) and air (fast, tiny, expensive). Each route carries only so many tonnes a day.</Li>
         <Li>Sites pull what they need: plants keep days of inputs, bases keep ready rounds, depots keep days of their region's draw. Set depot targets on the Logistics tab, and raise the one a crisis is heading for.</Li>
         <Li>Foreign suppliers are reached by sea and can be hit by export bans.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'communities',
+    title: 'Towns, permits and the advisor',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Moods:</b> every town has a mood toward you. Jobs, housing, open days and community funds lift it; open burning, test firings, round-the-clock shifts and mothballing sour it (Towns tab).</Li>
+        <Li><b>Permits:</b> a new plant or rail link needs a permit from its town. An unhappy town objects, and the work waits until you win it over, override it, or withdraw.</Li>
+        <Li><b>Protests:</b> below 30, people block your gates; the town beside the burning pit can win a court order against open burning.</Li>
+        <Li><b>The advisor:</b> each suggestion shows what it costs and the catch. Its three-month plan lists what is coming, month by month.</Li>
       </ul>
     ),
   },

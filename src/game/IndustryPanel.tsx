@@ -1,5 +1,6 @@
 // Your own industry: found plants on open plots, bring parts in-house, and choose each round's design.
 import { useState } from 'react';
+import { permitHeld } from '../sim/communities';
 import { validate, type SimAction } from '../sim/actions';
 import { DESIGN_DAYS, FOUNDABLE, FOUNDABLE_IDS, PLOT_IDS, VARIANTS, VARIANT_IDS, designCost, foundCost, inhouseCost, isFounded, type VariantId } from '../sim/industry';
 import type { SimState } from '../sim/types';
@@ -52,7 +53,7 @@ export default function IndustryPanel({ state, act, onSite, onHighlight }: { sta
                   site.status === 'building' ? (
                     <div className="mt-1">
                       <div className="flex justify-between text-ops-amber">
-                        <span>Under construction</span>
+                        <span>{permitHeld(state, def.id) ? 'On hold: the town objects (Board)' : 'Under construction'}</span>
                         <span>{site.repairDays} days left</span>
                       </div>
                       <Bar ratio={1 - site.repairDays / 360} tone="bg-ops-amber" />

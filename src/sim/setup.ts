@@ -18,6 +18,7 @@ import { newUnions } from './unions';
 import { RIVAL_PACE, tidy, type CustomScenario } from './custom';
 import { newEnergy } from './energy';
 import { newOversight } from './audit';
+import { newCommunities } from './communities';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -110,6 +111,7 @@ export function migrate(s: SimState): SimState {
   s.termMonth ??= 0;
   s.energy ??= newEnergy();
   s.oversight ??= newOversight();
+  s.communities ??= newCommunities();
   s.month.spend.energy ??= 0;
   return s;
 }
@@ -244,6 +246,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     custom,
     energy: newEnergy(),
     oversight: newOversight(),
+    communities: newCommunities(),
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },

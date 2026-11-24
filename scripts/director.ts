@@ -40,6 +40,7 @@ export function active(s: SimState): SimAction[] {
       : d.kind === 'ransom' ? 'rebuild'
       : d.kind === 'audit' ? 'accept'
       : d.kind === 'fraud' ? 'settle'
+      : d.kind === 'permit' ? (rich ? 'package' : 'override')
       : choose[d.kind];
     acts.push({ type: 'decide', decision: d.id, option: pick ?? d.fallback });
   }
@@ -61,6 +62,8 @@ export function active(s: SimState): SimAction[] {
   if (s.treasury > 700) for (const def of SITES.filter((x) => x.owner === 'state' && x.kind === 'arsenal')) if (!s.energy.generators.includes(def.id)) acts.push({ type: 'generator', site: def.id });
   for (const r of GRID_REGIONS) if (regionPlants(s, r).length && s.energy.grids[r].price <= 1.05) acts.push({ type: 'powerContract', region: r });
   if (!s.oversight.team && s.treasury > 900) acts.push({ type: 'auditTeam' });
+  // Towns: a fund for any town that has turned against you.
+  if (s.treasury > 800) s.communities.mood.forEach((m, t) => m < 35 && acts.push({ type: 'communityFund', town: t }));
   // Keep the nations that sell you parts friendly when a ban would hurt.
   if (s.treasury > 900) for (const n of supplierNations()) if (s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
   // Re-tender contracts before they lapse, and award the cheapest dependable bid.

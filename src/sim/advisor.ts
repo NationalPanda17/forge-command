@@ -1,5 +1,10 @@
 // The advisor: the next best things to do, ranked, each with the action that does it where there is one.
-import { validate, type SimAction } from './actions';
+import { apply, validate, type SimAction } from './actions';
+import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from './audit';
+import { MOOD_WORD, communityTowns, permitHeld } from './communities';
+import { attackOdds } from './cyber';
+import { GRID_REGIONS, blackoutOdds, regionPlants } from './energy';
+import { unionTowns } from './unions';
 import { balances, bottleneck, forecast, monthsTo } from './analytics';
 import { liveRoutes, routeCap } from './build';
 import { DEVELOPMENTS, COUNTER_NAMES } from './rival';
@@ -8,9 +13,9 @@ import { RESEARCH, RESEARCH_IDS } from './strategy';
 import type { SimState } from './types';
 import { controlBlock } from './hotseat';
 import { hireRoom, townIndex, townOf } from './towns';
-import { FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
+import { CITIES, FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
-export type AdvicePanel = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes';
+export type AdvicePanel = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
 
 export interface Advice {
   id: string;
@@ -23,7 +28,38 @@ export interface Advice {
   panel?: AdvicePanel;
   site?: string;
   material?: MaterialId;
+  /** What doing it costs, and the catch. */
+  tradeoff?: string;
 }
+
+/** The catch with each kind of action, beyond its price. */
+const CATCH: Partial<Record<SimAction['type'], string>> = {
+  hire: 'Trainees take about three months to pull their weight.',
+  research: 'It ties up your engineers until it is done.',
+  invest: 'New capacity ramps up over several months.',
+  expand: 'New capacity ramps up over several months, and needs more crew.',
+  setPolicy: 'Rounds held in a regional depot are rounds not held elsewhere.',
+  openTender: 'Bids take a few weeks to come in.',
+  awardTender: 'A contract locks the price, and the supplier, for its term.',
+  housing: 'Homes take about five months to build.',
+  generator: 'While it runs in a blackout, the plant pays double for power.',
+  powerContract: 'It locks today’s price for two years, whether the market falls or rises.',
+  payDeal: 'Pay stays 3% higher for good.',
+  communityFund: 'Each town can be given one every six months.',
+  cyberDefence: 'It does nothing until the hackers come.',
+  vet: 'Crews grumble a little at the intrusion.',
+  safety: 'It takes money now for fewer accidents later.',
+  setRun: 'Fewer shifts mean fewer rounds; more shifts mean tired crews.',
+  tradeMission: 'Relations drift back toward neutral over time.',
+};
+
+/** What an action would cost, found by trying it on a copy. */
+function costOf(s: SimState, a: SimAction): number {
+  if (validate(s, a)) return 0;
+  return Math.max(0, s.treasury - apply(s, a).treasury);
+}
+
+const money = (v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : v >= 1 ? `$${Math.round(v)}M` : `$${Math.round(v * 1000)}K`);
 
 const ok = (s: SimState, a: SimAction) => validate(s, a) === null;
 
@@ -151,5 +187,140 @@ export function advise(s: SimState, limit = 6): Advice[] {
     }
   }
 
-  return out.sort((a, b) => b.priority - a.priority).slice(0, limit);
+  newSystems(s, add);
+
+  const top = out.sort((a, b) => b.priority - a.priority).slice(0, limit);
+  // The trade-off for each piece of advice that comes with an action.
+  for (const a of top) {
+    if (!a.action) continue;
+    const cost = costOf(s, a.action);
+    const parts = [cost >= 0.05 ? `Costs ${money(cost)}.` : '', CATCH[a.action.type] ?? ''].filter(Boolean);
+    if (parts.length) a.tradeoff = parts.join(' ');
+  }
+  return top;
+}
+
+/** Advice about the newer systems: hearings, promises, power, audits, unions, cyber, spies and towns. */
+function newSystems(s: SimState, add: (a: Advice) => void): void {
+  if (s.hearing) add({ id: 'hearing', priority: 97, tone: 'warn', title: 'Answer the budget hearing', why: 'The clock is held until you do. Promises you make will be checked a year from now.', panel: 'strategy' });
+  for (const p of s.promises ?? []) {
+    const left = p.due - s.day;
+    if (left > 90) continue;
+    const months = Math.max(1, Math.round(left / 30));
+    add({ id: `promise-${p.id}`, priority: 74, tone: 'warn', title: `Keep your promise: ${p.text.replace(/\.$/, '').toLowerCase()}`, why: `It falls due in about ${months} month${months > 1 ? 's' : ''}. Breaking it costs 6 confidence and angers the members who heard it.`, panel: 'strategy' });
+  }
+  // Power: arsenals on grids with a real blackout risk and no generators.
+  if (s.energy) {
+    for (const r of GRID_REGIONS) {
+      const risk = blackoutOdds(s, r) * 30;
+      if (risk < 0.02) continue;
+      for (const d of regionPlants(s, r).filter((x) => x.kind === 'arsenal' && !s.energy.generators.includes(x.id))) {
+        const a: SimAction = { type: 'generator', site: d.id };
+        add({ id: `gen-${d.id}`, priority: 58 + risk * 100, tone: 'warn', title: `Generators at ${d.name}`, why: `Its grid has about a ${Math.round(risk * 100)}% chance of a blackout each month. Without generators the plant falls to a quarter of its output.`, action: ok(s, a) ? a : undefined, site: d.id, panel: 'power' });
+      }
+      const price = s.energy.grids[r].price;
+      const covered = s.energy.contracts.some((c) => c.region === r && c.until > s.day);
+      if (!covered && !s.energy.shock && price <= 0.97 && regionPlants(s, r).length) {
+        const a: SimAction = { type: 'powerContract', region: r };
+        add({ id: `pc-${r}`, priority: 40, tone: 'info', title: `Lock in cheap power for ${REGIONS[r].name}`, why: `Power there is ${Math.round(price * 100)}% of normal. A contract holds it for two years.`, action: ok(s, a) ? a : undefined, panel: 'power' });
+      }
+    }
+  }
+  // Audits: waste running high with a review coming.
+  if (s.oversight) {
+    const monthsLeft = REVIEW_MONTHS - 1 - (s.history.length % REVIEW_MONTHS);
+    const w = wasteSince(s, (s.history.length % REVIEW_MONTHS) || REVIEW_MONTHS);
+    const ratio = counted(s, w.total) / Math.max(1, w.spend);
+    if (monthsLeft <= 1 && ratio >= AUDIT_LIMITS[s.difficulty][0] * 0.8) {
+      const worst = Object.entries(w.by).sort((a, b) => b[1] - a[1])[0];
+      add({ id: 'audit', priority: 66, tone: 'warn', title: 'Cut waste before the audit', why: `The Auditor-General reviews your spending ${monthsLeft ? 'next month' : 'at the end of this month'}, and waste is running at ${Math.round(ratio * 100)}%${worst?.[0] === 'spot' ? ', mostly from buying without contracts: tender for what you buy on the spot' : worst?.[0] === 'idle' ? ', mostly from idle lines: mothball or run them' : ''}.`, panel: 'money' });
+    }
+  }
+  // Unions: a strong one is a strike waiting to happen.
+  if (s.unions) {
+    const strong = unionTowns(s).filter((i) => s.unions.towns[i].strength >= 70);
+    if (strong.length) {
+      const a: SimAction = { type: 'payDeal' };
+      add({ id: 'payDeal', priority: 62, tone: 'warn', title: 'Offer a national pay deal', why: `The union${strong.length > 1 ? 's' : ''} in ${strong.map((i) => CITIES[i].name).join(' and ')} ${strong.length > 1 ? 'are' : 'is'} strong: a refused claim there means a strike that can spread.`, action: ok(s, a) ? a : undefined, panel: 'towns' });
+    }
+  }
+  // Cyber: the rival is busy and the plants are unguarded.
+  if (s.cyber && (s.rival?.known.length ?? 0) >= 2 && s.cyber.levels.plants === 0) {
+    const a: SimAction = { type: 'cyberDefence', area: 'plants' };
+    add({ id: 'cyber', priority: 54, tone: 'warn', title: 'Defend the plant control systems', why: `With ${s.rival.known.length} rival weapons programmes, its hackers are busy: about ${(attackOdds(s, 'plants') * 100).toFixed(1)}% a month of ransomware at one of your plants.`, action: ok(s, a) ? a : undefined, panel: 'intel' });
+  }
+  // Spies: a plant hit recently with no vetting.
+  if ((s.history.slice(-3).reduce((a, h) => a + (h.incidents ?? 0), 0) ?? 0) > 0) {
+    const bare = SITES.find((d) => d.owner === 'state' && d.kind === 'arsenal' && (s.sites[d.id].clearance ?? 0) === 0);
+    if (bare) {
+      const a: SimAction = { type: 'vet', site: bare.id };
+      add({ id: `vet-${bare.id}`, priority: 52, tone: 'warn', title: `Vet the staff at ${bare.name}`, why: 'The rival’s agents struck your plants recently. Vetting makes incidents rarer and catches rings before they act.', action: ok(s, a) ? a : undefined, site: bare.id });
+    }
+  }
+  // Towns: an angry town with your plants in it.
+  if (s.communities) {
+    const angry = communityTowns(s).filter((t) => s.communities.mood[t] < 35);
+    for (const t of angry.slice(0, 2)) {
+      const a: SimAction = { type: 'communityFund', town: t };
+      add({ id: `fund-town-${t}`, priority: 56 + (35 - s.communities.mood[t]), tone: s.communities.mood[t] < 30 ? 'bad' : 'warn', title: `Win back ${CITIES[t].name}`, why: `The town is ${MOOD_WORD(s.communities.mood[t])} with you (${Math.round(s.communities.mood[t])}). Below 30 people protest at your gates, and unhappy towns object to new plants and lines.`, action: ok(s, a) ? a : undefined, panel: 'towns' });
+    }
+  }
+}
+
+export interface PlanItem {
+  /** 0 is this month, 1 next month, 2 the month after. */
+  month: number;
+  tone: 'bad' | 'warn' | 'info' | 'good';
+  text: string;
+}
+
+/** A plan for the next three months: what is coming, month by month, and what to do about it. */
+export function threeMonthPlan(s: SimState): PlanItem[] {
+  if (s.over) return [];
+  const out: PlanItem[] = [];
+  // Months from the one in progress (history.length): days 1-30 are month 0, and a month-end day already belongs to the next.
+  const at = (days: number) => Math.floor(Math.max(0, s.day + days - 1) / 30) - s.history.length;
+  const push = (days: number, tone: PlanItem['tone'], text: string) => {
+    const m = at(days);
+    if (m >= 0 && m <= 2) out.push({ month: m, tone, text });
+  };
+  const monthIdx = s.history.length;
+  // Rounds running low.
+  for (const line of FINISHED as LineId[]) {
+    if (!s.lines[line].unlocked || reserveTarget(s, line) <= 0) continue;
+    const m = monthsTo(s, line, 0.5, 3);
+    if (m !== null) push(m * 30 - 15, 'bad', `${MATERIALS[line].name} falls below half of target: fund its tightest supplier or add capacity now.`);
+  }
+  // Contracts and orders ending.
+  for (const c of s.contracts) {
+    const left = c.endDay - s.day;
+    if (left > 0 && left <= 90 && !s.contracts.some((k) => k !== c && k.material === c.material && k.endDay > c.endDay)) push(left, 'warn', `The ${MATERIALS[c.material].name.toLowerCase()} contract with ${SITE_BY_ID[c.site].name} ends: tender a month before.`);
+  }
+  for (const x of s.exports) if (x.endDay - s.day <= 90 && x.endDay > s.day) push(x.endDay - s.day, x.delivered < x.qty * 0.9 ? 'warn' : 'info', `The ${MATERIALS[x.line].name} order for ${x.customer} closes${x.delivered < x.qty * 0.9 ? `: ${Math.round(x.qty - x.delivered)} still to deliver` : ''}.`);
+  for (const c of s.diplomacy?.coprod ?? []) if (c.until - s.day <= 90 && c.until > s.day) push(c.until - s.day, 'info', `Co-production of ${MATERIALS[c.line].name} ends.`);
+  for (const c of s.energy?.contracts ?? []) if (c.until - s.day <= 90 && c.until > s.day) push(c.until - s.day, 'info', `Your power contract for ${REGIONS[c.region].name} ends: renew it if power is cheap.`);
+  // Work finishing.
+  const r = s.strategy.research.active;
+  if (r && r.days <= 90) push(r.days, 'good', `Research finishes: ${RESEARCH[r.id].name}. Start the next one straight away.`);
+  for (const p of s.network.projects) if (p.days <= 90 && !permitHeld(s, String(p.id))) push(p.days, 'good', 'A building project finishes.');
+  for (const j of s.inhouse) if (j.days <= 90) push(j.days, 'good', `The in-house line at ${SITE_BY_ID[j.site].name} is fitted out: hire its crew in good time.`);
+  for (const d of SITES) {
+    const site = s.sites[d.id];
+    if (site.status === 'building' && site.repairDays <= 90 && site.plantName && !permitHeld(s, d.id)) push(site.repairDays, 'good', `${site.plantName} opens: hire its crew in good time.`);
+  }
+  // The rival.
+  for (const k of s.rival?.known ?? []) {
+    const d = DEVELOPMENTS[k.id];
+    if (k.fielded > s.day && k.fielded - s.day <= 90 && !s.strategy.research.done.includes(d.counter)) push(k.fielded - s.day, 'bad', `${d.name} enter the field: research ${COUNTER_NAMES[d.counter]} before then.`);
+  }
+  // The Committee and the Auditor-General.
+  const toHearing = 11 - (monthIdx % 12);
+  // No hearing sits in a term's last month.
+  if (toHearing <= 2 && (monthIdx + toHearing + 1) * 30 < s.days) out.push({ month: toHearing, tone: 'info', text: 'The budget hearing sits at the end of the month: readiness and a clean record win you money.' });
+  const toReview = REVIEW_MONTHS - 1 - (monthIdx % REVIEW_MONTHS);
+  if (toReview <= 2) out.push({ month: toReview, tone: 'info', text: 'The Auditor-General reviews your spending at the end of the month: buy on contract and keep idle lines down.' });
+  for (const p of s.promises ?? []) if (p.due - s.day <= 90) push(p.due - s.day, 'warn', `Your promise falls due: ${p.text}`);
+  if (s.crisis) out.push({ month: 0, tone: 'bad', text: `The ${s.crisis.name} ${s.crisis.phase === 'warning' ? 'is coming' : 'is under way'}: keep ${REGIONS[s.crisis.region].name}'s depot at 60 days.` });
+  const rank = { bad: 0, warn: 1, good: 2, info: 3 } as const;
+  return out.sort((a, b) => a.month - b.month || rank[a.tone] - rank[b.tone]);
 }

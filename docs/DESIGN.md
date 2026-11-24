@@ -1,4 +1,4 @@
-# Forge Command 10.0: design
+# Forge Command 11.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -265,6 +265,40 @@ Physical figures follow public reference data where it exists, and are best gues
   immediate effect on confidence and the treasury.
 - **Display:** the panel charts these, with the existing spending, output, threat and confidence-driver records, over
   a year, the term, or the whole game.
+
+## Communities (`communities.ts`)
+- **Mood:** each town's mood is 0–100, starting at 55. Each month it drifts 5% of the way back to 55, then:
+  - **Open burning:** −demilled/1000, at most −4, at the pit's town.
+  - **Test firings:** −0.8 for each programme firing at a range's town.
+  - **Plants:** +0.4 for each of your plants with over 200 workers, and −0.6 for each running a surge shift.
+- **One-off changes:**
+  - **Mothballing:** −10.
+  - **Housing:** +3.
+  - **Open day:** +4 ($1M × the price index, every 60 days).
+  - **Community fund:** +12 ($8M × the price index, every 180 days).
+- **Permits:** founding a plant (the plot's town) or starting a rail link (the town at its first end) draws an
+  objection with odds clamp((50 − mood)/50, 0, 0.8) × min(1, trouble scale). A content town draws no random number.
+  Construction waits on the decision.
+  - **Package:** $10M × the price index, mood +15.
+  - **Override:** mood −20, regions −3. This is the default.
+  - **Withdraw:** 80% back, mood +5. The plot or project is undone: crew let go, spur removed, and the faction
+    credit taken back.
+- **Protests:** from day 120, each town with your plants and mood below 30 has odds of 25% × the trouble scale a
+  month. A protest puts one plant at 70% for 5–12 days, and regions −1.
+- **The court:** with burning on and the pit's town below 25, there are odds of 30% × the trouble scale a month of a
+  180-day ban on burning. It switches disposal to recycling, without counting as your choice for the 'Clean hands'
+  objective.
+- **Regions:** they move by (average mood of your towns, the pit's town included − 55) × 0.02 each month.
+
+## The advisor (`advisor.ts`)
+- **Trade-offs:** each piece of advice with an action shows the action's cost, found by applying it to a copy, and a
+  fixed note on its catch.
+- **Newer systems:** hearings, promises, blackout risk at arsenals, cheap power, waste before an audit, unions of 70 or
+  more, unguarded plant systems with two or more rival weapons, spy incidents in the last three months, and towns below
+  35.
+- **The three-month plan:** gathers dated events (forecast shortfalls, contract, order, co-production and power
+  contract ends, research, building, plants opening, rival weapons, the hearing, the audit, promises, crises) and
+  sorts them by month and urgency.
 
 ## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
 - **Each new term:**

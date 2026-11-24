@@ -1,5 +1,6 @@
 // A live schematic of one of your plants: each line's inputs, its bay and its output, with the crew below.
 import { automateCost } from '../sim/build';
+import { MOOD_WORD, moodOf } from '../sim/communities';
 import { SITE_BY_ID } from '../sim/world';
 import { generatorCost, powerPrice } from '../sim/energy';
 import { validate, type SimAction } from '../sim/actions';
@@ -146,7 +147,9 @@ export default function PlantView({ state, siteId, act }: { state: SimState; sit
           </Btn>
         )}
       </div>
-      <p className="mt-0.5 text-[10px] text-ops-dim">Workers come from {townOf(siteId)} (Towns tab).</p>
+      <p className="mt-0.5 text-[10px] text-ops-dim">
+        Workers come from {townOf(siteId)}, which is {MOOD_WORD(moodOf(state, siteId))} with you ({Math.round(moodOf(state, siteId))}) (Towns tab).
+      </p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-ops-text">
           Power: <span className="text-white">{state.energy.generators.includes(siteId) ? 'grid, with backup generators' : 'grid only'}</span>{' '}

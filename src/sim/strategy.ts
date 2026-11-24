@@ -170,7 +170,7 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud' | 'permit';
   title: string;
   body: string;
   options: DecisionOption[];
@@ -194,7 +194,7 @@ export interface ObjectiveDef {
 
 export const OBJECTIVES: ObjectiveDef[] = [
   { id: 'source', title: 'A second source', text: 'Qualify any supplier that was not qualified at the start.', by: 360, check: (s) => SITES.some((x) => !x.qualified && s.sites[x.id].qualified), money: 120 },
-  { id: 'recycle', title: 'Clean hands', text: 'Switch demilitarization to recycling.', by: 270, check: (s) => s.policy.demilMethod === 'recycle', money: 40 },
+  { id: 'recycle', title: 'Clean hands', text: 'Switch demilitarization to recycling.', by: 270, check: (s) => s.policy.demilMethod === 'recycle' && s.recycleChosen !== false, money: 40 },
   { id: 'drones', title: 'Cheap shots', text: 'Get an APKWS or Coyote line running.', by: 900, check: (s) => s.lines.apkws.unlocked || s.lines.coyote.unlocked, money: 150 },
   { id: 'team', title: 'Build the team', text: 'Fill all five key staff posts.', by: 360, check: (s) => STAFF_ROLE_IDS.every((r) => s.strategy.staff[r]), money: 60 },
   { id: 'ready', title: 'Full racks', text: 'Reach 95% readiness.', by: 720, check: (s) => (s.month.readiness || 0) >= 0.95, money: 200 },
