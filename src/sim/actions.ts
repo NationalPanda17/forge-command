@@ -21,6 +21,7 @@ import { payDeal, surgeBanned, validatePayDeal } from './unions';
 import type { AllyId } from './types';
 import { applyEnergy, validateEnergy } from './energy';
 import { applyOversight, validateOversight } from './audit';
+import { applyCommunity, onHousing, validateCommunity } from './communities';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -80,7 +81,9 @@ export type SimAction =
   | { type: 'powerContract'; region: RegionId }
   | { type: 'gridUpgrade'; region: RegionId }
   | { type: 'auditTeam' }
-  | { type: 'disbandAuditTeam' };
+  | { type: 'disbandAuditTeam' }
+  | { type: 'communityFund'; town: number }
+  | { type: 'openDay'; town: number };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -123,6 +126,11 @@ export function validate(s: SimState, a: SimAction): string | null {
     const target = 'site' in a ? a.site : a.type === 'found' ? a.plot : a.type === 'build' ? a.target : decSite;
     const blocked = controlBlock(s, target);
     if (blocked) return blocked;
+    const permit = dec?.kind === 'permit' ? s.communities.permits.find((p) => p.id === dec.data?.chain) : undefined;
+    if (s.hotseat && permit?.player !== undefined && permit.player !== s.hotseat.active) {
+      const other = s.hotseat.players[permit.player];
+      return `${other.name} (${other.command}) started that work.`;
+    }
   }
   const site = 'site' in a ? s.sites[a.site] : null;
   if ('site' in a && !site) return 'Unknown site.';
@@ -150,6 +158,9 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'auditTeam':
     case 'disbandAuditTeam':
       return validateOversight(s, a);
+    case 'communityFund':
+    case 'openDay':
+      return validateCommunity(s, a);
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
       if (site!.mothballed && a.run !== 'idle') return 'Reopen the plant first.';
@@ -202,6 +213,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       return funds(s, refurbishCost(a.line, q));
     }
     case 'setPolicy':
+      if (a.policy.demilMethod === 'burn' && (s.communities?.burnBanUntil ?? 0) > s.day) return 'A court order bans open burning for now.';
       return a.policy.demilMethod === 'burn' && s.policies.includes('greenDemil') ? 'Your clean disposal pledge bans open burning.' : null;
     case 'research': {
       const r = RESEARCH[a.research];
@@ -401,7 +413,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       s.tutorial = { step: a.step };
       break;
     case 'build':
-      startProject(s, a.kind, a.target, a.process);
+      startProject(s, a.kind, a.target, a.process, feed);
       feed(s, 'info', `Work begins: ${projectName(s, a)}.`);
       break;
     case 'safety': {
@@ -458,6 +470,7 @@ export function apply(state: SimState, a: SimAction): SimState {
     case 'housing':
       charge(s, housingCost(s));
       s.towns[a.town].building.push({ homes: HOMES_PER_PROJECT, days: HOUSING_DAYS });
+      onHousing(s, a.town);
       feed(s, 'info', `${HOMES_PER_PROJECT} homes are being built in ${CITIES[a.town].name}: about five months.`);
       break;
     case 'mothball':
@@ -498,6 +511,10 @@ export function apply(state: SimState, a: SimAction): SimState {
     case 'auditTeam':
     case 'disbandAuditTeam':
       applyOversight(s, a, feed);
+      break;
+    case 'communityFund':
+    case 'openDay':
+      applyCommunity(s, a, feed);
       break;
     case 'handover':
       s.hotseat!.handover = false;
@@ -550,6 +567,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
     }
     case 'setPolicy':
+      if (a.policy.demilMethod) s.recycleChosen = a.policy.demilMethod === 'recycle';
       s.policy = { ...s.policy, ...a.policy, depotDays: { ...s.policy.depotDays, ...(a.policy.depotDays ?? {}) } };
       break;
   }

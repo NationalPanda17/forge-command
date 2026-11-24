@@ -40,6 +40,8 @@ import { cyberDay, cyberMonth, resolveCyber } from './cyber';
 import { unionsMonth, wageOf } from './unions';
 import { POWER_SHARE, energyDay, energyMonth, intensityOf, powerFactor, powerPrice, supplierEnergyFactor } from './energy';
 import { FRAUD_MARKUP, addWaste, oversightMonth, resolveOversight } from './audit';
+import { communitiesMonth, resolveCommunity, type Permit } from './communities';
+import { foundCost } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
@@ -64,7 +66,34 @@ export const DIFF = {
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
 
 // Decision cards from modules that strategy itself loads are registered here, once everything has loaded.
-registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed) || resolveOversight(s, d, opt, feed));
+registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed) || resolveOversight(s, d, opt, feed) || resolveCommunity(s, d, opt, feed, (p) => withdrawPermit(s, p)));
+
+/** Withdrawing a project a town objected to: undo it and return 80% of the money. */
+function withdrawPermit(s: SimState, p: Permit): number {
+  if (p.kind === 'plant') {
+    const site = s.sites[p.target];
+    const recipe = site.processes[0]?.recipe;
+    const back = recipe ? foundCost(s, recipe) * 0.8 : 0;
+    site.processes = [];
+    site.status = 'closed';
+    site.extraCrew = 0;
+    site.plantKind = undefined;
+    site.plantName = undefined;
+    // Anyone hired for it is let go, the spur is never laid, and the credit for founding it goes too.
+    site.workers = 0;
+    site.trainees = [];
+    s.network.built = s.network.built.filter((k) => k !== `plot-${p.target}`);
+    setNetwork(s.network.built, s.network.upgrades);
+    s.strategy.factions.regions = clamp(s.strategy.factions.regions - 3);
+    s.strategy.factions.industry = clamp(s.strategy.factions.industry - 2);
+    if (s.story?.counts.founded) s.story.counts.founded--;
+    return back;
+  }
+  const proj = s.network.projects.find((x) => x.id === p.project);
+  s.network.projects = s.network.projects.filter((x) => x.id !== p.project);
+  s.strategy.factions.regions = clamp(s.strategy.factions.regions - 1.5);
+  return proj ? proj.cost * 0.8 : 0;
+}
 
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
@@ -648,6 +677,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   promisesMonth(s, feed);
   energyMonth(s, feed);
   oversightMonth(s, feed);
+  communitiesMonth(s, feed);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   if ((s.history.length + 1) % 12 === 0 && s.day < s.days) openHearing(s, s.appropriation, feed);

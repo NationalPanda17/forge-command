@@ -1,5 +1,6 @@
 // Building the network: new links, route upgrades, an icebreaker for the northern winter, supplier resilience
 // grants and plant automation. Projects take time and money, then change the world when they finish.
+import { permitHeld, seekPermit } from './communities';
 import { UPGRADE_STEP, setNetwork } from './graph';
 import { clamp } from './rng';
 import type { FeedItem, Project, SimState } from './types';
@@ -121,12 +122,15 @@ export function projectName(s: SimState, p: { kind: Project['kind']; target: str
   }
 }
 
-export function startProject(s: SimState, kind: Project['kind'], target: string, process?: number): void {
+export function startProject(s: SimState, kind: Project['kind'], target: string, process: number | undefined, feed: Feed): void {
   const cost = projectCost(s, kind, target, process);
   const days = projectDays(s, kind, target);
   s.treasury -= cost;
   s.month.spend.projects += cost;
-  s.network.projects.push({ id: s.nextId++, kind, target, process, days, total: days, cost });
+  const id = s.nextId++;
+  s.network.projects.push({ id, kind, target, process, days, total: days, cost });
+  // A new line across the country needs a permit from the town at its first end.
+  if (kind === 'link' && CANDIDATE_BY_ID[target]) seekPermit(s, 'link', String(id), CANDIDATE_BY_ID[target].a, feed, id);
   // Building at home pleases the regions and industry.
   if (kind === 'link' || kind === 'upgrade') s.strategy.factions.regions = clamp(s.strategy.factions.regions + 1.5);
   if (kind === 'harden') s.strategy.factions.industry = clamp(s.strategy.factions.industry + 1);
@@ -135,7 +139,7 @@ export function startProject(s: SimState, kind: Project['kind'], target: string,
 
 export function buildDay(s: SimState, feed: Feed): void {
   if (!s.network.projects.length) return;
-  for (const p of s.network.projects) p.days--;
+  for (const p of s.network.projects) if (!permitHeld(s, String(p.id))) p.days--;
   const done = s.network.projects.filter((p) => p.days <= 0);
   if (!done.length) return;
   s.network.projects = s.network.projects.filter((p) => p.days > 0);

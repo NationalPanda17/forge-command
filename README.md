@@ -73,6 +73,12 @@ Every region runs on its own grid: power prices swing, fuel shocks bite, and bla
 have generators. The Auditor-General reviews your spending twice a year, and suppliers sometimes overbill. A
 statistics room charts where the money went, what every plant made, and where your confidence came from.
 
+## Towns that answer back
+
+Every town has a mood toward you. New plants and rail lines need permits, angry towns protest at your gates, and the
+town beside the burning pit can take you to court. The advisor shows what each suggestion costs, and plans three months
+ahead.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -102,7 +108,7 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Industry:** open plots, in-house lines and round designs.
 - **Story:** the chapter's goals and how earlier chapters went (story games only).
 - **Testing:** the test ranges, the queue and what awaits acceptance.
-- **Towns:** housing, jobs, mothballing and the unions.
+- **Towns:** moods, open days and community funds, housing, jobs, mothballing and the unions.
 - **Allies:** allies and co-production, supplier nations, guarantees and the export desk.
 - **Power:** grids, prices, blackouts, power contracts, grid upgrades and generators.
 - **Courier:** the monthly newspaper.

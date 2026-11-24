@@ -1,6 +1,7 @@
 // Workforce towns: every plant draws its people from the nearest town. Housing limits how fast you can hire, towns
 // grow with jobs and shrink after layoffs, and mothballing a plant has a local political price.
 import { clamp } from './rng';
+import { onMothball } from './communities';
 import type { FeedItem, SimState } from './types';
 import { CITIES, SITES, SITE_BY_ID } from './world';
 
@@ -111,6 +112,7 @@ export function mothball(s: SimState, siteId: string, feed: Feed): void {
   site.trainees = [];
   site.mothballed = true;
   s.strategy.factions.regions = clamp(s.strategy.factions.regions - Math.min(12, laid / 120));
+  onMothball(s, siteId);
   s.confidence = clamp(s.confidence - Math.min(6, laid / 300));
   feed(s, 'warn', `${SITE_BY_ID[siteId].name} is mothballed: ${laid} people laid off in ${townOf(siteId)}. The region will not forget it.`, siteId, true);
 }

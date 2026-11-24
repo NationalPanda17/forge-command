@@ -1,5 +1,6 @@
 // Towns: where your people live, how much room each town has, and what happens when a plant closes.
 import { validate, type SimAction } from '../sim/actions';
+import { MOOD_WORD, communityTowns, fundCost, openDayCost } from '../sim/communities';
 import { HOMES_PER_PROJECT, HOUSING_DAYS, employed, housingCost, townOf } from '../sim/towns';
 import type { SimState } from '../sim/types';
 import { CITIES, SITES, SITE_BY_ID } from '../sim/world';
@@ -41,6 +42,46 @@ export default function TownsPanel({ state, act, onSite }: { state: SimState; ac
                   </span>
                   <Btn why={validate(state, a)} onClick={() => act(a)} title={`${HOMES_PER_PROJECT} homes, about ${Math.round(HOUSING_DAYS / 30)} months`}>
                     Build housing · {money(housingCost(state))}
+                  </Btn>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+      <section>
+        <h3 className="label mb-1">Communities</h3>
+        <p className="mb-2 text-ops-dim">
+          Every town has a mood toward you. Jobs and community funds lift it; smoke from open burning, test firings, round-the-clock shifts and mothballing a plant sour it. An unhappy town objects to new plants and rail links, and below 30 its people protest at your gates.
+        </p>
+        {state.communities.burnBanUntil > state.day && (
+          <p className="mb-2 text-ops-red">A court order bans open burning at the demilitarization site until {dateLabel(state.communities.burnBanUntil)}.</p>
+        )}
+        {state.communities.permits.length > 0 && (
+          <p className="mb-2 text-ops-amber">
+            Waiting on a permit: {state.communities.permits.map((p) => `${p.kind === 'plant' ? SITE_BY_ID[p.target]?.name ?? 'a plant' : 'a rail link'} (${CITIES[p.town].name})`).join(', ')}. The decision is on the Board.
+          </p>
+        )}
+        <ul className="space-y-2">
+          {communityTowns(state).map((i) => {
+            const mood = state.communities.mood[i];
+            const fund: SimAction = { type: 'communityFund', town: i };
+            const open: SimAction = { type: 'openDay', town: i };
+            return (
+              <li key={i}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-white">{CITIES[i].name}</span>
+                  <span className={mood < 30 ? 'text-ops-red' : mood < 45 ? 'text-ops-amber' : 'text-ops-dim'}>
+                    {MOOD_WORD(mood)} · {Math.round(mood)}
+                  </span>
+                </div>
+                <Bar ratio={mood / 100} tone={mood < 30 ? 'bg-ops-red' : mood < 45 ? 'bg-ops-amber' : 'bg-ops-green'} title="The town's mood toward you" />
+                <div className="mt-1 flex flex-wrap justify-end gap-1">
+                  <Btn why={validate(state, open)} onClick={() => act(open)} title="Families tour your plant: a small lift, every two months">
+                    Open day · {money(openDayCost(state))}
+                  </Btn>
+                  <Btn why={validate(state, fund)} onClick={() => act(fund)} title="A library, a clinic, a sports ground: a big lift, every six months">
+                    Community fund · {money(fundCost(state))}
                   </Btn>
                 </div>
               </li>

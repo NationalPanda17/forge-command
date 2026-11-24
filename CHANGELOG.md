@@ -1,5 +1,35 @@
 # Changelog
 
+## 11.0.0: communities, permits and a smarter advisor
+
+### Communities and permits
+- **Moods:** every town has a mood toward you.
+  - **Lifting it:** jobs, new homes, open days and community funds.
+  - **Souring it:** smoke from open burning at the demilitarization site, test firings at the ranges, round-the-clock
+    shifts, and lay-offs when a plant is mothballed.
+- **Permits:** founding a plant or laying a new rail link needs a permit from the town. A content town never objects;
+  an unhappy one may, and the work waits until you decide: win it over with a community package, override it (the town
+  and the regional members resent it), or withdraw and recover 80% of the money.
+- **Protests:** below 30, people protest at your gates, cutting a plant's output for a week or two. The town beside the
+  burning pit can win a court order banning open burning for six months.
+- **Politics:** the towns' average mood nudges the regional members each month.
+- **Where to see it:** the Towns tab shows each town's mood, with open days and community funds; each plant view shows
+  its town's mood.
+
+### Advisor upgrade
+- **Trade-offs:** every suggestion with a button now shows what it costs, worked out by trying it on a copy, and the
+  catch.
+- **New warnings:**
+  - budget hearings and promises falling due;
+  - blackout risk at arsenals without generators, and cheap power worth locking in;
+  - waste before an audit;
+  - strong unions;
+  - unguarded plant control systems;
+  - recent spy incidents;
+  - angry towns.
+- **Three-month plan:** what is coming, month by month: rounds running low, contracts and orders ending, research,
+  building and new plants finishing, the rival's next weapon, the hearing, the audit, promises and any crisis.
+
 ## 10.1.0: an in-depth review
 
 Three independent reviews of the whole game (the simulation core, the feature systems and the interface) found these,

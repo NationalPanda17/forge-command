@@ -1,5 +1,6 @@
 // Build: new links, route upgrades, the icebreaker and resilience grants, and everything under construction.
 import { validate, type SimAction } from '../sim/actions';
+import { permitHeld } from '../sim/communities';
 import { ICEBREAKER_COST, MAX_UPGRADE, hardenCost, linkCost, linkDays, liveRoutes, projectName, routeCap, upgradeCost, upgradeDays } from '../sim/build';
 import { pathBetween } from '../sim/graph';
 import type { SimState } from '../sim/types';
@@ -42,7 +43,7 @@ export default function BuildPanel({ state, act, onHighlight, onSite }: { state:
               <li key={p.id} {...hover(p.kind === 'link' || p.kind === 'upgrade' ? p.target : null)} tabIndex={0}>
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="text-white">{projectName(state, p)}</span>
-                  <span className="text-ops-dim">{p.days} days left</span>
+                  <span className={permitHeld(state, String(p.id)) ? 'text-ops-amber' : 'text-ops-dim'}>{permitHeld(state, String(p.id)) ? 'on hold: a town objects' : `${p.days} days left`}</span>
                 </div>
                 <Bar ratio={1 - p.days / p.total} tone="bg-ops-amber" />
               </li>
