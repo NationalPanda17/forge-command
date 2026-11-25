@@ -1,4 +1,5 @@
 // The watch list (what needs attention now) and the in-game guide.
+import { isFounded } from '../sim/industry';
 import { useState, type ReactNode } from 'react';
 import { coverage, engineerNeed } from '../sim/engineers';
 import { BASE_LINES } from '../sim/fight';
@@ -45,7 +46,8 @@ export function watchList(s: SimState): Watch[] {
     const site = s.sites[def.id];
     if (site.embargoDays > 0) out.push({ tone: 'bad', text: `Export ban on ${def.name} (${def.nation}), ${site.embargoDays} days left.`, site: def.id });
     else if (site.disruptionDays > 0) out.push({ tone: 'warn', text: `${def.name} disrupted: ${Math.round(site.disruptionFactor * 100)}% output for ${site.disruptionDays} more days.`, site: def.id });
-    if (site.status === 'closed') out.push({ tone: 'bad', text: `${def.name} has closed.`, site: def.id });
+    // An open plot nobody has built on yet is 'closed' only in the sense that nothing is there: not news.
+    if (site.status === 'closed' && !(def.kind === 'plot' && !isFounded(s, def.id))) out.push({ tone: 'bad', text: `${def.name} has closed.`, site: def.id });
   }
   // Bases with empty racks.
   for (const def of SITES.filter((x) => BASE_LINES[x.kind])) {

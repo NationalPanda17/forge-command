@@ -1,5 +1,6 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazyPart } from '../ui/lazyPart';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
 import { CustomEditor } from './CustomEditor';
@@ -15,8 +16,10 @@ import { openCampaign } from '../sim/tick';
 import type { Difficulty, ScenarioId, Settings, SimState } from '../sim/types';
 import { seedFrom } from '../sim/rng';
 import { Btn, NumberInput, Segmented } from '../ui/kit';
-import Shell from './Shell';
 import { dateLabel, loadSim, saveSim } from './useSim';
+
+// The game screen loads after the title screen is up, so the first thing a player sees appears quickly.
+const Shell = lazyPart(() => import('./Shell'));
 
 const DIFF: Record<Difficulty, string> = {
   easy: 'More money and a forgiving Committee.',
@@ -35,10 +38,13 @@ const MODES: { id: Mode; name: string; blurb: string }[] = [
 ];
 
 function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) => void; autoPause: boolean; setAutoPause: (v: boolean) => void }) {
-  const saved = loadSim();
+  // Read once: a save is large, and loading it sets up its map.
+  const [saved] = useState(loadSim);
   const file = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>('campaign');
+  // Someone who has never played here (no game, no score, no save) is pointed at the tutorial first.
+  const [firstVisit] = useState(() => !saved && Object.keys(loadAchievements()).length === 0 && loadScores().length === 0 && listSlots().length === 0);
+  const [mode, setMode] = useState<Mode>(firstVisit ? 'tutorial' : 'campaign');
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [years, setYears] = useState(4);
   const [scenario, setScenario] = useState<ScenarioId>('standard');
@@ -104,10 +110,29 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         <h1 className="font-sans text-5xl font-bold tracking-[0.25em] text-ops-amber">FORGE COMMAND</h1>
         <p className="mt-2 text-balance text-[13px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
       </header>
+      {saved && saved.over && (
+        <div className="flex justify-center">
+          <Btn className="px-4 py-2 text-[12px]" onClick={() => onStart(saved)} title="Your grade, the term in charts, and a second term if the Committee offers one">
+            Your last term report · {dateLabel(saved.day)}
+          </Btn>
+        </div>
+      )}
       {saved && !saved.over && (
         <div className="flex justify-center">
           <Btn kind="primary" className="px-4 py-2 text-[12px]" onClick={() => onStart(saved)}>
-            Continue {saved.story ? 'story' : saved.mode === 'sandbox' ? 'sandbox' : 'campaign'} · {dateLabel(saved.day)}
+            Continue {saved.story ? 'story' : saved.scenario === 'tutorial' ? 'tutorial' : saved.hotseat ? 'two-player game' : saved.mode === 'sandbox' ? 'sandbox' : 'campaign'} · {dateLabel(saved.day)}
+          </Btn>
+        </div>
+      )}
+
+      {firstVisit && (
+        <div className="panel flex flex-wrap items-center justify-between gap-3 border-ops-cyan/50 px-4 py-3 text-[12px]">
+          <p className="min-w-0 flex-1 text-ops-text">
+            <span className="font-semibold text-white">New here?</span> The tutorial walks you through your first months, one step at a time. Most numbers explain
+            themselves when you hover over or tap them.
+          </p>
+          <Btn kind={mode === 'tutorial' ? 'default' : 'primary'} onClick={() => setMode(mode === 'tutorial' ? 'campaign' : 'tutorial')}>
+            {mode === 'tutorial' ? 'I have played before' : 'Show the tutorial'}
           </Btn>
         </div>
       )}
@@ -466,7 +491,15 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </ul>
       </section>
 
-      <p className="text-center text-[10px] text-ops-dim">A game. Designations and makers are real; every site, company, nation and person is fictional.</p>
+      <footer className="space-y-1 pb-4 text-center text-[10px] text-ops-dim">
+        <p>A game. Designations and makers are real; every site, company, nation and person is fictional.</p>
+        <p>
+          Version {typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'} · No account and no tracking: your games are saved in this browser only. ·{' '}
+          <a className="underline decoration-dotted underline-offset-2 hover:text-ops-text" href="https://github.com/NationalPanda17/forge-command/issues" target="_blank" rel="noreferrer">
+            Report a problem
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
@@ -485,6 +518,7 @@ export default function App2() {
   };
   if (!game) return <Title onStart={setGame} autoPause={autoPause} setAutoPause={setAutoPause} />;
   return (
+    <Suspense fallback={<p className="p-6 text-center font-sans text-[14px] uppercase tracking-[0.2em] text-ops-dim">Opening the command centre…</p>}>
     <Shell
       initial={game}
       onMenu={(s) => {
@@ -492,5 +526,6 @@ export default function App2() {
         setGame(null);
       }}
     />
+    </Suspense>
   );
 }

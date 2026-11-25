@@ -1,4 +1,5 @@
 // The end-of-term report: a grade, how the term went month by month, and what was achieved.
+import { DialogFocus } from '../ui/DialogFocus';
 import { termReport } from '../sim/analytics';
 import { SCENARIOS } from '../sim/setup';
 import type { SimState } from '../sim/types';
@@ -38,7 +39,8 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
     </div>
   );
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="term-title">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3" role="dialog" aria-modal="true" aria-labelledby="term-title">
+      <DialogFocus labelledBy="term-title" />
       <div className="fc-zoom panel mx-auto max-w-3xl space-y-4 p-4 text-[12px]">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">

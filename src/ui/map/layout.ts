@@ -258,6 +258,9 @@ export function layoutMap(inp: LayoutInput): Layout {
   const hidden = inp.hidden ?? NO_HIDDEN;
   const free = (b: Box) => !taken.some((t) => hit(b, t));
   const take = (b: Box) => taken.push(b);
+  // Text never leaves the map sheet: on a small screen a spot past its edge is cut off.
+  const sheet = { x0: G.FRAME.x0 * S, y0: G.FRAME.y0 * S, x1: G.FRAME.x1 * S, y1: G.FRAME.y1 * S };
+  const onSheet = (b: Box) => b.x0 >= sheet.x0 && b.x1 <= sheet.x1 && b.y0 >= sheet.y0 && b.y1 <= sheet.y1;
 
   // Icons first: markers (with their badges and selection brackets), city dots and the off-map arrows.
   for (const s of SITES) {
@@ -326,7 +329,8 @@ export function layoutMap(inp: LayoutInput): Layout {
           const dy = cy + base - tall / 2;
           cands.push({ v: { x: cx, y: dy, anchor, lead: true }, box: textBox(x + cx, y + dy, anchor, w, SITE_FONT, extra) });
         }
-    const p = place(cands);
+    const inside = cands.filter((c) => onSheet(c.box));
+    const p = place(inside.length ? inside : cands);
     if (p) sites[id] = p;
   };
 
@@ -375,7 +379,9 @@ export function layoutMap(inp: LayoutInput): Layout {
           const dx = (base[0] + along[0] * d) * u;
           const dy = (base[1] + along[1] * d) * u;
           return { v: { x: dx, y: dy, anchor } as Placed, box: textBox(at[0] * S + dx, at[1] * S + dy, anchor, w, fs, extra) };
-        }),
+        })
+          // Never past the sheet's left or right edge, where a phone screen cuts it off.
+          .filter((c) => c.box.x0 >= sheet.x0 && c.box.x1 <= sheet.x1),
       );
     };
     let showNames = S >= 0.6;
@@ -425,12 +431,15 @@ export function layoutMap(inp: LayoutInput): Layout {
     const t: [number, number] = [Math.cos(a), Math.sin(a)];
     const n: [number, number] = [-Math.sin(a), Math.cos(a)];
     const nudges: [number, number][] = [[0, 0], [24, 0], [-24, 0], [0, -12], [0, 12], [50, 0], [-50, 0], [80, 0], [-80, 0], [0, -24], [0, 24], [120, 0], [-120, 0]];
+    // A sea or upland name is scenery: left out rather than cut off at the sheet's edge.
     geo[i] = place(
-      nudges.map(([along, across]) => {
-        const dx = t[0] * along + n[0] * across;
-        const dy = t[1] * along + n[1] * across;
-        return { v: [dx, dy] as [number, number], box: rotatedBox(l.at[0] * S + dx, l.at[1] * S + dy, w, fs, l.rot ?? 0) };
-      }),
+      nudges
+        .map(([along, across]) => {
+          const dx = t[0] * along + n[0] * across;
+          const dy = t[1] * along + n[1] * across;
+          return { v: [dx, dy] as [number, number], box: rotatedBox(l.at[0] * S + dx, l.at[1] * S + dy, w, fs, l.rot ?? 0) };
+        })
+        .filter((c) => onSheet(c.box)),
     );
   };
   if (inp.labels) G.GEO_LABELS.forEach((l, i) => l.lod === 0 && l.lod <= lod && placeGeo(i));

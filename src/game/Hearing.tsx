@@ -1,4 +1,5 @@
 // The budget hearing: three questions from the Committee, then your request.
+import { DialogFocus } from '../ui/DialogFocus';
 import { validate, type SimAction } from '../sim/actions';
 import { REQUESTS, requestOdds, support, type RequestLevel } from '../sim/hearings';
 import { FACTIONS } from '../sim/strategy';
@@ -13,7 +14,8 @@ export function Hearing({ state, act }: { state: SimState; act: (a: SimAction) =
   if (!h || state.over) return null;
   const done = h.questions.every((q) => h.answers[q.id]);
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="hearing-title">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3" role="dialog" aria-modal="true" aria-labelledby="hearing-title">
+      <DialogFocus labelledBy="hearing-title" />
       <div className="fc-zoom panel mx-auto mt-[4vh] max-w-2xl space-y-3 p-4 text-[12px]">
         <div className="label text-ops-amber">Defence Committee · fiscal year review</div>
         <h2 id="hearing-title" className="font-sans text-2xl font-bold tracking-[0.1em] text-white">

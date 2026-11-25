@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -58,8 +58,11 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate') {
     // Fresh page when online, the cached one when not.
     e.respondWith(fetch(req).then((r) => {
-      const copy = r.clone();
-      caches.open(CACHE).then((c) => c.put('./', copy));
+      // Only a good page replaces the offline copy: an error page from the host must never become the game.
+      if (r.ok) {
+        const copy = r.clone();
+        caches.open(CACHE).then((c) => c.put('./', copy));
+      }
       return r;
     }).catch(async () => (await caches.match('./')) ?? Response.error()));
     return;
@@ -72,8 +75,12 @@ self.addEventListener('fetch', (e) => {
 `;
 }
 
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+
 export default defineConfig({
   plugins: [react(), offlineServiceWorker()],
+  // The version the player sees on the title screen.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   build: {
     rollupOptions: {
       output: {

@@ -144,6 +144,7 @@ const LOD_CSS = `
 @keyframes fcm-flow{to{stroke-dashoffset:-18}}
 .fcm-flow{animation:fcm-flow 1.4s linear infinite}
 .fcm-marker:hover .fcm-mbody{stroke-width:2.2}
+.fc-paused .fcm-flow,.fc-paused .fcm-build,.fc-paused .fcm-pulse{animation-play-state:paused}
 @media (prefers-reduced-motion:reduce){.fcm-pulse,.fcm-crisis,.fcm-build,.fcm-flow{animation:none}.fcm-ripple{display:none}}
 `;
 
@@ -895,13 +896,15 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
   const step = S < 0.6 ? 200 : S < 3 ? 100 : S < 6 ? 50 : 25;
   for (let v = 0; v <= G.FRAME.x1; v += step) {
     const x = v * S + tx;
-    if (!quiet && x > 34 && x < size.w - 60 && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
+    // On a narrow map the zoom buttons sit in a row along the top right: no ruler number under them.
+    if (!quiet && x > 34 && x < size.w - (size.w < 520 ? 170 : 60) && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
   }
   for (let v = 0; v <= G.FRAME.y1; v += step) {
     const y = v * S + ty;
     if (!quiet && y > 64 && y < size.h - 70 && !clashes(smallTextBox(String(v), 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
   }
-  const km = niceKm(90 / S);
+  // A short bar: on a phone a long one covers a corner of the country.
+  const km = niceKm(60 / S);
   const bar = km * S;
   return (
     <g pointerEvents="none" fontFamily={FONT_MONO}>
@@ -1335,6 +1338,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
     };
   }, []);
 
+  const hiddenSig = SITES.filter((s) => markers[s.id]?.hidden).map((s) => s.id).join(',');
   // Labels to show: hot sites always, the rest from medium zoom.
   const labelOrder = useMemo(() => {
     const hot = [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]);
@@ -1343,15 +1347,29 @@ export default function MapView(props: MapViewProps): JSX.Element {
     const rank = (s: SiteDef) => (s.owner === 'state' ? (s.kind === 'arsenal' ? 0 : s.kind === 'depot' ? 1 : 2) : 3);
     const rest = SITES.filter((s) => !hot.includes(s.id) && !markers[s.id]?.hidden).sort((a, b) => rank(a) - rank(b)).map((s) => s.id);
     return [...hot, ...rest];
-  }, [selected, focused, hovered, layers.labels, lodSettled, markers]);
+  }, [selected, focused, hovered, layers.labels, lodSettled, hiddenSig]);
   const hotIds = useMemo(() => [selected, focused, hovered].filter((x, i, a): x is string => !!x && a.indexOf(x) === i && !!SITE_BY_ID[x]), [selected, focused, hovered]);
   const badgeSig = SITES.map((s) => markers[s.id]?.badge ?? '').join('|');
-  const hiddenSig = SITES.filter((s) => markers[s.id]?.hidden).map((s) => s.id).join(',');
   const hidden = useMemo(() => new Set(hiddenSig ? hiddenSig.split(',') : []), [hiddenSig]);
   const nameSig = SITES.map((s) => `${markers[s.id]?.name ?? ''}:${markers[s.id]?.kind ?? ''}`).join('|');
   // Labels are laid out for the settled zoom; markers are spaced at the live zoom every frame, so they never touch.
   const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden), [settledS, badgeSig, hidden]);
-  const liveSpread = useMemo(() => (S === settledS ? spread : spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden)), [S, settledS, spread, badgeSig, hidden]);
+  // While a pinch or wheel zoom is moving, the spacing is worked out for a zoom just below the live one (in steps of
+  // about 9%) and kept: a little more room than needed, never less, without redoing the whole layout every frame.
+  const spreadCache = useRef(new Map<string, Record<string, [number, number]>>());
+  const liveSpread = useMemo(() => {
+    if (S === settledS) return spread;
+    const q = 2 ** (Math.floor(Math.log2(S) * 8) / 8);
+    const key = `${q}#${badgeSig}#${hiddenSig}`;
+    const cache = spreadCache.current;
+    let hit = cache.get(key);
+    if (!hit) {
+      if (cache.size > 48) cache.clear();
+      hit = spreadMarkers(q, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden);
+      cache.set(key, hit);
+    }
+    return hit;
+  }, [S, settledS, spread, badgeSig, hidden, hiddenSig]);
   const spreadRef = useRef(liveSpread);
   spreadRef.current = liveSpread;
   const placement = useMemo(
@@ -1451,7 +1469,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>
       )}
-      <div data-hud="" className="pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5">
+      <div data-hud="" className={`pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`}>
         <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">{countryTitle()}</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
@@ -1496,7 +1514,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
           {quickMenu(menu.id, closeMenu)}
         </div>
       )}
-      <div data-hud="" className="absolute right-3 top-3 flex flex-col gap-1">
+      {/* On a narrow map the buttons sit in a row, in the strip of sea above the country, so they never cover a label. */}
+      <div data-hud="" className={`absolute right-3 top-3 flex gap-1 ${size.w < 520 ? 'flex-row' : 'flex-col'}`}>
         <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in">
           +
         </button>
@@ -1519,7 +1538,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
       )}
       <div data-hud="" className="pointer-events-none absolute bottom-2 right-3 rounded border border-ops-line/80 bg-ops-bg px-1.5 py-0.5 text-[9.5px] tracking-wider text-ops-dim">
         <span ref={readoutRef} />
-        <span className="ml-2 text-ops-dim/70">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
+        <span className="ml-2 text-ops-dim">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
       </div>
     </div>
   );

@@ -54,7 +54,10 @@ export function Btn({
   pressed,
   id,
   type = 'button',
+  ariaLabel,
 }: {
+  /** A name for screen readers, for a button whose face is a symbol. */
+  ariaLabel?: string;
   id?: string;
   /** A button inside a form can submit it. */
   type?: 'button' | 'submit';
@@ -78,6 +81,7 @@ export function Btn({
       disabled={disabled || !!why}
       title={why ?? title}
       aria-pressed={pressed}
+      aria-label={ariaLabel}
     >
       {children}
     </button>
@@ -210,7 +214,11 @@ export function NumberInput({ value, onChange, min = 0, step = 1, label, classNa
       step={step}
       className={`input py-0.5 ${className}`}
       value={Number.isFinite(value) ? value : 0}
-      onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
+      onChange={(e) => {
+        // Typing 1e999 must not hand the game Infinity.
+        const n = Number(e.target.value);
+        onChange(Math.max(min, Number.isFinite(n) ? n : 0));
+      }}
       aria-label={label}
     />
   );

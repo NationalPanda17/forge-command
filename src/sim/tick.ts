@@ -48,7 +48,7 @@ import { doctrineBan, doctrineDay, doctrineFreight, doctrineMonth, doctrinePrice
 import { castMonth, managerOutput, managerScrap, resolvePoach } from './cast';
 import { foundCost } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
-import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
+import type { FeedItem, Lot, MonthReport, SimState, SiteState, ThreatId } from './types';
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
@@ -729,6 +729,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   s.news.push({ month: s.month.month, headlines: writeEdition(s, s.month, s.history.at(-1)) });
   if (s.news.length > 24) s.news.splice(0, s.news.length - 24);
   s.history.push(s.month);
+  compactHistory(s.history);
   hotseatMonth(s, feed);
   s.month = emptyMonth(s.history.length);
   s.treasury += s.appropriation;
@@ -739,6 +740,26 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
     s.outcome = 'dismissed';
     feed(s, 'bad', 'The Defence Committee has lost confidence in you. You are dismissed.', undefined, true);
   }
+}
+
+/**
+ * Keeps a long game's save small. Two years back, a month's figures are rounded to two decimals (charts cannot show
+ * more); ten years back, the per-plant breakdown goes. The list keeps one entry per month, since its length is the
+ * month count.
+ */
+export function compactHistory(h: MonthReport[]): void {
+  const round = (v: unknown): unknown => {
+    if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const o = v as Record<string, unknown>;
+      for (const k of Object.keys(o)) o[k] = round(o[k]);
+    }
+    return v;
+  };
+  const old = h[h.length - 25];
+  if (old) round(old);
+  const ancient = h[h.length - 121];
+  if (ancient) delete ancient.plantOutput;
 }
 
 function stepDay(s: SimState): void {
@@ -766,7 +787,8 @@ function stepDay(s: SimState): void {
   lifecycle(s);
   payDaily(s);
   if (s.day % DAYS_PER_MONTH === 0) closeMonth(s, { leakSeverity: s.month.fightLeak ?? 0, landShort: s.month.fightLand ?? 0 });
-  storyDay(s, feed);
+  // A dismissed director gets no new chapter: its briefing would open over the term report with nothing to answer.
+  if (!s.over) storyDay(s, feed);
   // The chief of staff's round, for any areas handed over.
   automationDay(s);
   if (!s.over && !s.settings.endless && s.day >= s.days) {

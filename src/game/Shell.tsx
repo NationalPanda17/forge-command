@@ -1,19 +1,8 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useMemo, useRef, useState } from 'react';
+import { lazyPart } from '../ui/lazyPart';
+import { PanelBoundary } from '../ui/ErrorBoundary';
 import { monthOfYear, seasonOf } from '../sim/living';
-import MarketsPanel from './MarketsPanel';
-import BuildPanel from './BuildPanel';
-import NewsPanel from './NewsPanel';
-import SandboxPanel from './SandboxPanel';
-import IntelPanel from './IntelPanel';
-import DoctrinePanel from './DoctrinePanel';
-import IndustryPanel from './IndustryPanel';
-import TestingPanel from './TestingPanel';
-import TownsPanel from './TownsPanel';
-import AlliesPanel from './AlliesPanel';
-import PowerPanel from './PowerPanel';
-import StatsPanel from './StatsPanel';
-import StaffPanel from './StaffPanel';
 import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
@@ -28,9 +17,8 @@ import { safeAdvice } from '../sim/advisor';
 import { engineerNeed } from '../sim/engineers';
 import { validate } from '../sim/actions';
 import { SiteCard, chainOf, quickActions } from './mapInfo';
-import { saveSlot } from './saves';
+import { downloadSave, saveSlot } from './saves';
 import { isFounded } from '../sim/industry';
-import PolicyPanel from './PolicyPanel';
 import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
 import { tr } from '../sim/worldgen';
@@ -39,7 +27,6 @@ import { sfx, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
 import { loadAudioPrefs, moodFor, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
 import PlanPanel from './PlanPanel';
-import TermReport from './TermReport';
 import { STEPS, TUTORIAL_DONE, TutorialCard } from './Tutorial';
 import { TipCard, nextTip, setTipsEnabled, tipsEnabled } from './Tips';
 import { checkAchievements, type AchievementDef } from './achievements';
@@ -56,6 +43,23 @@ import StrategyPanel from './StrategyPanel';
 import { GuidePanel, WatchPanel, watchList } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
+
+// Panels opened now and then are loaded the first time they are opened, so the game starts sooner.
+const MarketsPanel = lazyPart(() => import('./MarketsPanel'));
+const BuildPanel = lazyPart(() => import('./BuildPanel'));
+const NewsPanel = lazyPart(() => import('./NewsPanel'));
+const SandboxPanel = lazyPart(() => import('./SandboxPanel'));
+const IntelPanel = lazyPart(() => import('./IntelPanel'));
+const DoctrinePanel = lazyPart(() => import('./DoctrinePanel'));
+const IndustryPanel = lazyPart(() => import('./IndustryPanel'));
+const TestingPanel = lazyPart(() => import('./TestingPanel'));
+const TownsPanel = lazyPart(() => import('./TownsPanel'));
+const AlliesPanel = lazyPart(() => import('./AlliesPanel'));
+const PowerPanel = lazyPart(() => import('./PowerPanel'));
+const StatsPanel = lazyPart(() => import('./StatsPanel'));
+const StaffPanel = lazyPart(() => import('./StaffPanel'));
+const PolicyPanel = lazyPart(() => import('./PolicyPanel'));
+const TermReport = lazyPart(() => import('./TermReport'));
 
 export type { PanelId } from './nav';
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
@@ -96,7 +100,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   };
   const rulesRef = useRef(pauseRules);
   rulesRef.current = pauseRules;
-  const { state, speed, setSpeed: rawSetSpeed, act, step: rawStep, clock, pausedBy, clearPause } = useSim(initial, (next, prev) => pauseFor(rulesRef.current, next.alerts ?? [], next.history.length > prev.history.length));
+  const { state, speed, setSpeed: rawSetSpeed, act, step: rawStep, clock, pausedBy, clearPause, saveFailed } = useSim(initial, (next, prev) => pauseFor(rulesRef.current, next.alerts ?? [], next.history.length > prev.history.length));
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
   const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
   // Any change of speed by the player, or a step, ends the reason the clock last stopped.
@@ -160,6 +164,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     return () => window.removeEventListener('keydown', onKey);
   }, [speed, setSpeed, setPanel]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
+  // The map key starts open on a wide screen and folded away on a phone, where it would push the panels far down.
+  const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.matchMedia?.('(min-width: 1280px)').matches !== false);
   const [help, setHelp] = useState<SettingsTab | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -279,7 +285,17 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   );
   const lead = state.news.at(-1)?.headlines[0];
   const plansOn = panel === 'build' || panel === 'industry';
-  const markers = useMemo(() => markersFor(state, plansOn), [state, plansOn]);
+  // The map's markers keep the same object while nothing on them has changed, so the map does not redraw every tick.
+  const markersRef = useRef<{ sig: string; m: Record<string, MapMarker> } | null>(null);
+  const markers = useMemo(() => {
+    const m = markersFor(state, plansOn);
+    const sig = Object.entries(m)
+      .map(([id, k]) => `${id}:${k.tone}:${k.badge ?? ''}:${k.hidden ? 1 : 0}:${k.pulse ? 1 : 0}:${k.kind ?? ''}:${k.name ?? ''}`)
+      .join('|');
+    if (markersRef.current?.sig === sig) return markersRef.current.m;
+    markersRef.current = { sig, m };
+    return m;
+  }, [state, plansOn]);
   const shipments: MapShipment[] = useMemo(
     () =>
       state.shipments.slice(-250).map((sh) => ({
@@ -290,9 +306,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         arrive: sh.arrive,
         mode: sh.modes[0] ?? 'road',
       })),
-    [state],
+    [state.shipments, state.day],
   );
-  const routeUse = useMemo(() => Object.fromEntries(ROUTES.map((r) => [ROUTE_KEY(r.a, r.b), (state.routeLoad[ROUTE_KEY(r.a, r.b)] ?? 0) / r.cap])), [state]);
+  const routeUse = useMemo(() => Object.fromEntries(ROUTES.map((r) => [ROUTE_KEY(r.a, r.b), (state.routeLoad[ROUTE_KEY(r.a, r.b)] ?? 0) / r.cap])), [state.routeLoad]);
   const ready = readiness(state);
   const select = (id: string | null) => {
     setSelected(id);
@@ -367,11 +383,26 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
 
   const banner = pausedBy as { text: string; tone: string; site?: string } | null;
 
+  // One live region, always on the page, so screen readers hear what stopped the clock, a crisis, and achievements.
+  const [announce, setAnnounce] = useState('');
+  useEffect(() => {
+    if (banner && speed === 0) setAnnounce(`Paused: ${tr(banner.text)}`);
+  }, [banner, speed]);
+  useEffect(() => {
+    if (state.crisis) setAnnounce(`${state.crisis.phase === 'active' ? 'Crisis' : 'Warning'}: ${state.crisis.name}`);
+  }, [state.crisis?.phase, state.crisis?.name]);
+  useEffect(() => {
+    if (toast.length) setAnnounce(`Achievement: ${toast.map((a) => a.title).join(', ')}`);
+  }, [toast]);
+
   return (
-    <div className="flex min-h-screen flex-col gap-2 p-2">
+    <div className={`flex min-h-screen flex-col gap-2 p-2 ${speed === 0 ? 'fc-paused' : ''}`}>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announce}
+      </div>
       <a href="#panels" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-ops-panel focus:px-2 focus:py-1">Skip to panels</a>
-      <header className="fc-zoom panel flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2">
-        <button type="button" className="font-sans text-lg font-bold tracking-[0.2em] text-ops-amber" onClick={() => onMenu(state)} title="Main menu">
+      <header className="fc-zoom panel flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 sm:gap-x-5 sm:gap-y-2">
+        <button type="button" className="font-sans text-base font-bold tracking-[0.2em] text-ops-amber sm:text-lg" onClick={() => onMenu(state)} title="Main menu">
           FORGE COMMAND
         </button>
         {state.mode === 'sandbox' && (
@@ -384,7 +415,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
           <div className="text-white">{dateLabel(state.day)}</div>
         </div>
         <HotseatChip state={state} />
-        <div>
+        <div className="hidden sm:block">
           <div className="label">Season</div>
           <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
             <Explain title="Season and prices" lines={() => seasonWhy(state)}>
@@ -422,9 +453,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             <div className="max-w-[220px] truncate">{state.crisis.name}</div>
           </div>
         )}
-        <div className="ml-auto flex flex-wrap items-center gap-1" role="group" aria-label="Game speed">
+        <div className="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto" role="group" aria-label="Game speed">
           {SPEEDS.map((sp) => (
-            <Btn key={sp} pressed={speed === sp} onClick={() => setSpeed(sp)} title={sp === 0 ? 'Pause (space)' : `${sp} day${sp > 1 ? 's' : ''} a second`}>
+            <Btn key={sp} pressed={speed === sp} onClick={() => setSpeed(sp)} ariaLabel={sp === 0 ? 'Pause' : `Speed ${sp}×`} title={sp === 0 ? 'Pause (space)' : `${sp} day${sp > 1 ? 's' : ''} a second`}>
               {sp === 0 ? '❚❚' : `${sp}×`}
             </Btn>
           ))}
@@ -448,10 +479,10 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
           <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)">
             Settings
           </Btn>
-          <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
+          <Btn className="hidden sm:inline-flex" pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
             Sound
           </Btn>
-          <Btn pressed={audioPrefs.music} onClick={() => setAudio({ music: !audioPrefs.music })} title="Generated background music">
+          <Btn className="hidden sm:inline-flex" pressed={audioPrefs.music} onClick={() => setAudio({ music: !audioPrefs.music })} title="Generated background music">
             Music
           </Btn>
         </div>
@@ -475,6 +506,14 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
           <Btn onClick={() => setSaving(null)}>Cancel</Btn>
         </form>
       )}
+      {saveFailed && (
+        <div role="alert" className="fc-zoom panel flex flex-wrap items-center justify-between gap-2 border-ops-amber/60 px-3 py-1.5 text-[12px] text-ops-amber">
+          <span>This browser would not save your game (its storage is full or switched off). Keep a copy as a file so you do not lose it.</span>
+          <Btn kind="warn" onClick={() => downloadSave(state)}>
+            Download save
+          </Btn>
+        </div>
+      )}
       {saveNote && (
         <div role="status" className="fc-zoom panel flex items-center justify-between gap-2 px-3 py-1 text-[12px] text-ops-green">
           <span>{saveNote}</span>
@@ -490,7 +529,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       )}
 
       {toast.length > 0 && (
-        <div role="status" className="panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
+        <div className="panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
           <span>★ Achievement{toast.length > 1 ? 's' : ''}:</span>
           {toast.map((a) => (
             <span key={a.id} className="text-white">
@@ -501,7 +540,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       )}
 
       {banner && speed === 0 && (
-        <div role="status" className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
+        <div className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
           <span>
             Paused: {tr(banner.text)}
           </span>
@@ -528,7 +567,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             selected={selected}
             onSelect={select}
             layers={layers}
-            height="calc(100vh - 220px)"
+            height="min(calc(100dvh - 220px), max(370px, 78vw))"
             network={network}
             showPlans={panel === 'build'}
             highlight={highlight}
@@ -561,9 +600,10 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             related={chain}
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
-          <div className="border-t border-ops-line/60 px-2 py-1">
+          <details className="group border-t border-ops-line/60 px-2 py-1" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
+            <summary className="label cursor-pointer select-none py-1 hover:text-ops-text">Map key</summary>
             <MapLegend />
-          </div>
+          </details>
         </div>
         <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
           <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 pt-1" aria-label="Panel groups">
@@ -623,6 +663,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             />
           )}
           <div className="min-h-0 flex-1 overflow-y-auto">
+            <PanelBoundary resetKey={panel} onHome={() => setPanel('home')}>
+            <Suspense fallback={<p className="p-3 text-[11px] text-ops-dim">Loading…</p>}>
             {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
             {panel === 'build' && <BuildPanel state={state} act={act} onHighlight={setHighlight} onSite={select} />}
@@ -656,6 +698,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             {panel === 'guide' && <GuidePanel />}
             {panel === 'home' && <HomePanel state={slow} act={act} seen={seen} unread={unread} onPanel={setPanel} onSite={select} onLine={showMaterial} />}
             {panel === 'inbox' && <InboxPanel state={state} readKey={readKey} tip={tip} onMarkRead={markRead} onPanel={setPanel} onSite={select} />}
+            </Suspense>
+            </PanelBoundary>
           </div>
         </aside>
       </div>
@@ -666,6 +710,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       <Handover state={state} act={act} />
       {!state.hotseat?.handover && !state.over && (state.story?.briefing === null || state.story?.briefing === undefined) && <Hearing state={state} act={act} />}
       {state.over && !reportClosed && (
+        <Suspense fallback={null}>
         <TermReport
           state={state}
           onClose={() => setReportClosed(true)}
@@ -675,6 +720,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             setReportClosed(false);
           }}
         />
+        </Suspense>
       )}
       {help && (
         <SettingsDialog
