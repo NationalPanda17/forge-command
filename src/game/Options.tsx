@@ -1,5 +1,6 @@
 // Display options and keyboard help, used on the title screen and in the game.
 import { useState } from 'react';
+import type { AudioPrefs } from '../ui/music';
 import { loadPrefs, savePrefs, type DisplayPrefs } from '../ui/prefs';
 import { Btn, Segmented } from '../ui/kit';
 
@@ -56,7 +57,35 @@ export const SHORTCUTS: [string, string][] = [
   ['?', 'Show or hide this list'],
 ];
 
-export function KeyboardHelp({ onClose }: { onClose: () => void }) {
+/** Volume for the music and the sound effects. */
+export function AudioOptions({ prefs, set }: { prefs: AudioPrefs; set: (p: Partial<AudioPrefs>) => void }) {
+  const slider = (label: string, value: number, on: boolean, key: 'volume' | 'sfxVolume') => (
+    <label className="flex flex-wrap items-center gap-2">
+      <span className="w-24 text-ops-text">{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={Math.round(value * 100)}
+        onChange={(e) => set({ [key]: Number(e.target.value) / 100 })}
+        aria-label={`${label} volume`}
+        className="min-w-0 flex-1"
+        disabled={!on}
+      />
+      <span className="w-10 text-right text-ops-dim">{on ? `${Math.round(value * 100)}%` : 'off'}</span>
+    </label>
+  );
+  return (
+    <div className="space-y-1.5">
+      {slider('Music', prefs.volume, prefs.music, 'volume')}
+      {slider('Sounds', prefs.sfxVolume, prefs.sfx, 'sfxVolume')}
+      <p className="text-[10px] text-ops-dim">The music follows the game: calm, uneasy before a crisis, tense during one, stately at a hearing. Turn music and sounds on or off with the buttons at the top.</p>
+    </div>
+  );
+}
+
+export function KeyboardHelp({ onClose, audio }: { onClose: () => void; audio?: { prefs: AudioPrefs; set: (p: Partial<AudioPrefs>) => void } }) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/85 p-3" role="dialog" aria-modal="true" aria-labelledby="keys-title" onClick={onClose}>
       <div className="fc-zoom panel mx-auto mt-[10vh] max-w-md p-4 text-[12px]" onClick={(e) => e.stopPropagation()}>
@@ -75,6 +104,12 @@ export function KeyboardHelp({ onClose }: { onClose: () => void }) {
           <div className="label mb-2">Display</div>
           <DisplayOptions />
         </div>
+        {audio && (
+          <div className="mt-4">
+            <div className="label mb-2">Sound</div>
+            <AudioOptions prefs={audio.prefs} set={audio.set} />
+          </div>
+        )}
         <div className="mt-4 flex justify-end">
           <Btn kind="primary" onClick={onClose}>
             Close

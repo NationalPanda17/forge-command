@@ -8,6 +8,7 @@ import { PRESETS } from '../sim/automation';
 import { makeSpec } from '../sim/worldgen';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
+import { setTipsEnabled, tipsEnabled } from './Tips';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { openCampaign } from '../sim/tick';
 import type { Difficulty, ScenarioId, Settings, SimState } from '../sim/types';
@@ -53,6 +54,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [custom, setCustom] = useState<CustomScenario>(DEFAULT_CUSTOM);
   const mine = scenario === 'custom' ? custom : undefined;
   const [pilot, setPilot] = useState<keyof typeof PRESETS>('off');
+  const [tips, setTips] = useState(() => tipsEnabled());
   const autos = PRESETS[pilot];
   const [slots, setSlots] = useState(listSlots);
   const begin = () => {
@@ -285,6 +287,24 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                     : 'Your chief of staff runs everything, week by week. Sit back, steer with the stance and the reserve, and step in when you like.'}
                 {pilot !== 'off' && mode !== 'sandbox' ? ' The game is marked as assisted in your record book.' : ''}
               </p>
+            </div>
+          )}
+          {mode !== 'tutorial' && (
+            <div>
+              <div className="label mb-1">Field notes</div>
+              <Segmented<'on' | 'off'>
+                label="Field notes"
+                value={tips ? 'on' : 'off'}
+                onChange={(v) => {
+                  setTips(v === 'on');
+                  setTipsEnabled(v === 'on');
+                }}
+                options={[
+                  { id: 'on', label: 'On' },
+                  { id: 'off', label: 'Off' },
+                ]}
+              />
+              <p className="mt-1 text-[10px] text-ops-dim">A short tip the first time each system shows up: strikes, blackouts, audits, hackers, spies, the rival and more, with a button to the tab that handles it.</p>
             </div>
           )}
           <div className="flex justify-end">

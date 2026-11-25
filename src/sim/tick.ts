@@ -42,6 +42,8 @@ import { POWER_SHARE, energyDay, energyMonth, intensityOf, powerFactor, powerPri
 import { FRAUD_MARKUP, addWaste, oversightMonth, resolveOversight } from './audit';
 import { communitiesMonth, resolveCommunity, type Permit } from './communities';
 import { automationDay } from './automation';
+import { engineerFactor, engineersMonth } from './engineers';
+import { intelDay, intelMonth } from './intelops';
 import { foundCost } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
@@ -118,6 +120,8 @@ function stockOf(site: SiteState, m: MaterialId): number {
 // ---------- Production ----------
 
 function produce(s: SimState): void {
+  // Your plants' engineers: worked out once a day, not for every line.
+  const engineers = engineerFactor(s);
   for (const site of Object.values(s.sites)) {
     const def = SITE_BY_ID[site.id];
     const foreign = def.owner === 'foreign';
@@ -132,7 +136,7 @@ function produce(s: SimState): void {
         p.lastLimit = 'idle';
         continue;
       }
-      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe) * powerFactor(s, site);
+      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe) * powerFactor(s, site) * (def.owner === 'state' ? engineers : 1);
       let limit: typeof p.lastLimit = site.status !== 'active' ? 'damaged' : 'capacity';
       if (def.owner === 'state' && crewNeed(site) > site.workers * 1.02) limit = 'crew';
       // Private producers stop when nobody is buying.
@@ -679,6 +683,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   energyMonth(s, feed);
   oversightMonth(s, feed);
   communitiesMonth(s, feed);
+  engineersMonth(s, feed);
+  intelMonth(s);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   if ((s.history.length + 1) % 12 === 0 && s.day < s.days) openHearing(s, s.appropriation, feed);
@@ -735,6 +741,7 @@ function stepDay(s: SimState): void {
   industryDay(s, feed);
   cyberDay(s, feed);
   energyDay(s, feed);
+  intelDay(s, feed);
   townsDay(s, feed);
   testingDay(s, feed);
   peopleDay(s, feed, eventScale(s));

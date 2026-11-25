@@ -1,5 +1,48 @@
 # Changelog
 
+## 13.0.0: engineers, operations against the rival, music that follows the game, and field notes
+
+### Engineers and academies
+- **A scarce resource:** plant lines, automation, new plants, in-house lines, research and design all need engineers.
+  The Staff tab shows how many each part of the work needs against how many you have.
+- **Short-handed:** plants lose up to 15% of their output, and research and design slow to as little as a third of
+  their pace.
+- **The market:** you hire from a national pool that private firms also drain, for a signing fee. The engineers you
+  inherit are paid from the Board's budget; you pay a salary for each one beyond them.
+- **Leavers:** some engineers always leave. More go when they are overworked or on standard pay; a 30% premium keeps
+  more of them.
+- **Academies:** found one in a plant town. It opens after about eighteen months and adds graduates to the market every
+  month. The town is grateful.
+- **Your chief of staff** hires to the need and founds an academy when the market runs dry.
+
+### Operations against the rival
+- **Three operations** on the Intel tab:
+  - **Steal their plans:** early warning of the rival's next weapon, and a head start on the counter you are
+    researching.
+  - **Sabotage a weapons programme:** its next weapon comes about two and a half months late.
+  - **Disrupt their supply:** fewer attacks of every kind for four months.
+- **Risk:** each takes months and may fail. An exposed operation costs confidence and the allies' goodwill, and the
+  rival hurries its own work.
+- **Your service:** grow it from a small desk to a formidable service for better odds and less risk. Every success
+  puts the rival more on guard, which fades over time.
+- **The advisor** suggests an operation when your service is idle, but never counts one as safe advice.
+
+### Sound and music
+- **Music that follows the game:** calm, uneasy when a crisis is coming, tense with a heartbeat during one, stately at
+  a hearing, triumphant or sombre at the end of a term. Each mood has its own chords, melody and pace.
+- **A sound for each kind of event:** strikes and protests, blackouts, hackers, spies, the rival fielding a weapon,
+  operations, finished research and building, and a knock for a new decision.
+- **Volume sliders** for music and sounds in the "?" dialog. Music and sounds go quiet while the tab is hidden.
+
+### New-player onboarding
+- **Tutorial:** two new steps, for your engineers on the Staff tab and the towns around you, and the advisor's "Why
+  short?" in the last step.
+- **Field notes:** a short tip the first time each system shows up in a game: the budget hearing, union claims,
+  strikes, blackouts, the Auditor-General, hackers, permit objections, spies, failed test firings, export bans, a
+  coming crisis, an engineer shortage, the rival's first weapon and your first operation. Each has a "Show me" button
+  to the tab that handles it.
+- **On or off:** "No more tips" on any card, or the Field notes switch on the new-game screen.
+
 ## 12.0.0: a chief of staff, and a far better advisor
 
 ### Automation for a more casual game

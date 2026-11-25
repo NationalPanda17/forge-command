@@ -1,5 +1,6 @@
 // The watch list (what needs attention now) and the in-game guide.
 import { useState, type ReactNode } from 'react';
+import { coverage, engineerNeed } from '../sim/engineers';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, inputRates, lotQty, nationalStock, reserveTarget } from '../sim/selectors';
 import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from '../sim/audit';
@@ -12,7 +13,7 @@ import { DEVELOPMENTS } from '../sim/rival';
 import { tr } from '../sim/worldgen';
 import { CITIES, FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId } from '../sim/world';
 
-export type WatchPanelId = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns' | 'allies' | 'power' | 'money';
+export type WatchPanelId = 'staff' | 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'stockpile' | 'intel' | 'policy' | 'testing' | 'towns' | 'allies' | 'power' | 'money';
 interface Watch {
   tone: 'bad' | 'warn' | 'info';
   text: string;
@@ -86,6 +87,10 @@ export function watchList(s: SimState): Watch[] {
     }
     if (s.communities.burnBanUntil > s.day) out.push({ tone: 'info', text: `A court order bans open burning until ${Math.ceil((s.communities.burnBanUntil - s.day) / 30)} months from now: old rounds are recycled.`, panel: 'stockpile' });
   }
+  // Engineers.
+  if (s.engineers && coverage(s) < 0.9) out.push({ tone: 'warn', text: `Too few engineers: ${s.engineers.staff} for work that needs ${engineerNeed(s).total}. Hire more or found an academy (Staff tab).`, panel: 'staff' });
+  // Intelligence operations.
+  if (s.intel?.active && s.intel.active.days <= 14) out.push({ tone: 'info', text: `An intelligence operation reports back in ${s.intel.active.days} days (Intel tab).`, panel: 'intel' });
   // Power and oversight.
   if (s.energy) {
     for (const [r, g] of Object.entries(s.energy.grids)) {
@@ -224,6 +229,18 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Li><b>Stance:</b> balanced, stockpile first, save money or keep the peace. It shapes what the staff do and how the advisor ranks its suggestions.</Li>
         <Li><b>The advisor:</b> every decision card shows the advised option and why. “Take the safe advice” does every suggestion that fits within your reserve; “Why short?” traces each struggling round to its root cause.</Li>
         <Li><b>Autopilot:</b> choose Off, Assist or Full when you start a game. Assisted games are marked in your record book.</Li>
+      </ul>
+    ),
+  },
+  {
+    id: 'engineers',
+    title: 'Engineers and intelligence operations',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Engineers:</b> plant lines, automation, research, design and new plants all need them (Staff tab). Too few and plants lose up to 15% of their output while research and design slow down.</Li>
+        <Li><b>The market:</b> you hire from a national pool that private firms also drain. Engineers leave faster when overworked or on standard pay; a 30% premium keeps more of them.</Li>
+        <Li><b>Academies:</b> about eighteen months to open, then graduates every month. The town is grateful.</Li>
+        <Li><b>Operations:</b> on the Intel tab, steal the rival’s plans, sabotage a weapons programme or disrupt its supply. Each may fail or be exposed, which costs confidence and the allies’ goodwill. A bigger service improves the odds; each success puts the rival on guard.</Li>
       </ul>
     ),
   },
@@ -389,7 +406,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     body: (
       <ul className="list-disc pl-5">
         <Li><b>The Courier</b> prints a short edition at the end of every month. Its lead story shows under the header.</Li>
-        <Li><b>Sound and Music</b> buttons sit by the clock. The music turns tense during a crisis.</Li>
+        <Li><b>Sound and Music</b> buttons sit by the clock; volumes are in the “?” dialog. The music follows the game: uneasy before a crisis, tense during one, stately at a hearing. Strikes, blackouts, hackers and spies each have their own sound.</Li>
         <Li><b>Sandbox</b> is a separate mode on the title screen: free play with no score. Its own tab lets you change the rules as you go, add money, start or end crises and disrupt sites.</Li>
         <Li><b>Your best campaigns</b> and achievements are kept in this browser.</Li>
       </ul>

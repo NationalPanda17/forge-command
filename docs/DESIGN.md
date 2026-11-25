@@ -1,4 +1,4 @@
-# Forge Command 12.0: design
+# Forge Command 13.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -327,6 +327,39 @@ Physical figures follow public reference data where it exists, and are best gues
     below the reserve.
   - **diagnose():** follows each round below 80% of target, or forecast below half within six months, from its arsenal
     line to the tightest input and that supplier's state.
+
+## Engineers (`engineers.ts`)
+
+- **Chief of staff:** hires up to need × 1.05 + 6 when money allows, and founds up to two academies.
+- **Need:** at each active state plant, 3 engineers per running line, plus 1 per expansion and 2 if automated; 10 per
+  plant being built, 8 per in-house job, 4 per automation project, 25 for active research and 15 for a design.
+- **Coverage** is staff over need, capped at 1. Plant output is multiplied by `0.85 + 0.15 × coverage` (state plants
+  only), and research and design advance `max(0.3, coverage)` days per day.
+- **Start:** need × 1.1 + 30 on staff, 60 on the market, so a new game is fully covered.
+- **Costs:** signing 0.03 × price index each; salary 0.012 × price index a month for each engineer beyond the starting
+  establishment (which the Board's budget already pays for), plus 30% on every salary on premium; academy 40 × price
+  index.
+- **Monthly:** the market becomes `market × 0.9 + 6 + 4 × open academies`. Quits are 0.8% of staff, +0.6% on standard
+  pay, +2% below 75% coverage; half of them return to the market. Academies open after 540 days.
+
+## Intelligence operations (`intelops.ts`)
+
+- **Operations:** steal plans ($25M, 45 days, 70% odds, 15% exposure), sabotage ($40M, 75 days, 55%, 25%), disrupt
+  supply ($50M, 90 days, 50%, 30%).
+- **Odds** gain 0.08 per agency level and lose 0.06 per point of rival alert, clamped to 10–90%. **Exposure** loses
+  0.05 per level and gains 0.03 per point of alert, clamped to 3–60%.
+- **Effects:** sabotage moves the next fielding (or the next report) 75 days later; stolen plans bring the next report
+  within 15 days and cut active counter research by 30%; disrupted supply multiplies rival arrivals by 0.85 for 120
+  days.
+- **Exposure:** −4 confidence, −8 with each ally, +2 hawks, and the next rival report 20–40 days sooner.
+- **Alert:** +1 on success, +0.5 on failure, −0.1 a month. One operation at a time, from day 60.
+
+## Sound, music and field notes (`ui/sound.ts`, `ui/music.ts`, `game/Tips.tsx`)
+
+- All audio is synthesized with the Web Audio API; there are no audio files. The music mood comes from `moodFor`; one
+  sound at most plays per update, chosen from new feed lines by `soundFor`.
+- Field notes are checked against the state and the last 40 feed lines; each is shown once per game (`tipsSeen` in the
+  save) and the switch is kept in this browser.
 
 ## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
 - **Each new term:**

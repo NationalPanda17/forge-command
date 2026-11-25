@@ -122,7 +122,7 @@ export default function IndustryPanel({ state, act, onSite, onHighlight }: { sta
         </p>
         {state.design && (
           <p className="mb-2 text-ops-amber">
-            Designing {VARIANTS[state.design.variant].name.toLowerCase()} {MATERIALS[state.design.line].name}: {state.design.days} days left.
+            Designing {VARIANTS[state.design.variant].name.toLowerCase()} {MATERIALS[state.design.line].name}: {Math.ceil(state.design.days)} days left.
           </p>
         )}
         <ul className="space-y-2">

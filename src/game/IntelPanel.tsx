@@ -13,6 +13,7 @@ import { SITE_BY_ID } from '../sim/world';
 import { dateLabel } from './useSim';
 import { BACKUPS_COST, CYBER_AREAS, CYBER_AREA_IDS, CYBER_LEVEL, DRILLS_COST, MAX_CYBER, attackOdds, cyberCost, railFactor, upkeep } from '../sim/cyber';
 import { pct } from '../ui/format';
+import IntelOpsSection from './IntelOpsSection';
 
 export default function IntelPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   const known = state.rival.known;
@@ -46,7 +47,7 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
                   <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                     <span className={done ? 'text-ops-green' : 'text-ops-text'}>
                       Counter: {COUNTER_NAMES[d.counter]}
-                      {done ? ' · done' : active ? ` · in progress, ${state.strategy.research.active!.days} days left` : ''}
+                      {done ? ' · done' : active ? ` · in progress, ${Math.ceil(state.strategy.research.active!.days)} days left` : ''}
                     </span>
                     {!done && !active && (
                       <Btn kind="primary" why={validate(state, a)} onClick={() => act(a)}>
@@ -61,6 +62,8 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
         )}
         {left > 0 && <p className="mt-2 text-ops-dim">Intel believes {left} more programme{left > 1 ? 's are' : ' is'} under way.</p>}
       </section>
+
+      <IntelOpsSection state={state} act={act} />
 
       <section>
         <h3 className="label mb-1">Counter-intelligence</h3>
