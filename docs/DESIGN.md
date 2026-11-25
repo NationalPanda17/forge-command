@@ -1,4 +1,4 @@
-# Forge Command 14.0: design
+# Forge Command 15.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -360,6 +360,71 @@ Physical figures follow public reference data where it exists, and are best gues
   sound at most plays per update, chosen from new feed lines by `soundFor`.
 - Field notes are checked against the state and the last 40 feed lines; each is shown once per game (`tipsSeen` in the
   save) and the switch is kept in this browser.
+
+## Doctrine (`doctrine.ts`)
+
+- **Forks** (tier): production (1), supply (1), workforce (2), reserves (2), rival (3). Tier 2 opens with one doctrine
+  settled, and tier 3 with two.
+- **Cost and time:** $40M, $60M or $80M × the price index, and 90, 120 or 150 days, one at a time. The choice is
+  permanent.
+- **Mass production:** shells, GMLRS, APKWS, Tamir and Coyote ×1.15; PAC-3, SM-6, IRIS-T, Stinger and Javelin ×0.95.
+- **Precision first:** the reverse at ×1.08 and ×0.95, with precision scrap ×0.6.
+- **Home-grown supply:** domestic purchases ×0.92, foreign ×1.10, industry +0.6 a month.
+- **Allied supply chains:** foreign ×0.88, export-ban odds ×0.6, allies +0.4 and industry −0.3 a month.
+- **Lights-out factories:** automation cost ×0.6, automated scrap ×0.8, morale target −3.
+- **Master craftsmen:** morale target +5, accidents ×0.6, skill cap +6, automation ×1.25.
+- **Deep reserves:** new lots' shelf ×1.25, running costs ×1.03, hawks +0.4 a month.
+- **Lean logistics:** freight ×0.75, shelf ×0.9, treasury bench +0.4 a month.
+- **Visible deterrence:** rival arrivals ×0.93, operation odds −0.10, hawks +0.5 a month.
+- **Shadow war:** odds +0.12, exposure −0.08, agency cost ×0.7, allies −0.3 a month.
+
+Effects apply to your own plants only.
+
+## People (`cast.ts`)
+
+- **Managers:** every running state plant has one, with a trait, a level (1–3) and loyalty. A trait's strength is
+  0.5 + 0.5 × level, so 1, 1.5 or 2:
+  - driver: output +4% each, surge fatigue ×(1 + 0.2 each);
+  - safety: accidents −20% each, morale +1 each;
+  - popular: morale +3 each, the union −0.15 a month each;
+  - meticulous: scrap −12% each;
+  - mentor: skill cap +3 each, skill growth +40% each;
+  - corner-cutter: output +7% each, accidents +35% each, scrap +5% each.
+- **Loyalty** moves 15% a month toward 50 + (morale − 55) × 0.4 + 6 × (level − 1) + up to 10 for long service. Below
+  45, at level 2 or more, a private firm makes an offer with odds of 5% × level a month (one card at a time):
+  - match, at $2M × level, which resets loyalty to 70;
+  - promote, at $4M × level;
+  - release, and the senior candidate takes over (morale −4).
+- **Promotion** costs $4M × level and adds 15 loyalty. Appointing a candidate costs no money but morale (−3, or −8
+  if a popular manager goes). Four candidates every quarter.
+- **Union leaders:**
+  - firebrand: claims and sympathy strikes ×1.3, talk odds −0.10;
+  - pragmatist: talk odds +0.15;
+  - moderate: strength −0.3 a month.
+
+  After 720 days there is a 25% chance a month of an election; the stronger the union, the likelier a firebrand.
+
+## Legacy (`legacy.ts`)
+
+- **Moments:** every alert feed line is kept (up to 400) with its day and tone, and weighted by kind for the term
+  report:
+  - crises: 6;
+  - doctrines and rival weapons: 5;
+  - promises, objectives, operations and Committee votes: 4;
+  - research, acceptance, openings and disruptions: 3.
+
+  Twelve are chosen, the weightiest first, then shown in order.
+- **Titles,** checked in this order: dismissed, spymaster, builder, quartermaster, merchant, workers' director,
+  engineer, treasurer, diplomat, steady hand, survivor.
+- **Boons:** up to three earned, plus a fresh start if fewer than three are earned:
+  - the Committee's trust (confidence ≥ 60): budget +5%;
+  - a loyal workforce (morale ≥ 60, ≤ 2 strikes);
+  - a full arsenal (readiness ≥ 0.75);
+  - friends abroad (allies ≥ 55);
+  - a school of engineers (an academy);
+  - deep cover (2 operations won).
+- **Grudges:** each broken promise −3 to every faction; each kept promise +1.5; each exposed operation brings the
+  rival's next report 30 days sooner.
 
 ## Navigation and the inbox (`nav.ts`, `inbox.ts`, `events.ts`)
 

@@ -233,6 +233,18 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: 'doctrine',
+    title: 'Doctrine, managers and your legacy',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Doctrine:</b> five forks in how you run the industry (People › Doctrine). Each answer closes the other for good, takes a few months to bed in, and changes real numbers: output, prices, morale, shelf life, the rival.</Li>
+        <Li><b>Plant managers:</b> every plant has one, with a trait. Promote them to strengthen it, or replace them from the candidates on the Staff tab. Restless senior managers get offers from private firms.</Li>
+        <Li><b>Union leaders:</b> a firebrand brings claims and spreads strikes; a pragmatist listens to a counter-offer; a moderate lets the union cool (Towns tab).</Li>
+        <Li><b>Your legacy:</b> the term report gives you a title and the moments that defined your term. If you serve again, choose one legacy to carry over; broken promises and exposed operations are remembered too.</Li>
+      </ul>
+    ),
+  },
+  {
     id: 'finding',
     title: 'Finding your way around',
     body: (

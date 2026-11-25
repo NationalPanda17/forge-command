@@ -28,7 +28,8 @@ export type PanelId =
   | 'allies'
   | 'power'
   | 'stats'
-  | 'staff';
+  | 'staff'
+  | 'doctrine';
 
 export const PANEL_LABEL: Record<PanelId, string> = {
   home: 'Home',
@@ -58,6 +59,7 @@ export const PANEL_LABEL: Record<PanelId, string> = {
   power: 'Power',
   stats: 'Stats',
   staff: 'Staff',
+  doctrine: 'Doctrine',
 };
 
 /** What each panel is for, for the command palette. */
@@ -88,7 +90,8 @@ export const PANEL_BLURB: Record<PanelId, string> = {
   allies: 'Allies, co-production and the export desk',
   power: 'Grids, blackouts and generators',
   stats: 'The term in charts',
-  staff: 'Engineers and your chief of staff',
+  staff: 'Engineers, plant managers and your chief of staff',
+  doctrine: 'Five forks that shape your industry for good',
 };
 
 export type GroupId = 'home' | 'production' | 'supply' | 'people' | 'rival' | 'records';
@@ -97,7 +100,7 @@ export const GROUPS: { id: GroupId; label: string; panels: PanelId[] }[] = [
   { id: 'home', label: 'Home', panels: ['home', 'inbox', 'watch', 'story', 'sandbox', 'guide'] },
   { id: 'production', label: 'Production', panels: ['site', 'plan', 'material', 'industry', 'testing', 'stockpile'] },
   { id: 'supply', label: 'Supply', panels: ['markets', 'build', 'logistics', 'power', 'allies'] },
-  { id: 'people', label: 'People', panels: ['strategy', 'towns', 'staff', 'policy'] },
+  { id: 'people', label: 'People', panels: ['strategy', 'doctrine', 'staff', 'towns', 'policy'] },
   { id: 'rival', label: 'Rival', panels: ['intel', 'fight'] },
   { id: 'records', label: 'Records', panels: ['money', 'stats', 'news', 'feed'] },
 ];

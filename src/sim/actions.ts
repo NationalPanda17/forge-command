@@ -25,6 +25,9 @@ import { applyCommunity, onHousing, validateCommunity } from './communities';
 import { applyAutomation, validateAutomation, type AutoArea, type Stance } from './automation';
 import { applyEngineers, validateEngineers, type PayLevel } from './engineers';
 import { applyIntel, validateIntel, type OpKind } from './intelops';
+import { applyDoctrine, validateDoctrine, type ForkId, type Side } from './doctrine';
+import { applyCast, poachWhy, validateCast } from './cast';
+import { boonsFor, type BoonId } from './legacy';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -58,7 +61,10 @@ export type SimAction =
   | { type: 'programme'; line: LineId; years: 3 | 5 }
   | { type: 'adoptPolicy'; policy: PolicyId }
   | { type: 'revokePolicy'; policy: PolicyId }
-  | { type: 'secondTerm' }
+  | { type: 'secondTerm'; boon?: BoonId }
+  | { type: 'adoptDoctrine'; fork: ForkId; side: Side }
+  | { type: 'promoteManager'; site: string }
+  | { type: 'appointManager'; site: string; candidate: number }
   | { type: 'found'; plot: string; recipe: string }
   | { type: 'inhouse'; site: string; recipe: string }
   | { type: 'design'; line: LineId; variant: VariantId }
@@ -128,7 +134,7 @@ export const refurbishCost = (line: LineId, qty: number) => qty * MATERIALS[line
 const funds = (s: SimState, cost: number) => (s.treasury >= cost ? null : `Not enough money (needs $${Math.round(cost)}M).`);
 
 export function validate(s: SimState, a: SimAction): string | null {
-  if (a.type === 'secondTerm') return canSecondTerm(s);
+  if (a.type === 'secondTerm') return canSecondTerm(s) ?? (a.boon && !boonsFor(s).includes(a.boon) ? 'That legacy was not earned this term.' : null);
   if (s.over) return 'The campaign is over.';
   // Hot-seat: each player runs only their own half of the country.
   if (a.type !== 'handover') {
@@ -258,8 +264,16 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (!p) return 'Nobody holds that post.';
       return funds(s, p.salary * 3);
     }
-    case 'decide':
-      return s.strategy.decisions.some((d) => d.id === a.decision) ? null : 'That decision is gone.';
+    case 'decide': {
+      const d = s.strategy.decisions.find((x) => x.id === a.decision);
+      if (!d) return 'That decision is gone.';
+      return d.kind === 'poach' ? poachWhy(s, d, a.option) : null;
+    }
+    case 'adoptDoctrine':
+      return validateDoctrine(s, a);
+    case 'promoteManager':
+    case 'appointManager':
+      return validateCast(s, a);
     case 'openTender':
       if (!(a.perDay > 0)) return 'Quantity must be above zero.';
       if (!bidders(s, a.material).length) return 'No qualified supplier makes that. Qualify one first.';
@@ -487,7 +501,14 @@ export function applyInPlace(s: SimState, a: SimAction): boolean {
       feed(s, 'warn', `Policy revoked: ${POLICIES[a.policy].name}. The Committee notes the broken promise.`);
       break;
     case 'secondTerm':
-      startSecondTerm(s, feed);
+      startSecondTerm(s, feed, a.boon);
+      break;
+    case 'adoptDoctrine':
+      applyDoctrine(s, a, feed);
+      break;
+    case 'promoteManager':
+    case 'appointManager':
+      applyCast(s, a, feed);
       break;
     case 'storyBriefed':
       s.story!.briefing = null;

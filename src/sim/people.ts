@@ -3,6 +3,8 @@ import { clamp, rand, randInt } from './rng';
 import type { FeedItem, SimState, SiteState } from './types';
 import { SITES, SITE_BY_ID } from './world';
 import { wageOf } from './unions';
+import { doctrineAccidents, doctrineMorale, doctrineSkillCap } from './doctrine';
+import { managerAccidents, managerFatigue, managerMorale, managerSkillCap, managerSkillRate } from './cast';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
@@ -27,7 +29,7 @@ export const safetyCost = (s: SimState, site: string) => Math.round((8 + SITE_BY
 
 /** Where morale is heading: safety helps; fatigue and wages falling behind prices hurt. */
 export function moraleTarget(s: SimState, site: SiteState): number {
-  return clamp(62 + 6 * (site.safety ?? 0) - 0.35 * (site.fatigue ?? 0) - Math.max(0, s.priceIndex - wageOf(s, site.id)) * 60 + (site.apprentices > 0 ? 3 : 0));
+  return clamp(62 + 6 * (site.safety ?? 0) - 0.35 * (site.fatigue ?? 0) - Math.max(0, s.priceIndex - wageOf(s, site.id)) * 60 + (site.apprentices > 0 ? 3 : 0) + doctrineMorale(s) + managerMorale(s, site.id));
 }
 
 /** Your plants with people in them, founded plants included. */
@@ -40,15 +42,15 @@ export function peopleDay(s: SimState, feed: Feed, eventScale: number): void {
     const surge = runs.includes('surge');
     const busy = runs.some((r) => r === 'normal' || r === 'surge');
     const light = !busy && runs.includes('single');
-    site.fatigue = clamp(site.fatigue + (surge ? 0.35 : busy ? -0.25 : light ? -0.4 : -0.5));
+    site.fatigue = clamp(site.fatigue + (surge ? 0.35 * managerFatigue(s, def.id) : busy ? -0.25 : light ? -0.4 : -0.5));
     // Experience grows while the lines run; apprenticeships raise the ceiling.
     if (busy || light) {
-      const cap = 88 + (site.apprentices > 0 ? 7 : 0);
-      site.skill = Math.min(cap, site.skill + Math.max(0, cap - site.skill) * 0.002);
+      const cap = Math.min(100, 88 + (site.apprentices > 0 ? 7 : 0) + doctrineSkillCap(s) + managerSkillCap(s, def.id));
+      site.skill = Math.min(cap, site.skill + Math.max(0, cap - site.skill) * 0.002 * managerSkillRate(s, def.id));
     }
     site.morale = clamp(site.morale + (moraleTarget(s, site) - site.morale) * 0.02);
     // Accidents: tired crews, worn plant and weak safety make them likelier.
-    const p = 0.00025 * eventScale * (1 + site.fatigue / 35) * (1.6 - site.condition / 100) * (1 - 0.25 * site.safety);
+    const p = 0.00025 * eventScale * (1 + site.fatigue / 35) * (1.6 - site.condition / 100) * (1 - 0.25 * site.safety) * doctrineAccidents(s) * managerAccidents(s, def.id);
     if (site.status === 'active' && rand(s) < p) {
       site.disruptionDays = Math.max(site.disruptionDays, randInt(s, 10, 30));
       site.disruptionFactor = Math.min(site.disruptionFactor, 0.4);

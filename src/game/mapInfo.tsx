@@ -6,6 +6,7 @@ import type { SimState } from '../sim/types';
 import { MATERIALS, RECIPES, SITES, SITE_BY_ID, type MaterialId } from '../sim/world';
 import { tr } from '../sim/worldgen';
 import { processRate } from '../sim/selectors';
+import { TRAITS } from '../sim/cast';
 
 /** A daily rate, as precise as it needs to be. */
 const rate = (v: number) => (v >= 10 ? String(Math.round(v)) : v >= 1 ? v.toFixed(1) : v.toFixed(2));
@@ -86,6 +87,11 @@ export function SiteCard({ state, id }: { state: SimState; id: string }) {
           })}
           {site.processes.length > 3 && <li className="text-ops-dim">and {site.processes.length - 3} more lines</li>}
         </ul>
+      )}
+      {state.cast?.managers[id] && (
+        <div className="mt-1 truncate text-[10px] text-ops-text">
+          {state.cast.managers[id].name} · {TRAITS[state.cast.managers[id].trait].name.toLowerCase()} · level {state.cast.managers[id].level}
+        </div>
       )}
       {def.owner === 'state' && site.processes.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-ops-dim">

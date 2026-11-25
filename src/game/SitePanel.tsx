@@ -1,5 +1,6 @@
 // Everything about one site: what it makes, what limits it, what it holds, and what you can do there.
 import { useState } from 'react';
+import { TRAITS } from '../sim/cast';
 import { CONTRACT_DISCOUNT, expandCost, investCost, qualifyCost, refurbishCost, repairCost, validate, type SimAction } from '../sim/actions';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, crewNeed, inbound, inputRates, lotQty, processRate } from '../sim/selectors';
@@ -88,6 +89,12 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
           );
         })()}
         <p className="mt-1 text-ops-text">{def.blurb}</p>
+        {state.cast?.managers[siteId] && (
+          <p className="mt-1 text-ops-dim">
+            Run by <span className="text-white">{state.cast.managers[siteId].name}</span>,{' '}
+            <span className="text-ops-cyan">{TRAITS[state.cast.managers[siteId].trait].name.toLowerCase()}</span>, level {state.cast.managers[siteId].level} · loyalty {Math.round(state.cast.managers[siteId].loyalty)}. {TRAITS[state.cast.managers[siteId].trait].blurb}
+          </p>
+        )}
         <div className="mt-1 flex flex-wrap gap-1">
           {site.status !== 'active' && def.kind !== 'plot' && <Chip tone="border-ops-red/60 text-ops-red">{site.status}</Chip>}
           {def.kind === 'plot' && site.status === 'building' && <Chip tone="border-ops-amber/60 text-ops-amber">building · {site.repairDays} d</Chip>}

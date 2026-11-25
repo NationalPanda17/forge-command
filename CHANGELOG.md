@@ -1,5 +1,44 @@
 # Changelog
 
+## 15.0.0: doctrine, the people who run your plants, and a legacy
+
+### Doctrine
+- **Five forks** in how you run the industry, on the new Doctrine tab (under People). Each has two answers, and the one
+  you choose closes the other for good:
+  - **Production:** mass production or precision first.
+  - **Supply:** home-grown supply or allied supply chains.
+  - **Workforce:** lights-out factories or master craftsmen.
+  - **Reserves:** deep reserves or lean logistics.
+  - **The rival:** visible deterrence or a shadow war.
+- **Each answer changes real numbers:** output and scrap by kind of round, part prices at home and abroad, export
+  bans, automation costs, morale and accidents, shelf life, freight, the rival's attacks and your operations' odds. The
+  Committee's factions and the allies react every month.
+- **Tiers:** settle one doctrine to open the second tier, and two to open the third. Each takes money and a few months
+  to bed in, one at a time.
+- **Every game builds a different industry.** The term report names the one you built.
+- **Your chief of staff** settles forks the way your stance leans. The advisor tells you when one is open.
+
+### The people who run things
+- **A named manager at every plant,** with a trait:
+  - Driver, Safety first, Popular, Meticulous, Mentor or Corner-cutter;
+  - each shapes the plant's output, accidents, morale, scrap or skill.
+- **Promote them** to strengthen the trait and win their loyalty, or **replace them** from a list of candidates that
+  changes every quarter.
+- **Restless, experienced managers get offers** from private firms: match the offer, promote them, or let them go.
+- **Every town's union has a leader:** a firebrand (more claims, strikes that spread), a pragmatist (open to a
+  counter-offer) or a moderate (a union that slowly cools). Leaders change at union elections.
+- **Where to find them:** managers on the Staff tab, the Site tab and the map's hover card; leaders on the Towns tab.
+
+### A richer endgame
+- **Your legacy:** the term report gives you a title for how you served, such as The Builder, The Spymaster, The
+  Quartermaster, The Workers' Director or The Survivor. It also names the industry you built and your best manager.
+- **The moments that defined the term:** crises, new rival weapons, doctrines, kept and broken promises, operations,
+  strikes and more, in order.
+- **What carries into the next term:**
+  - a legacy you choose from up to three you earned: the Committee's trust, a loyal workforce, friends abroad, a full
+    arsenal, a school of engineers, deep cover, or a fresh start;
+  - the grudges you made: broken promises cool the Committee, and exposed operations bring the rival on sooner.
+
 ## 14.0.0: a game that is easier to find your way around
 
 ### Grouped tabs

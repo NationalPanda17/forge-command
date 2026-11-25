@@ -171,14 +171,14 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud' | 'permit';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud' | 'permit' | 'poach';
   title: string;
   body: string;
   options: DecisionOption[];
   fallback: string;
   site?: string;
   value?: number;
-  data?: { line?: LineId; material?: MaterialId; qty?: number; price?: number; ally?: AllyId; customer?: string; chain?: number; contract?: number; months?: number; claim?: string; town?: number };
+  data?: { line?: LineId; material?: MaterialId; qty?: number; price?: number; ally?: AllyId; customer?: string; chain?: number; contract?: number; months?: number; claim?: string; town?: number; manager?: number };
 }
 
 // ---------- Objectives ----------

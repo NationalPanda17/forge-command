@@ -6,8 +6,9 @@ import { Btn, NumberInput, Segmented } from '../ui/kit';
 import { money } from '../ui/format';
 import { dateLabel } from './useSim';
 import EngineersSection from './EngineersSection';
+import ManagersSection from './ManagersSection';
 
-export default function StaffPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
+export default function StaffPanel({ state, act, onSite }: { state: SimState; act: (a: SimAction) => void; onSite?: (id: string) => void }) {
   const au = state.automation;
   const blocked = validate(state, { type: 'automate', area: 'staffing', on: true });
   const set = (area: AutoArea, on: boolean) => act({ type: 'automate', area, on });
@@ -16,6 +17,7 @@ export default function StaffPanel({ state, act }: { state: SimState; act: (a: S
   return (
     <div className="space-y-4 p-3 text-[11px]">
       <EngineersSection state={state} act={act} />
+      <ManagersSection state={state} act={act} onSite={onSite} />
       <h3 className="label border-t border-ops-line/60 pt-3">Your chief of staff</h3>
       <p className="text-ops-text">
         Hand any part of the job to your chief of staff. Each week they act on the areas you give them, never spending below your reserve, and in the spirit of the stance you choose. Decisions and hearings are answered as soon as they come up. You can still act yourself at any time.

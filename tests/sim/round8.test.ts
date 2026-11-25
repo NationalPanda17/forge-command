@@ -84,7 +84,8 @@ describe('testing and qualification', () => {
       // Nothing has gone to the depots yet.
       expect(lotQty(s.sites.depotCentral.lots.apkws)).toBe(0);
       s.tests.find((x) => x.line === 'apkws')!.odds = 1;
-      s = advanceDays(s, 120);
+      // Rounds go to the ranges as the arsenal makes them, so how long this takes depends on its crew.
+      for (let i = 0; i < 10 && !s.lines.apkws.accepted; i++) s = advanceDays(s, 60);
     }
     expect(s.lines.apkws.accepted).toBe(true);
   });

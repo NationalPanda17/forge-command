@@ -104,8 +104,10 @@ describe('cradle to grave', () => {
     s.sites.depotCentral.lots.pac3 = [{ qty: 100, made: -3500, until: 60 }];
     const after = advanceDays(s, 2);
     const lot = after.sites.depotCentral.lots.pac3!;
-    const extended = lot.some((l) => l.until > 60) || (after.sites.depotCentral.unserviceable.pac3 ?? 0) > 0;
-    expect(extended).toBe(true);
+    // The lot is fired: it either passes and is extended, or fails (one time in ten) and is condemned.
+    const extended = lot.some((l) => l.until > 60);
+    const condemned = after.feed.some((f) => /Surveillance firings fail: .*PAC-3 MSE at /.test(f.text)) || (after.sites.depotCentral.unserviceable.pac3 ?? 0) > 0;
+    expect(extended || condemned).toBe(true);
   });
 
   it('refurbishment returns retired missiles to service for five years', () => {

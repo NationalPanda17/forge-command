@@ -1,5 +1,6 @@
 // Choices that last: multi-year procurement programmes, standing policies, and a second term.
 import { termReport } from './analytics';
+import { applyBoon, grudges, termStats, type BoonId } from './legacy';
 import { clamp } from './rng';
 import { DAYS_PER_MONTH } from './selectors';
 import type { FeedItem, SimState } from './types';
@@ -122,8 +123,10 @@ export function canSecondTerm(s: SimState): string | null {
 }
 
 /** The Committee reappoints you: the game goes on with the reserve, plants and network you built. */
-export function startSecondTerm(s: SimState, feed: Feed): void {
+export function startSecondTerm(s: SimState, feed: Feed, boon?: BoonId): void {
   const r = termReport(s);
+  // The grudges you made, worked out on the term just ended.
+  grudges(s, termStats(s));
   s.career = [...(s.career ?? []), { term: s.term ?? 1, score: r.score, grade: r.grade, outcome: s.outcome, months: s.history.length - (s.termMonth ?? 0), avgReadiness: Math.round(r.avgReadiness * 100) / 100 }];
   s.over = false;
   s.outcome = 'running';
@@ -136,6 +139,7 @@ export function startSecondTerm(s: SimState, feed: Feed): void {
   s.appropriation = Math.round(s.appropriation * rep);
   s.strategy.baseBudget = Math.round(s.strategy.baseBudget * rep);
   s.strategy.objectives = [];
+  s.termStartDay = s.day;
   feed(
     s,
     'info',
@@ -143,4 +147,6 @@ export function startSecondTerm(s: SimState, feed: Feed): void {
     undefined,
     true,
   );
+  // The legacy you chose, on top of the new term's settings.
+  applyBoon(s, boon, feed);
 }

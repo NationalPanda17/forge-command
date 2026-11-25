@@ -6,6 +6,7 @@ import BuildPanel from './BuildPanel';
 import NewsPanel from './NewsPanel';
 import SandboxPanel from './SandboxPanel';
 import IntelPanel from './IntelPanel';
+import DoctrinePanel from './DoctrinePanel';
 import IndustryPanel from './IndustryPanel';
 import TestingPanel from './TestingPanel';
 import TownsPanel from './TownsPanel';
@@ -633,8 +634,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             {panel === 'allies' && <AlliesPanel state={state} act={act} />}
             {panel === 'power' && <PowerPanel state={state} act={act} onSite={select} />}
             {panel === 'stats' && <StatsPanel state={state} onSite={select} />}
-            {panel === 'staff' && <StaffPanel state={state} act={act} />}
+            {panel === 'staff' && <StaffPanel state={state} act={act} onSite={select} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
+            {panel === 'doctrine' && <DoctrinePanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}
             {panel === 'site' && (selected ? <SitePanel state={state} siteId={selected} act={act} onMaterial={showMaterial} /> : <p className="p-3 text-[11px] text-ops-dim">Click any site on the map.</p>)}
@@ -668,8 +670,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
           state={state}
           onClose={() => setReportClosed(true)}
           onMenu={() => onMenu(state)}
-          onSecondTerm={() => {
-            act({ type: 'secondTerm' });
+          onSecondTerm={(boon) => {
+            act({ type: 'secondTerm', boon });
             setReportClosed(false);
           }}
         />
