@@ -1,0 +1,341 @@
+// Automation: a chief of staff who runs the areas you hand over, every week, within a money reserve you set and in the
+// spirit of a stance you choose. The same rules recommend an answer to every decision card, answer budget hearings, and
+// drive the test player used by the balance check.
+import { applyInPlace, refurbishCost, validate, type SimAction } from './actions';
+import { bottleneck, monthsTo } from './analytics';
+import { routeByKey, routeCap } from './build';
+import { CYBER_AREA_IDS } from './cyber';
+import { supplierNations } from './diplomacy';
+import { GRID_REGIONS, contractPrice, regionPlants } from './energy';
+import { requestOdds } from './hearings';
+import { FOUNDABLE } from './industry';
+import { DEVELOPMENTS } from './rival';
+import { crewNeed, nationalStock, readiness, reserveTarget } from './selectors';
+import { RESEARCH_IDS, STAFF_ROLE_IDS, type Decision } from './strategy';
+import { hireRoom, townIndex, townOf } from './towns';
+import type { SimState } from './types';
+import { unionTowns } from './unions';
+import { FINISHED, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId } from './world';
+
+export type AutoArea = 'staffing' | 'supply' | 'production' | 'research' | 'logistics' | 'decisions' | 'resilience' | 'community';
+export type Stance = 'balanced' | 'stockpile' | 'thrift' | 'peace';
+
+export const AUTO_AREAS: Record<AutoArea, { name: string; blurb: string }> = {
+  decisions: { name: 'Decisions and hearings', blurb: 'Answers decision cards and budget hearings the way the advisor recommends.' },
+  staffing: { name: 'Staffing and housing', blurb: 'Hires to each plant’s crew, builds homes where a town runs short, keeps apprentices and safety going.' },
+  supply: { name: 'Supply contracts', blurb: 'Re-tenders contracts before they lapse, awards the cheapest dependable bid, qualifies second sources.' },
+  production: { name: 'Production', blurb: 'Idles lines far above target, restarts them when stocks fall, expands ahead of shortages, funds starved suppliers.' },
+  research: { name: 'Research and key staff', blurb: 'Keeps the engineers busy, counters to the rival first, and fills empty posts on the Board.' },
+  logistics: { name: 'Depots and disposal', blurb: 'Fills the depot in a crisis region, refurbishes retired rounds, recycles rather than burns.' },
+  resilience: { name: 'Power, cyber and security', blurb: 'Generators at the arsenals, cheap power contracts, basic cyber defences and backups, vetting, trade missions, an audit team.' },
+  community: { name: 'Unions and towns', blurb: 'Funds towns that turn against you and offers a pay deal when unions grow strong.' },
+};
+export const AUTO_AREA_IDS = Object.keys(AUTO_AREAS) as AutoArea[];
+
+export const STANCES: Record<Stance, { name: string; blurb: string }> = {
+  balanced: { name: 'Balanced', blurb: 'A bit of everything.' },
+  stockpile: { name: 'Stockpile first', blurb: 'Full racks above all: expands earlier, idles later, spends more freely.' },
+  thrift: { name: 'Save money', blurb: 'Spends only when it must, trims overstock sooner, skips nice-to-haves.' },
+  peace: { name: 'Keep the peace', blurb: 'Settles with unions and towns, avoids round-the-clock shifts and burning.' },
+};
+
+export interface AutomationState {
+  areas: Record<AutoArea, boolean>;
+  /** Money the staff never spend below, $M. */
+  reserve: number;
+  stance: Stance;
+  /** What the staff did, newest last. */
+  log: { day: number; area: AutoArea; text: string }[];
+  /** Any area was ever handed over in this game. */
+  assisted: boolean;
+  /** Regions whose depot target the staff raised for a crisis. */
+  raised?: string[];
+}
+
+export const newAutomation = (on: AutoArea[] = []): AutomationState => ({
+  areas: Object.fromEntries(AUTO_AREA_IDS.map((a) => [a, on.includes(a)])) as Record<AutoArea, boolean>,
+  reserve: 300,
+  stance: 'balanced',
+  log: [],
+  assisted: on.length > 0,
+});
+
+/** The presets offered on the title screen. */
+export const PRESETS = {
+  off: [] as AutoArea[],
+  assist: ['decisions', 'staffing', 'supply', 'research'] as AutoArea[],
+  full: AUTO_AREA_IDS,
+};
+
+/** How each stance shifts the staff's thresholds. */
+const TUNE: Record<Stance, { idleAt: number; restartAt: number; expandBelow: number; spend: number; peace: boolean }> = {
+  balanced: { idleAt: 1.6, restartAt: 1.1, expandBelow: 1.2, spend: 1, peace: false },
+  stockpile: { idleAt: 2.0, restartAt: 1.3, expandBelow: 1.5, spend: 0.8, peace: false },
+  thrift: { idleAt: 1.3, restartAt: 1.0, expandBelow: 1.0, spend: 1.5, peace: false },
+  peace: { idleAt: 1.6, restartAt: 1.1, expandBelow: 1.2, spend: 1, peace: true },
+};
+
+/** Money above the reserve, scaled by how freely the stance spends. */
+const has = (s: SimState, reserve: number, stance: Stance, amount: number) => s.treasury > reserve + amount * TUNE[stance].spend;
+
+// ---------- Recommendations ----------
+
+/** The option the advisor recommends for a decision card, and why. */
+export function recommend(s: SimState, d: Decision, stance: Stance = s.automation?.stance ?? 'balanced', reserve = s.automation?.reserve ?? 0): { option: string; why: string } {
+  const ready = readiness(s);
+  const rich = s.treasury > 400 + reserve;
+  /** Can a paid option be afforded while keeping the reserve? */
+  const afford = (cost: number) => s.treasury - cost >= reserve;
+  const peace = TUNE[stance].peace;
+  const hasOpt = (o: string) => d.options.some((x) => x.id === o);
+  const pick = (option: string, why: string) => (hasOpt(option) ? { option, why } : { option: d.fallback, why: 'The default is the safest choice here.' });
+  switch (d.kind) {
+    case 'bailout':
+      return rich && afford(d.value ?? 0) ? pick('bail', 'You can afford it, and losing a supplier hurts everything downstream.') : pick('let', 'Money is tight; a bailout would leave you short.');
+    case 'budget':
+      return pick('push', 'The Committee often grants a firm request.');
+    case 'reprice':
+      return pick('accept', 'A supplier that fails costs you far more than a fair price.');
+    case 'supplement':
+      return pick('ask', 'A crisis is the best time to ask, and the hawks will back you.');
+    case 'allyRequest':
+      return ready > 0.85 ? pick('send', 'Your racks are full enough to help, and allies remember.') : pick('decline', 'Your own reserve is too thin to share.');
+    case 'allyOffer':
+      return ready < 0.7 && afford((d.data?.qty ?? 0) * (d.data?.price ?? 0) + 300) ? pick('buy', 'Readiness is low and you can afford quick rounds.') : pick('pass', ready < 0.7 ? 'You cannot afford them without eating into your reserve.' : 'You do not need them badly enough at that price.');
+    case 'export':
+      return ready > (stance === 'stockpile' ? 0.95 : 0.9) ? pick('accept', 'Your reserve can spare them, and the money is good.') : pick('decline', 'Every round is needed at home for now.');
+    case 'labour':
+      if (hasOpt('pay')) return (rich || peace) && afford(d.value ?? 0) ? pick('pay', 'Settling keeps the plant working and cools the union.') : pick('talk', 'A counter-offer may settle it for less.');
+      if (hasOpt('agree')) return pick('agree', 'Rested crews are safer; a strike would cost more.');
+      if (hasOpt('fund')) return (rich || peace) && afford(d.value ?? 0) ? pick('fund', 'Safer work and better morale, and no strike.') : { option: d.fallback, why: 'Money is tight; risk the dispute.' };
+      return { option: d.fallback, why: 'The default.' };
+    case 'recall':
+      return afford(d.value ?? 0) ? pick('recall', 'Bad parts in the field are worse than the cost of a recall.') : pick('accept', 'Money is tight; accept the risk.');
+    case 'inspection':
+      return afford(d.value ?? 0) ? pick('fund', 'Back to work quickly, and the regions approve.') : pick('leave', 'Money is tight.');
+    case 'ransom':
+      return pick('rebuild', 'Paying invites the hackers back, and the hawks would hear of it.');
+    case 'audit':
+      return pick('accept', 'Candour costs less than a failed rebuttal.');
+    case 'fraud':
+      return pick('settle', 'Settling keeps the supplier, and the contract, going.');
+    case 'permit':
+      return afford(d.value ?? 0) ? pick('package', 'Winning the town over keeps it on side for years, and costs little.') : pick('override', 'You cannot spare even the package without eating into your reserve.');
+    case 'spyRing':
+      return pick('turn', 'Double agents buy you time against the rival.');
+    case 'testFailure':
+      return rich ? pick('fix', 'A fixed design passes sooner and is better in the field.') : { option: d.fallback, why: 'Money is tight; press on.' };
+    default:
+      return { option: d.fallback, why: 'The default.' };
+  }
+}
+
+/** Answers for an open budget hearing, and the request to make. */
+export function hearingPlan(s: SimState): SimAction[] {
+  if (!s.hearing) return [];
+  const ready = readiness(s);
+  const out: SimAction[] = [];
+  for (const q of s.hearing.questions) {
+    if (s.hearing.answers[q.id]) continue;
+    const safe = (o: (typeof q.options)[number]) => !o.promise || (o.promise.kind === 'readiness' && ready > 0.88) || (o.promise.kind === 'solvent' && s.treasury > 600) || (o.promise.kind === 'vetting' && s.treasury > 900);
+    const best = [...q.options].filter(safe).sort((a, b) => Object.values(b.sway).reduce((x, y) => x + y, 0) - Object.values(a.sway).reduce((x, y) => x + y, 0))[0] ?? q.options.find((o) => o.id === q.fallback)!;
+    out.push({ type: 'hearingAnswer', question: q.id, option: best.id });
+  }
+  out.push({ type: 'hearingRequest', level: requestOdds(s, 'bold') >= 0.45 ? 'bold' : 'modest' });
+  return out;
+}
+
+// ---------- What each area would do ----------
+
+/** The actions an area would take today, in order. */
+export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.reserve ?? 0, stance: Stance = s.automation?.stance ?? 'balanced'): SimAction[] {
+  const acts: SimAction[] = [];
+  const t = TUNE[stance];
+  const money = (amount: number) => has(s, reserve, stance, amount);
+  const arsenals = SITES.filter((x) => x.kind === 'arsenal' && s.sites[x.id].processes.length && !s.sites[x.id].mothballed);
+  switch (area) {
+    case 'decisions':
+      for (const d of s.strategy.decisions) acts.push({ type: 'decide', decision: d.id, option: recommend(s, d, stance, reserve).option });
+      acts.push(...hearingPlan(s));
+      break;
+    case 'staffing':
+      for (const def of arsenals) {
+        const site = s.sites[def.id];
+        const training = site.trainees.reduce((x, tr) => x + tr.count, 0);
+        const short = Math.ceil(crewNeed(site) * 1.03 - site.workers - training);
+        if (short > 0) {
+          const room = hireRoom(s, townOf(def.id));
+          if (room > 0) acts.push({ type: 'hire', site: def.id, count: Math.min(room, Math.ceil(short / 10) * 10) });
+          if (room < short && !s.towns[townIndex(townOf(def.id))].building.length && money(50)) acts.push({ type: 'housing', town: townIndex(townOf(def.id)) });
+        }
+        if (site.safety < 2 && money(700)) acts.push({ type: 'safety', site: def.id });
+        if (site.apprentices === 0) acts.push({ type: 'apprentices', site: def.id, perMonth: 10 });
+        if (site.fatigue >= 50 || (t.peace && site.fatigue >= 30)) site.processes.forEach((p, i) => p.run === 'surge' && acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' }));
+      }
+      break;
+    case 'supply':
+      for (const c of s.contracts) {
+        if (c.endDay - s.day > 45 || s.tenders.some((x) => x.material === c.material)) continue;
+        if (s.contracts.some((k) => k !== c && k.material === c.material && k.endDay - s.day > 45)) continue;
+        acts.push({ type: 'openTender', material: c.material, perDay: c.perDay, months: 24 });
+      }
+      for (const tn of s.tenders) {
+        const best = tn.bids.filter((b) => b.perDay > 0 && b.reliability >= 0.5).sort((a, b) => a.price - b.price)[0];
+        if (best) acts.push({ type: 'awardTender', tender: tn.id, site: best.site });
+      }
+      if (money(400)) for (const def of SITES) if (def.owner === 'private' && !s.sites[def.id].qualified && s.sites[def.id].status !== 'closed') acts.push({ type: 'qualify', site: def.id });
+      break;
+    case 'production':
+      for (const def of arsenals) {
+        const site = s.sites[def.id];
+        site.processes.forEach((p, i) => {
+          const line = RECIPES[p.recipe].output as LineId;
+          if (!FINISHED.includes(line)) return;
+          const level = nationalStock(s, line) / Math.max(1, reserveTarget(s, line));
+          if (level > t.idleAt && p.run !== 'idle') acts.push({ type: 'setRun', site: def.id, process: i, run: 'idle' });
+          else if (level < t.restartAt && p.run === 'idle' && s.lines[line].unlocked) acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' });
+          if (level < 0.6 && s.lines[line].unlocked && money(1500)) {
+            const b = bottleneck(s, line);
+            const recipe = b ? Object.keys(FOUNDABLE).find((r) => RECIPES[r].output === b.material) : undefined;
+            if (recipe && SITES.filter((d) => d.owner !== 'state' && s.sites[d.id].processes.some((q) => q.recipe === recipe)).length <= 1) acts.push({ type: 'inhouse', site: def.id, recipe });
+          }
+          if (level < 0.6 && s.lines[line].unlocked && money(600)) {
+            const b = bottleneck(s, line);
+            const top = b?.top;
+            if (top && SITE_BY_ID[top].owner === 'private') {
+              const k = s.sites[top].processes.findIndex((q) => RECIPES[q.recipe].output === b!.material);
+              if (k >= 0) acts.push({ type: 'invest', site: top, process: k });
+            }
+          }
+          if (level > t.expandBelow) return;
+          const soon = monthsTo(s, line, 0.85, 12) !== null || nationalStock(s, line) < reserveTarget(s, line) * 0.8;
+          if (soon && money(500)) acts.push({ type: 'expand', site: def.id, process: i });
+        });
+        if (stance !== 'thrift' && money(1500)) site.processes.forEach((p, i) => !p.automated && p.run !== 'idle' && acts.push({ type: 'build', kind: 'automate', target: def.id, process: i }));
+      }
+      if (stance !== 'thrift' && money(1200))
+        for (const [key, load] of Object.entries(s.routeLoad)) {
+          const r = routeByKey(s, key);
+          if (r && r.mode !== 'air' && load / routeCap(s, r) > 0.85) acts.push({ type: 'build', kind: 'upgrade', target: key });
+        }
+      break;
+    case 'research':
+      for (const role of STAFF_ROLE_IDS) {
+        if (s.strategy.staff[role]) continue;
+        const best = s.strategy.candidates.filter((c) => c.role === role).sort((a, b) => b.skill - a.skill)[0];
+        if (best && money(best.salary * 3)) acts.push({ type: 'hireStaff', candidate: best.id });
+      }
+      if (!s.strategy.research.active && money(300)) {
+        const counter = s.rival.known.map((k) => DEVELOPMENTS[k.id].counter).find((r) => validate(s, { type: 'research', research: r }) === null);
+        const next = counter ?? RESEARCH_IDS.find((r) => validate(s, { type: 'research', research: r }) === null);
+        if (next) acts.push({ type: 'research', research: next });
+      }
+      break;
+    case 'logistics':
+      if (s.policy.demilMethod !== 'recycle') acts.push({ type: 'setPolicy', policy: { demilMethod: 'recycle' } });
+      for (const site of Object.values(s.sites)) for (const [l, q] of Object.entries(site.unserviceable)) if ((q ?? 0) >= 1 && l !== 'shell155' && site.id !== 'karrowDemil' && money(refurbishCost(l as LineId, q ?? 0))) acts.push({ type: 'refurbish', site: site.id, line: l as LineId });
+      if (s.crisis && s.policy.depotDays[s.crisis.region] < 60) acts.push({ type: 'setPolicy', policy: { depotDays: { ...s.policy.depotDays, [s.crisis.region]: 60 } } });
+      // Once a crisis is over, the depot the staff raised for it comes back down.
+      for (const r of Object.keys(s.policy.depotDays) as (keyof typeof s.policy.depotDays)[])
+        if (r !== 'central' && s.crisis?.region !== r && s.policy.depotDays[r] === 60 && s.automation?.raised?.includes(r)) acts.push({ type: 'setPolicy', policy: { depotDays: { ...s.policy.depotDays, [r]: r === 'isles' ? 45 : 30 } } });
+      break;
+    case 'resilience':
+      for (const area of CYBER_AREA_IDS) if (s.cyber.levels[area] < (money(1400) ? 2 : 1) && money(800)) acts.push({ type: 'cyberDefence', area });
+      if (!s.cyber.backups && money(1000)) acts.push({ type: 'cyberBackups' });
+      if (money(700)) for (const def of arsenals) if (!s.energy.generators.includes(def.id)) acts.push({ type: 'generator', site: def.id });
+      for (const r of GRID_REGIONS) if (regionPlants(s, r).length && contractPrice(s, r) < 1 && !s.energy.shock) acts.push({ type: 'powerContract', region: r });
+      if (stance !== 'thrift' && !s.oversight.team && money(900)) acts.push({ type: 'auditTeam' });
+      if (money(900)) for (const n of supplierNations()) if (s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
+      if (money(900)) for (const def of arsenals) if ((s.sites[def.id].clearance ?? 0) < 2) acts.push({ type: 'vet', site: def.id });
+      break;
+    case 'community':
+      if (money(t.peace ? 400 : 800)) s.communities.mood.forEach((m, town) => m < (t.peace ? 45 : 35) && acts.push({ type: 'communityFund', town }));
+      if (money(400) && unionTowns(s).some((i) => s.unions.towns[i].strength >= (t.peace ? 55 : 70))) acts.push({ type: 'payDeal' });
+      break;
+  }
+  return acts;
+}
+
+// ---------- The weekly round ----------
+
+const LOG_MAX = 60;
+/** Actions that never cost money up front: no need to try them on a copy. */
+const FREE = new Set<SimAction['type']>(['setRun', 'apprentices', 'setPolicy', 'openTender', 'awardTender', 'hearingAnswer', 'hearingRequest', 'powerContract']);
+
+/** A short line for the log when an action leaves nothing in the feed. */
+function describe(s: SimState, a: SimAction): string {
+  switch (a.type) {
+    case 'setRun':
+      return `${MATERIALS[RECIPES[s.sites[a.site].processes[a.process].recipe].output].name} at ${SITE_BY_ID[a.site].name}: ${a.run === 'idle' ? 'idled' : a.run === 'normal' ? 'back on two shifts' : a.run}.`;
+    case 'hire':
+      return `Hired ${a.count} at ${SITE_BY_ID[a.site].name}.`;
+    case 'apprentices':
+      return `Apprentices at ${SITE_BY_ID[a.site].name}: ${a.perMonth} a month.`;
+    case 'setPolicy':
+      return a.policy.demilMethod ? `Old rounds will be ${a.policy.demilMethod === 'recycle' ? 'recycled' : 'burned'}.` : 'Depot targets changed for the crisis.';
+    case 'decide':
+      return 'Answered a decision.';
+    case 'hearingAnswer':
+      return 'Answered a question at the budget hearing.';
+    case 'hearingRequest':
+      return `Made the budget request: ${a.level === 'bold' ? '15% more' : a.level === 'modest' ? '6% more' : a.level === 'lean' ? '5% less' : 'the provisional figure'}.`;
+    case 'openTender':
+      return `Opened a tender for ${MATERIALS[a.material].name.toLowerCase()}.`;
+    case 'awardTender':
+      return `Awarded a contract to ${SITE_BY_ID[a.site].name}.`;
+    case 'research':
+      return 'Started a research project.';
+    case 'expand':
+    case 'invest':
+      return `Ordered new capacity at ${SITE_BY_ID[a.site].name}.`;
+    default:
+      return 'Done.';
+  }
+}
+
+export const automationOn = (s: SimState) => !!s.automation && !s.hotseat && AUTO_AREA_IDS.some((a) => s.automation.areas[a]);
+
+/** The chief of staff's round: each area handed over acts, within the reserve. Runs weekly, and at once for hearings. */
+export function automationDay(s: SimState): void {
+  if (!automationOn(s) || s.over || s.tutorial) return;
+  // A story briefing is read before anything is done.
+  if (s.story?.briefing !== null && s.story?.briefing !== undefined) return;
+  const weekly = s.day % 7 === 0;
+  for (const area of AUTO_AREA_IDS) {
+    if (!s.automation.areas[area]) continue;
+    // Decisions and hearings are answered as soon as they appear; everything else once a week.
+    if (!weekly && !(area === 'decisions' && (s.hearing || s.strategy.decisions.length))) continue;
+    for (const a of proposals(s, area)) {
+      if (validate(s, a)) continue;
+      // Anything that might cost money is tried on a copy first: the staff never take the treasury below the reserve.
+      if (!FREE.has(a.type)) {
+        const trial = structuredClone(s);
+        applyInPlace(trial, a);
+        if (trial.treasury < s.treasury && trial.treasury < s.automation.reserve) continue;
+      }
+      const lastBefore = s.feed[s.feed.length - 1];
+      if (!applyInPlace(s, a)) continue;
+      if (a.type === 'setPolicy' && a.policy.depotDays && s.crisis && a.policy.depotDays[s.crisis.region] === 60) s.automation.raised = [...new Set([...(s.automation.raised ?? []), s.crisis.region])];
+      const last = s.feed[s.feed.length - 1];
+      s.automation.log.push({ day: s.day, area, text: last !== lastBefore && last ? last.text : describe(s, a) });
+    }
+  }
+  if (s.automation.log.length > LOG_MAX) s.automation.log.splice(0, s.automation.log.length - LOG_MAX);
+}
+
+export function validateAutomation(s: SimState, a: { type: string; area?: AutoArea; on?: boolean; reserve?: number; stance?: Stance }): string | null {
+  if (s.hotseat) return 'Not in a two-player game: each director runs their own half.';
+  if (s.tutorial) return 'Not in the tutorial: it is there to teach you the job.';
+  if (a.type === 'automate') return a.area! in AUTO_AREAS ? null : 'No such area.';
+  if (a.type === 'automationReserve') return Number.isFinite(a.reserve) && a.reserve! >= 0 && a.reserve! <= 5000 ? null : 'Between $0 and $5,000M.';
+  if (a.type === 'automationStance') return a.stance! in STANCES ? null : 'No such stance.';
+  return null;
+}
+
+export function applyAutomation(s: SimState, a: { type: string; area?: AutoArea; on?: boolean; reserve?: number; stance?: Stance }): void {
+  if (a.type === 'automate') {
+    s.automation.areas[a.area!] = !!a.on;
+    if (a.on && s.mode === 'campaign') s.automation.assisted = true;
+  } else if (a.type === 'automationReserve') s.automation.reserve = Math.round(a.reserve!);
+  else if (a.type === 'automationStance') s.automation.stance = a.stance!;
+}

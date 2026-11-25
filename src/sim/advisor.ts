@@ -5,6 +5,7 @@ import { MOOD_WORD, communityTowns, permitHeld } from './communities';
 import { attackOdds } from './cyber';
 import { GRID_REGIONS, blackoutOdds, regionPlants } from './energy';
 import { unionTowns } from './unions';
+import type { Stance } from './automation';
 import { balances, bottleneck, forecast, monthsTo } from './analytics';
 import { liveRoutes, routeCap } from './build';
 import { DEVELOPMENTS, COUNTER_NAMES } from './rival';
@@ -53,6 +54,15 @@ const CATCH: Partial<Record<SimAction['type'], string>> = {
   tradeMission: 'Relations drift back toward neutral over time.',
 };
 
+/** How a stance reorders the advice: stockpiling favours rounds, saving money favours cheap fixes, peace favours people. */
+function stanceBoost(stance: Stance, a: Advice): number {
+  const t = a.action?.type;
+  if (stance === 'stockpile') return /^(line-|fund-(?!town)|tender-|award-|depot)/.test(a.id) || t === 'expand' || t === 'invest' ? 8 : 0;
+  if (stance === 'thrift') return t === 'expand' || t === 'invest' || t === 'build' || t === 'generator' || t === 'cyberDefence' || t === 'communityFund' ? -10 : /^(over|tender|award|audit)/.test(a.id) ? 6 : 0;
+  if (stance === 'peace') return t === 'payDeal' || t === 'communityFund' || t === 'safety' || /^(rest|fund-town|housing)/.test(a.id) ? 10 : 0;
+  return 0;
+}
+
 /** What an action would cost, found by trying it on a copy. */
 function costOf(s: SimState, a: SimAction): number {
   if (validate(s, a)) return 0;
@@ -67,9 +77,12 @@ export function advise(s: SimState, limit = 6): Advice[] {
   if (s.over) return [];
   const out: Advice[] = [];
   // In a two-player game, advice about the other director's plants is theirs to act on.
+  const stance: Stance = s.automation?.stance ?? 'balanced';
   const add = (a: Advice) => {
     const site = a.site ?? (a.action && 'site' in a.action ? (a.action.site as string) : undefined);
-    if (!controlBlock(s, site)) out.push(a);
+    if (controlBlock(s, site)) return;
+    a.priority += stanceBoost(stance, a);
+    out.push(a);
   };
   const bal = balances(s);
 
@@ -265,6 +278,72 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
       add({ id: `fund-town-${t}`, priority: 56 + (35 - s.communities.mood[t]), tone: s.communities.mood[t] < 30 ? 'bad' : 'warn', title: `Win back ${CITIES[t].name}`, why: `The town is ${MOOD_WORD(s.communities.mood[t])} with you (${Math.round(s.communities.mood[t])}). Below 30 people protest at your gates, and unhappy towns object to new plants and lines.`, action: ok(s, a) ? a : undefined, panel: 'towns' });
     }
   }
+}
+
+/** Advice you can take in one go: actions that pass, in order, without taking the treasury below the reserve. */
+export function safeAdvice(s: SimState, reserve = s.automation?.reserve ?? 0): SimAction[] {
+  let t = s;
+  const out: SimAction[] = [];
+  // The top suggestions only: this runs every game day while the advisor is on screen.
+  for (const a of advise(s, 8)) {
+    if (!a.action || validate(t, a.action)) continue;
+    const next = apply(t, a.action);
+    if (next.treasury < reserve && next.treasury < t.treasury) continue;
+    out.push(a.action);
+    t = next;
+  }
+  return out;
+}
+
+export interface Diagnosis {
+  line: LineId;
+  /** Stock against target, now. */
+  level: number;
+  /** Months until below half of target, if within six. */
+  months: number | null;
+  cause: string;
+  site?: string;
+}
+
+/** Why each struggling round is short: traced from the arsenal line down to the root cause. */
+export function diagnose(s: SimState): Diagnosis[] {
+  const out: Diagnosis[] = [];
+  const bal = balances(s);
+  for (const line of FINISHED as LineId[]) {
+    if (!s.lines[line].unlocked || reserveTarget(s, line) <= 0) continue;
+    const level = nationalStock(s, line) / reserveTarget(s, line);
+    const months = monthsTo(s, line, 0.5, 6);
+    if (level >= 0.8 && months === null) continue;
+    const name = MATERIALS[line].name;
+    const arsenal = SITES.find((d) => d.owner === 'state' && s.sites[d.id].processes.some((p) => p.recipe === line));
+    const p = arsenal ? s.sites[arsenal.id].processes.find((q) => q.recipe === line) : undefined;
+    let cause = '';
+    let site = arsenal?.id;
+    if (s.lines[line].accepted === false) cause = `${name} is still being tested at the ranges: nothing is issued until it passes.`;
+    else if (!p) cause = `No arsenal makes ${name}.`;
+    else if (arsenal && s.sites[arsenal.id].mothballed) cause = `${arsenal.name} is mothballed.`;
+    else if (p.run === 'idle') cause = `The ${name} line at ${arsenal!.name} is idle.`;
+    else if (p.lastLimit === 'crew') cause = `${arsenal!.name} is short of crew (Towns tab for housing).`;
+    else if (p.lastLimit === 'damaged') cause = `${arsenal!.name} is damaged or under repair.`;
+    else {
+      const b = bottleneck(s, line, bal);
+      if (b && b.material !== line && b.top) {
+        const def = SITE_BY_ID[b.top];
+        const st = s.sites[b.top];
+        site = b.top;
+        const part = MATERIALS[b.material].name.toLowerCase();
+        const why =
+          st.status === 'closed' ? 'has closed for good'
+          : st.embargoDays > 0 ? `is under an export ban from the ${def.nation} for ${Math.ceil(st.embargoDays / 7)} more weeks`
+          : st.disruptionDays > 0 ? `is down to ${Math.round(st.disruptionFactor * 100)}% for ${Math.ceil(st.disruptionDays / 7)} more weeks`
+          : s.energy?.grids[def.region]?.outage > 0 ? 'is in a blackout'
+          : 'is running flat out and cannot make more';
+        cause = `${part[0].toUpperCase() + part.slice(1)} is the tightest part (${Math.round(b.ratio * 100)}% of what is needed): ${def.name} ${why}.`;
+      } else cause = `The ${name} line itself is the limit: expand it, or add shifts.`;
+    }
+    out.push({ line, level, months, cause, site });
+  }
+  return out.sort((a, b) => a.level - b.level);
 }
 
 export interface PlanItem {

@@ -41,6 +41,7 @@ import { unionsMonth, wageOf } from './unions';
 import { POWER_SHARE, energyDay, energyMonth, intensityOf, powerFactor, powerPrice, supplierEnergyFactor } from './energy';
 import { FRAUD_MARKUP, addWaste, oversightMonth, resolveOversight } from './audit';
 import { communitiesMonth, resolveCommunity, type Permit } from './communities';
+import { automationDay } from './automation';
 import { foundCost } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
@@ -747,6 +748,8 @@ function stepDay(s: SimState): void {
   payDaily(s);
   if (s.day % DAYS_PER_MONTH === 0) closeMonth(s, { leakSeverity: s.month.fightLeak ?? 0, landShort: s.month.fightLand ?? 0 });
   storyDay(s, feed);
+  // The chief of staff's round, for any areas handed over.
+  automationDay(s);
   if (!s.over && !s.settings.endless && s.day >= s.days) {
     s.over = true;
     s.outcome = 'complete';

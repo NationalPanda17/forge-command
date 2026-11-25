@@ -1,5 +1,42 @@
 # Changelog
 
+## 12.0.0: a chief of staff, and a far better advisor
+
+### Automation for a more casual game
+- **A chief of staff:** hand any of eight areas to your staff on the new Staff tab:
+  - decisions and hearings;
+  - staffing and housing;
+  - supply contracts;
+  - production;
+  - research and key staff;
+  - depots and disposal;
+  - power, cyber and security;
+  - unions and towns.
+- **How they work:** they act every week, and answer decisions and budget hearings as soon as they come up, so a
+  hearing never holds the clock.
+- **Reserve:** a money reserve they never spend below.
+- **Stance:** balanced, stockpile first, save money or keep the peace. It shapes when they expand, idle, settle and
+  spend.
+- **A log** of everything they did.
+- **Autopilot** on the title screen:
+  - **Off.**
+  - **Assist:** decisions, staffing, supply and research.
+  - **Full:** everything.
+- **Records:** assisted games are scored as usual and marked as assisted in the record book and on the term report.
+  Automation is off in two-player games and the tutorial.
+
+### The advisor
+- **Decision cards:** every one shows the advised option and why.
+- **Take the safe advice:** carries out every suggestion that fits within your reserve, in one click.
+- **Why short?:** traces each round that is short, or will be within six months, to its root cause. That may be a
+  round still in testing, an idle or under-crewed line, a mothballed or damaged arsenal, or the tightest part and what
+  is wrong with its supplier (a ban, a disruption, a blackout or a closure).
+- **Stances:** the stance also reorders the advisor's suggestions.
+
+### Under the hood
+- **The test player** used by the balance check is now the chief of staff with everything handed over, so every
+  balance run also tests the automation players use.
+
 ## 11.0.0: communities, permits and a smarter advisor
 
 ### Communities and permits

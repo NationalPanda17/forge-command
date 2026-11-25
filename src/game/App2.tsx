@@ -4,6 +4,7 @@ import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
 import { CustomEditor } from './CustomEditor';
 import { DEFAULT_CUSTOM, type CustomScenario } from '../sim/custom';
+import { PRESETS } from '../sim/automation';
 import { makeSpec } from '../sim/worldgen';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
@@ -51,14 +52,16 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const totals = loadTotals();
   const [custom, setCustom] = useState<CustomScenario>(DEFAULT_CUSTOM);
   const mine = scenario === 'custom' ? custom : undefined;
+  const [pilot, setPilot] = useState<keyof typeof PRESETS>('off');
+  const autos = PRESETS[pilot];
   const [slots, setSlots] = useState(listSlots);
   const begin = () => {
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
-    if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true })));
+    if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true, automation: autos })));
     if (mode === 'hotseat') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, hotseat: names, custom: mine })));
-    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world, custom: mine })));
-    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, custom: mine })));
+    if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world, custom: mine, automation: autos })));
+    onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, custom: mine, automation: autos })));
   };
   const rule = (k: 'inflation' | 'seasons' | 'crises' | 'endless' | 'dismissal', label: string) => (
     <label className="flex items-center gap-2">
@@ -261,6 +264,29 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               )}
             </>
           )}
+          {(mode === 'campaign' || mode === 'story' || mode === 'sandbox') && (
+            <div>
+              <div className="label mb-1">Autopilot</div>
+              <Segmented<keyof typeof PRESETS>
+                label="Autopilot"
+                value={pilot}
+                onChange={setPilot}
+                options={[
+                  { id: 'off', label: 'Off' },
+                  { id: 'assist', label: 'Assist' },
+                  { id: 'full', label: 'Full' },
+                ]}
+              />
+              <p className="mt-1 text-[10px] text-ops-dim">
+                {pilot === 'off'
+                  ? 'You run everything. The advisor still suggests, and the Staff tab lets you hand things over later.'
+                  : pilot === 'assist'
+                    ? 'Your chief of staff answers decisions and hearings, and handles staffing, supply contracts and research. You run production, logistics and the rest.'
+                    : 'Your chief of staff runs everything, week by week. Sit back, steer with the stance and the reserve, and step in when you like.'}
+                {pilot !== 'off' && mode !== 'sandbox' ? ' The game is marked as assisted in your record book.' : ''}
+              </p>
+            </div>
+          )}
           <div className="flex justify-end">
             <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={begin}>
               {mode === 'story' ? 'Begin the story →' : mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : mode === 'hotseat' ? 'Start the game →' : 'Play the tutorial →'}
@@ -390,7 +416,8 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                         {' '}
                         · {e.custom ?? SCENARIOS[e.scenario]?.name ?? e.scenario}
                         {e.world === 'generated' ? ' · new country' : ''}
-                        {(e.term ?? 1) > 1 ? ` · term ${e.term}` : ''} · {e.date}
+                        {(e.term ?? 1) > 1 ? ` · term ${e.term}` : ''}
+                        {e.assisted ? ' · assisted' : ''} · {e.date}
                       </span>
                     </span>
                     <span className="text-white">

@@ -1,5 +1,6 @@
 // Decisions, research, key staff, the Committee and objectives.
 import { validate, type SimAction } from '../sim/actions';
+import { recommend } from '../sim/automation';
 import { FACTIONS, FACTION_IDS, OBJECTIVES, RESEARCH, RESEARCH_IDS, STAFF_ROLES, STAFF_ROLE_IDS, hasResearch } from '../sim/strategy';
 import type { SimState } from '../sim/types';
 import { Bar, Btn, Chip } from '../ui/kit';
@@ -15,11 +16,21 @@ export function Decisions({ state, act }: { state: SimState; act: (a: SimAction)
         <article key={d.id} className="rounded border border-ops-amber/50 bg-ops-amber/5 p-3 text-[11px]">
           <h3 className="font-sans text-[15px] font-semibold text-white">{tr(d.title)}</h3>
           <p className="text-ops-text">{tr(d.body)}</p>
+          {(() => {
+            const r = recommend(state, d);
+            const o = d.options.find((x) => x.id === r.option);
+            return o ? (
+              <p className="mt-1 text-[10px] text-ops-cyan">
+                Advisor: {tr(o.label)}. <span className="text-ops-dim">{r.why}</span>
+              </p>
+            ) : null;
+          })()}
           <div className="mt-2 space-y-1">
             {d.options.map((o) => (
               <button key={o.id} type="button" className="btn w-full flex-col items-start gap-0 py-1.5 text-left normal-case tracking-normal" onClick={() => act({ type: 'decide', decision: d.id, option: o.id })}>
                 <span className="text-[12px] text-white">
                   {tr(o.label)}
+                  {o.id === recommend(state, d).option && <span className="ml-2 text-[10px] text-ops-cyan">(advised)</span>}
                   {o.id === d.fallback && <span className="ml-2 text-[10px] text-ops-dim">(default at month end)</span>}
                 </span>
                 <span className="text-[10px] text-ops-dim">{tr(o.detail)}</span>

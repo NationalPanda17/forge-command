@@ -216,6 +216,18 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: 'staff',
+    title: 'Your chief of staff',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Automation:</b> hand any of eight areas to your staff on the Staff tab: decisions and hearings, staffing, supply, production, research, depots, resilience, and unions and towns. They act every week, never below your reserve.</Li>
+        <Li><b>Stance:</b> balanced, stockpile first, save money or keep the peace. It shapes what the staff do and how the advisor ranks its suggestions.</Li>
+        <Li><b>The advisor:</b> every decision card shows the advised option and why. “Take the safe advice” does every suggestion that fits within your reserve; “Why short?” traces each struggling round to its root cause.</Li>
+        <Li><b>Autopilot:</b> choose Off, Assist or Full when you start a game. Assisted games are marked in your record book.</Li>
+      </ul>
+    ),
+  },
+  {
     id: 'communities',
     title: 'Towns, permits and the advisor',
     body: (

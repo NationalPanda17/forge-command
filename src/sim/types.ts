@@ -15,6 +15,7 @@ import type { CustomScenario } from './custom';
 import type { EnergyState } from './energy';
 import type { OversightState, WasteKind } from './audit';
 import type { CommunityState } from './communities';
+import type { AutomationState } from './automation';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
@@ -398,6 +399,8 @@ export interface SimState {
   oversight: OversightState;
   /** Towns' moods toward you, permits on hold and the burning ban. */
   communities: CommunityState;
+  /** The areas handed to your chief of staff, the reserve, the stance and what was done. */
+  automation: AutomationState;
   fraudsCaught?: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number; total?: number } | null };

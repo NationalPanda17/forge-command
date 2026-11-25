@@ -22,6 +22,7 @@ import type { AllyId } from './types';
 import { applyEnergy, validateEnergy } from './energy';
 import { applyOversight, validateOversight } from './audit';
 import { applyCommunity, onHousing, validateCommunity } from './communities';
+import { applyAutomation, validateAutomation, type AutoArea, type Stance } from './automation';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -83,7 +84,10 @@ export type SimAction =
   | { type: 'auditTeam' }
   | { type: 'disbandAuditTeam' }
   | { type: 'communityFund'; town: number }
-  | { type: 'openDay'; town: number };
+  | { type: 'openDay'; town: number }
+  | { type: 'automate'; area: AutoArea; on: boolean }
+  | { type: 'automationReserve'; reserve: number }
+  | { type: 'automationStance'; stance: Stance };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -161,6 +165,10 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'communityFund':
     case 'openDay':
       return validateCommunity(s, a);
+    case 'automate':
+    case 'automationReserve':
+    case 'automationStance':
+      return validateAutomation(s, a);
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
       if (site!.mothballed && a.run !== 'idle') return 'Reopen the plant first.';
@@ -316,6 +324,14 @@ export function apply(state: SimState, a: SimAction): SimState {
   applyWorld(state.world ?? null);
   const s = structuredClone(state);
   setNetwork(s.network.built, s.network.upgrades);
+  applyInPlace(s, a);
+  return s;
+}
+
+/** Carries out a valid action on a state you already own, changing it in place. Returns false if the action is not
+ * allowed. The autopilot uses this inside a day's step; everything else should use apply(). */
+export function applyInPlace(s: SimState, a: SimAction): boolean {
+  if (validate(s, a)) return false;
   const before = s.treasury;
   switch (a.type) {
     case 'setRun':
@@ -516,6 +532,11 @@ export function apply(state: SimState, a: SimAction): SimState {
     case 'openDay':
       applyCommunity(s, a, feed);
       break;
+    case 'automate':
+    case 'automationReserve':
+    case 'automationStance':
+      applyAutomation(s, a);
+      break;
     case 'handover':
       s.hotseat!.handover = false;
       break;
@@ -572,7 +593,7 @@ export function apply(state: SimState, a: SimAction): SimState {
       break;
   }
   if (s.hotseat && s.treasury < before) s.hotseat.players[s.hotseat.active].spent += before - s.treasury;
-  return s;
+  return true;
 }
 
 export function applyAll(s: SimState, actions: SimAction[]): SimState {
