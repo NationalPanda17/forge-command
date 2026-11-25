@@ -1,13 +1,17 @@
-// Small synthesized sounds (no audio files): a click, an end-of-month chime, an alert and a fanfare.
+// Small synthesized sounds (no audio files): one for each kind of event, so you can hear what happened without looking.
 let ctx: AudioContext | null = null;
 let enabled = true;
+let volume = 0.7;
 
 export const setSoundEnabled = (on: boolean) => {
   enabled = on;
 };
+export const setSoundVolume = (v: number) => {
+  volume = Math.max(0, Math.min(1, v));
+};
 
 function audio(): AudioContext | null {
-  if (!enabled || typeof window === 'undefined') return null;
+  if (!enabled || volume <= 0 || typeof window === 'undefined' || document.hidden) return null;
   try {
     ctx ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     if (ctx.state === 'suspended') void ctx.resume();
@@ -17,20 +21,42 @@ function audio(): AudioContext | null {
   }
 }
 
-function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.05): void {
+function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.05, slideTo?: number): void {
   const a = audio();
   if (!a) return;
   const osc = a.createOscillator();
   const g = a.createGain();
   osc.type = type;
-  osc.frequency.value = freq;
   const t = a.currentTime + start;
+  osc.frequency.setValueAtTime(freq, t);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(gain, t + 0.01);
+  g.gain.linearRampToValueAtTime(gain * volume, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   osc.connect(g).connect(a.destination);
   osc.start(t);
   osc.stop(t + dur + 0.05);
+}
+
+/** A short burst of filtered noise: crackle, static, a crowd. */
+function noise(start: number, dur: number, freq: number, gain = 0.04): void {
+  const a = audio();
+  if (!a) return;
+  const len = Math.floor(a.sampleRate * dur);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const data = buf.getChannelData(0);
+  // Sound only, never the game: Math.random is fine here.
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = a.createBufferSource();
+  src.buffer = buf;
+  const f = a.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = freq;
+  f.Q.value = 1.2;
+  const g = a.createGain();
+  g.gain.value = gain * volume;
+  src.connect(f).connect(g).connect(a.destination);
+  src.start(a.currentTime + start);
 }
 
 export const sfx = {
@@ -48,4 +74,65 @@ export const sfx = {
     tone(659, 0.12, 0.15, 'triangle');
     tone(784, 0.24, 0.3, 'triangle');
   },
+  /** A new decision card: a soft knock. */
+  decision: () => {
+    tone(392, 0, 0.12, 'triangle', 0.04);
+    tone(392, 0.16, 0.12, 'triangle', 0.04);
+  },
+  /** Power fails: a falling hum. */
+  blackout: () => tone(220, 0, 0.9, 'sawtooth', 0.03, 55),
+  /** A strike or protest: a murmuring crowd. */
+  crowd: () => {
+    noise(0, 0.6, 700, 0.05);
+    noise(0.25, 0.5, 500, 0.04);
+  },
+  /** Hackers: static and a glitch. */
+  cyber: () => {
+    noise(0, 0.25, 3000, 0.04);
+    tone(1200, 0.05, 0.08, 'square', 0.02);
+    tone(600, 0.15, 0.08, 'square', 0.02);
+  },
+  /** Spies: a sly two-note figure. */
+  spy: () => {
+    tone(311, 0, 0.2, 'triangle', 0.04);
+    tone(294, 0.2, 0.35, 'triangle', 0.04);
+  },
+  /** Good news: a rising chime. */
+  success: () => {
+    tone(659, 0, 0.12, 'sine', 0.045);
+    tone(880, 0.1, 0.25, 'sine', 0.045);
+  },
+  /** Bad news: a falling pair. */
+  failure: () => {
+    tone(330, 0, 0.15, 'triangle', 0.04);
+    tone(247, 0.14, 0.3, 'triangle', 0.04);
+  },
+  /** Research or building finished: a bright triad. */
+  done: () => {
+    tone(523, 0, 0.1, 'sine', 0.035);
+    tone(659, 0.06, 0.1, 'sine', 0.035);
+    tone(784, 0.12, 0.2, 'sine', 0.035);
+  },
+  /** The rival fields a weapon: a low warning. */
+  rival: () => {
+    tone(110, 0, 0.5, 'sawtooth', 0.035);
+    tone(104, 0.3, 0.5, 'sawtooth', 0.03);
+  },
 };
+
+export type SoundId = keyof typeof sfx;
+
+/** Which sound a feed line calls for, if any. */
+export function soundFor(text: string, tone: string): SoundId | null {
+  if (/Power is back/.test(text)) return 'success';
+  if (/^A blackout hits|black out /.test(text)) return 'blackout';
+  if (/^Strike at|walks out|^Work to rule|^Protesters block/.test(text)) return 'crowd';
+  if (/Ransomware|[Hh]ackers|cyber attack/.test(text)) return 'cyber';
+  if (/^Operation succeeds/.test(text)) return 'success';
+  if (/^Operation fails|operation is exposed/i.test(text)) return 'failure';
+  if (/spy ring|[Ss]abotage at/.test(text) && tone !== 'good') return 'spy';
+  if (tone === 'bad' && /fields /.test(text) && /Directorate|rival/i.test(text)) return 'rival';
+  if (/^Research complete|opens to traffic|opens and starts|is fitted out|opens its doors/i.test(text) || /^Accepted: /.test(text)) return 'done';
+  if (/A decision is waiting/.test(text)) return 'decision';
+  return null;
+}

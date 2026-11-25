@@ -23,6 +23,8 @@ import { applyEnergy, validateEnergy } from './energy';
 import { applyOversight, validateOversight } from './audit';
 import { applyCommunity, onHousing, validateCommunity } from './communities';
 import { applyAutomation, validateAutomation, type AutoArea, type Stance } from './automation';
+import { applyEngineers, validateEngineers, type PayLevel } from './engineers';
+import { applyIntel, validateIntel, type OpKind } from './intelops';
 import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
@@ -87,7 +89,13 @@ export type SimAction =
   | { type: 'openDay'; town: number }
   | { type: 'automate'; area: AutoArea; on: boolean }
   | { type: 'automationReserve'; reserve: number }
-  | { type: 'automationStance'; stance: Stance };
+  | { type: 'automationStance'; stance: Stance }
+  | { type: 'hireEngineers'; count: number }
+  | { type: 'academy'; town: number }
+  | { type: 'engineerPay'; level: PayLevel }
+  | { type: 'intelOp'; kind: OpKind }
+  | { type: 'intelAgency' }
+  | { type: 'tipSeen'; id: string };
 
 /** Sandbox controls: change the rules and the world as you play. */
 export type SandboxOp =
@@ -169,6 +177,15 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'automationReserve':
     case 'automationStance':
       return validateAutomation(s, a);
+    case 'hireEngineers':
+    case 'academy':
+    case 'engineerPay':
+      return validateEngineers(s, a);
+    case 'intelOp':
+    case 'intelAgency':
+      return validateIntel(s, a);
+    case 'tipSeen':
+      return (s.tipsSeen ?? []).includes(a.id) ? 'Already seen.' : null;
     case 'setRun':
       if (def!.owner !== 'state') return 'You can only run your own plants.';
       if (site!.mothballed && a.run !== 'idle') return 'Reopen the plant first.';
@@ -536,6 +553,18 @@ export function applyInPlace(s: SimState, a: SimAction): boolean {
     case 'automationReserve':
     case 'automationStance':
       applyAutomation(s, a);
+      break;
+    case 'hireEngineers':
+    case 'academy':
+    case 'engineerPay':
+      applyEngineers(s, a, feed);
+      break;
+    case 'intelOp':
+    case 'intelAgency':
+      applyIntel(s, a, feed);
+      break;
+    case 'tipSeen':
+      s.tipsSeen = [...(s.tipsSeen ?? []), a.id];
       break;
     case 'handover':
       s.hotseat!.handover = false;

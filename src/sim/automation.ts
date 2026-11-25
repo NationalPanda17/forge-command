@@ -13,6 +13,7 @@ import { DEVELOPMENTS } from './rival';
 import { crewNeed, nationalStock, readiness, reserveTarget } from './selectors';
 import { RESEARCH_IDS, STAFF_ROLE_IDS, type Decision } from './strategy';
 import { hireRoom, townIndex, townOf } from './towns';
+import { engineerNeed } from './engineers';
 import type { SimState } from './types';
 import { unionTowns } from './unions';
 import { FINISHED, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId } from './world';
@@ -171,6 +172,17 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
         if (site.safety < 2 && money(700)) acts.push({ type: 'safety', site: def.id });
         if (site.apprentices === 0) acts.push({ type: 'apprentices', site: def.id, perMonth: 10 });
         if (site.fatigue >= 50 || (t.peace && site.fatigue >= 30)) site.processes.forEach((p, i) => p.run === 'surge' && acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' }));
+      }
+      // Engineers: hire to the need, from whoever is looking; found an academy when the market runs dry.
+      if (s.engineers) {
+        // A buffer, so a new line or a research project does not leave the plants short.
+        const gap = Math.ceil(engineerNeed(s).total * 1.05 + 6 - s.engineers.staff);
+        const count = Math.min(gap, Math.floor(s.engineers.market));
+        if (count >= 1 && money(count * 0.1)) acts.push({ type: 'hireEngineers', count });
+        if (gap > s.engineers.market && s.engineers.academies.length < 2 && money(900)) {
+          const town = arsenals.map((d) => townIndex(townOf(d.id))).find((x) => !s.engineers.academies.some((a) => a.town === x));
+          if (town !== undefined) acts.push({ type: 'academy', town });
+        }
       }
       break;
     case 'supply':

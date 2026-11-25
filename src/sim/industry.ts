@@ -2,6 +2,7 @@
 import { setNetwork } from './graph';
 import { queueTest } from './testing';
 import { storyCount } from './storyCount';
+import { workPace } from './engineers';
 import { permitHeld, seekPermit } from './communities';
 import { clamp } from './rng';
 import type { FeedItem, SimState } from './types';
@@ -132,7 +133,7 @@ export function industryDay(s: SimState, feed: Feed): void {
   // Variant design work.
   const d = s.design;
   if (d) {
-    d.days--;
+    d.days -= workPace(s);
     if (d.days <= 0) {
       s.design = null;
       feed(s, 'good', `Design complete: ${VARIANTS[d.variant].name} ${MATERIALS[d.line].name}. It goes into service once it passes its test firings.`, undefined, true);

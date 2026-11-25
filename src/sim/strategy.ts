@@ -4,6 +4,7 @@ import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
 import { variantInput } from './industry';
 import { queueTest } from './testing';
+import { workPace } from './engineers';
 import { LINE_RATE, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
 // ---------- Research ----------
@@ -207,7 +208,7 @@ type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, a
 export function strategyDay(s: SimState, feed: Feed): void {
   const r = s.strategy.research.active;
   if (r) {
-    r.days--;
+    r.days -= workPace(s);
     if (r.days <= 0) {
       s.strategy.research.active = null;
       finishResearch(s, r.id, feed);

@@ -118,7 +118,8 @@ const hasCounter = (s: SimState, d: DevDef) => s.strategy.research.done.includes
 
 /** Multiplier on how many of a threat arrive. */
 export function rivalArrivals(s: SimState, t: ThreatId): number {
-  let m = 1;
+  // Your service disrupted the rival's supply: fewer attacks of every kind for a while.
+  let m = s.intel && s.intel.supplyUntil > s.day ? 0.85 : 1;
   for (const d of fielded(s)) {
     m *= tune(s, d.arrivals?.[t] ?? 1);
     if (hasCounter(s, d)) m *= tune(s, d.countered.arrivals?.[t] ?? 1);
@@ -166,12 +167,23 @@ export function rivalDay(s: SimState, feed: Feed): void {
     }
   }
   if (s.day < r.next || r.known.length >= r.order.length) return;
+  announceNext(s, feed);
+}
+
+/**
+ * Intel reports the rival's next development. Normally on the day it is due, fielded three months later; stolen plans
+ * report it early, but the rival keeps its own timetable: the same fielding day, and the same wait for the one after.
+ */
+export function announceNext(s: SimState, feed: Feed): void {
+  const r = s.rival;
   const id = r.order[r.known.length];
   const d = DEVELOPMENTS[id];
-  r.known.push({ id, announced: s.day, fielded: s.day + WARNING_DAYS });
+  const due = Math.max(s.day, r.next);
+  r.known.push({ id, announced: s.day, fielded: due + WARNING_DAYS });
   // Developments come faster as the term goes on, and a little faster on harder settings.
-  r.next = s.day + Math.round((randInt(s, 180, 270) + (s.difficulty === 'hard' ? -30 : s.difficulty === 'easy' ? 120 : 0) + (rand(s) < 0.5 ? 0 : 15)) * (s.custom ? RIVAL_PACE[s.custom.rivalPace] : 1) * (1 - 0.1 * Math.min(2, (s.term ?? 1) - 1)));
-  feed(s, 'warn', `Intel: ${RIVAL_NAME} is preparing ${d.name.toLowerCase()}. ${d.intel} Expect them in the field in about three months. Counter: research “${COUNTER_NAMES[d.counter]}”.`, undefined, true);
+  r.next = due + Math.round((randInt(s, 180, 270) + (s.difficulty === 'hard' ? -30 : s.difficulty === 'easy' ? 120 : 0) + (rand(s) < 0.5 ? 0 : 15)) * (s.custom ? RIVAL_PACE[s.custom.rivalPace] : 1) * (1 - 0.1 * Math.min(2, (s.term ?? 1) - 1)));
+  const months = Math.max(1, Math.round((due + WARNING_DAYS - s.day) / 30));
+  feed(s, 'warn', `Intel: ${RIVAL_NAME} is preparing ${d.name.toLowerCase()}. ${d.intel} Expect them in the field in about ${months === 3 ? 'three' : months} months. Counter: research “${COUNTER_NAMES[d.counter]}”.`, undefined, true);
 }
 
 export const COUNTER_NAMES: Partial<Record<ResearchId, string>> = {

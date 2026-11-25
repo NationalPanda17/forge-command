@@ -85,6 +85,12 @@ Hand any part of the job to a chief of staff, from decision cards to production,
 take the advisor's advice: every decision card shows the advised option, one click takes all the safe suggestions, and
 it can trace any shortage to its root cause.
 
+## Engineers, operations and field notes
+
+Engineers are scarce: hire them from a national market, pay a premium to keep them, and found academies for the long
+run. Take the fight to the rival with intelligence operations that can fail or be exposed. The music follows the game,
+every kind of event has its own sound, and field notes explain each system the first time it shows up.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -109,7 +115,7 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Materials:** any material traced from finished round down to the mine.
 - **Markets:** prices, tenders and bids, contracts, exports, allies and developing situations.
 - **Build:** links, upgrades, the icebreaker and resilience grants.
-- **Intel:** the rival's weapons, warnings and counters, spies and cyber defence.
+- **Intel:** the rival's weapons, warnings and counters, operations against it, spies and cyber defence.
 - **Policy:** multi-year programmes and standing policies.
 - **Industry:** open plots, in-house lines and round designs.
 - **Story:** the chapter's goals and how earlier chapters went (story games only).
@@ -124,7 +130,7 @@ happens. Use **Space** to pause and **1** to **4** to set the speed.
 - **Board:** research, staff, the Committee, your promises, decisions and objectives.
 - **Money:** income and spending, and oversight: waste, audits and the internal audit team.
 - **Stats:** spending, output by round and plant, losses by threat, confidence and decisions over time.
-- **Staff:** the areas handed to your chief of staff, the reserve, the stance and what they did.
+- **Staff:** your engineers and academies, the areas handed to your chief of staff, the reserve, the stance and what they did.
 - **Feed** and **Guide.**
 
 ## Develop

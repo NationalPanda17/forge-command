@@ -55,8 +55,18 @@ export const STEPS: Step[] = [
     done: (s) => Object.values(s.strategy.staff).some(Boolean) && (s.strategy.research.active !== null || s.strategy.research.done.length > 0),
   },
   {
+    title: 'Your engineers',
+    text: 'Open the Staff tab. Your research project and every plant line need engineers. Too few and plants lose output and research slows. Hire from the market, or found an academy for the long run.',
+    done: (_s, ui) => ui.panel === 'staff',
+  },
+  {
+    title: 'The towns around you',
+    text: 'Open the Towns tab. Every town has a mood toward you. Jobs and housing lift it; an unhappy town strikes, protests and objects to new plants.',
+    done: (_s, ui) => ui.panel === 'towns',
+  },
+  {
     title: 'Keep watch',
-    text: 'The Watch tab lists what needs you, most urgent first, and the clock pauses itself when something big happens. Let three months pass.',
+    text: 'The Watch tab lists what needs you, most urgent first, with the advisor’s next best moves above it. “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
     done: (s, _ui, start) => s.history.length >= start.history.length + 3 || s.history.length >= 3,
   },
 ];

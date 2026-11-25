@@ -16,6 +16,8 @@ import type { EnergyState } from './energy';
 import type { OversightState, WasteKind } from './audit';
 import type { CommunityState } from './communities';
 import type { AutomationState } from './automation';
+import type { EngineerState } from './engineers';
+import type { IntelState } from './intelops';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
@@ -401,6 +403,12 @@ export interface SimState {
   communities: CommunityState;
   /** The areas handed to your chief of staff, the reserve, the stance and what was done. */
   automation: AutomationState;
+  /** Your engineers, the national market and the academies. */
+  engineers: EngineerState;
+  /** Your intelligence service and its operations against the rival. */
+  intel: IntelState;
+  /** First-time tips already shown in this game. */
+  tipsSeen?: string[];
   fraudsCaught?: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number; total?: number } | null };

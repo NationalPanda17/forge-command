@@ -14,9 +14,11 @@ import { RESEARCH, RESEARCH_IDS } from './strategy';
 import type { SimState } from './types';
 import { controlBlock } from './hotseat';
 import { hireRoom, townIndex, townOf } from './towns';
+import { academyCost, academyTowns, coverage, engineerNeed } from './engineers';
+import { OPS, opCost, opOdds } from './intelops';
 import { CITIES, FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
-export type AdvicePanel = 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
+export type AdvicePanel = 'staff' | 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
 
 export interface Advice {
   id: string;
@@ -278,6 +280,28 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
       add({ id: `fund-town-${t}`, priority: 56 + (35 - s.communities.mood[t]), tone: s.communities.mood[t] < 30 ? 'bad' : 'warn', title: `Win back ${CITIES[t].name}`, why: `The town is ${MOOD_WORD(s.communities.mood[t])} with you (${Math.round(s.communities.mood[t])}). Below 30 people protest at your gates, and unhappy towns object to new plants and lines.`, action: ok(s, a) ? a : undefined, panel: 'towns' });
     }
   }
+  // Engineers: too few for the work.
+  if (s.engineers) {
+    const need = engineerNeed(s).total;
+    const gap = Math.ceil(need - s.engineers.staff);
+    if (gap > 0) {
+      const count = Math.min(gap, Math.floor(s.engineers.market));
+      const cov = coverage(s);
+      if (count >= 1) {
+        const a: SimAction = { type: 'hireEngineers', count };
+        add({ id: 'engineers', priority: cov < 0.9 ? 72 : 58, tone: cov < 0.9 ? 'bad' : 'warn', title: `Hire ${count} engineers`, why: `You have ${s.engineers.staff} for work that needs ${need}. Short-handed plants lose output, research and design slow down, and overworked engineers leave.`, action: ok(s, a) ? a : undefined, panel: 'staff' });
+      } else if (s.engineers.academies.length === 0) {
+        const town = academyTowns(s)[0];
+        const a: SimAction | undefined = town !== undefined ? { type: 'academy', town } : undefined;
+        add({ id: 'academy', priority: 60, tone: 'warn', title: 'Found an engineering academy', why: `No engineers are looking for work and you are ${gap} short. An academy costs ${money(academyCost(s))} and adds graduates every month once it opens.`, action: a && ok(s, a) ? a : undefined, panel: 'staff' });
+      }
+    }
+  }
+  // Intelligence: steal the plans for the next weapon when the service is idle and the odds are decent.
+  if (s.intel && !s.intel.active && s.day >= 60 && s.rival.known.length < s.rival.order.length && opOdds(s, 'learn') >= 0.6) {
+    const a: SimAction = { type: 'intelOp', kind: 'learn' };
+    if (ok(s, a)) add({ id: 'intel-learn', priority: 30, tone: 'info', title: OPS.learn.name, why: `Your service is idle. A ${Math.round(opOdds(s, 'learn') * 100)}% chance of early warning of the rival’s next weapon, for ${money(opCost(s, 'learn'))}; there is a small risk of exposure.`, action: a, panel: 'intel' });
+  }
 }
 
 /** Advice you can take in one go: actions that pass, in order, without taking the treasury below the reserve. */
@@ -286,7 +310,8 @@ export function safeAdvice(s: SimState, reserve = s.automation?.reserve ?? 0): S
   const out: SimAction[] = [];
   // The top suggestions only: this runs every game day while the advisor is on screen.
   for (const a of advise(s, 8)) {
-    if (!a.action || validate(t, a.action)) continue;
+    // Operations can be exposed: never "safe", always your own call.
+    if (!a.action || a.action.type === 'intelOp' || validate(t, a.action)) continue;
     const next = apply(t, a.action);
     if (next.treasury < reserve && next.treasury < t.treasury) continue;
     out.push(a.action);

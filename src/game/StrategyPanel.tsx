@@ -55,7 +55,7 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
           <div className="mb-2">
             <div className="flex justify-between">
               <span className="text-white">{RESEARCH[st.research.active.id].name}</span>
-              <span className="text-ops-cyan">{st.research.active.days} days left</span>
+              <span className="text-ops-cyan">{Math.ceil(st.research.active.days)} days left</span>
             </div>
             <Bar ratio={1 - st.research.active.days / Math.max(1, st.research.active.total ?? RESEARCH[st.research.active.id].days)} tone="bg-ops-cyan" className="mt-1" />
           </div>

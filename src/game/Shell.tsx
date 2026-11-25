@@ -24,12 +24,13 @@ import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
 import { tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
-import { sfx, setSoundEnabled } from '../ui/sound';
-import { loadAudioPrefs, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
+import { sfx, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
+import { loadAudioPrefs, moodFor, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
 import PlanPanel from './PlanPanel';
 import TermReport from './TermReport';
 import { STEPS, TUTORIAL_DONE, TutorialCard } from './Tutorial';
+import { TipCard, nextTip, setTipsEnabled, tipsEnabled } from './Tips';
 import { checkAchievements, type AchievementDef } from './achievements';
 import MapView, { DEFAULT_LAYERS, MapLayerToggles, MapLegend, type MapLayers, type MapMarker, type MapShipment } from '../ui/map/MapView';
 import { readiness } from '../sim/selectors';
@@ -45,7 +46,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats' | 'staff';
+export type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats' | 'staff';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -178,6 +179,9 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
 
   // Sound and music.
   const [audioPrefs, setAudioPrefs] = useState<AudioPrefs>(() => loadAudioPrefs());
+  // Field notes: one tip the first time each system shows up.
+  const [tips, setTips] = useState(() => tipsEnabled());
+  const tip = useMemo(() => (tips ? nextTip(state) : null), [tips, state]);
   const setAudio = (p: Partial<AudioPrefs>) => {
     const next = { ...audioPrefs, ...p };
     setAudioPrefs(next);
@@ -185,14 +189,40 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   };
   useEffect(() => {
     setSoundEnabled(audioPrefs.sfx);
+    setSoundVolume(audioPrefs.sfxVolume);
     music.setVolume(audioPrefs.volume);
     if (audioPrefs.music) music.start();
     else music.stop();
   }, [audioPrefs]);
   useEffect(() => () => music.stop(), []);
-  useEffect(() => music.setMood(state.crisis?.phase === 'active' ? 'tense' : 'calm'), [state.crisis?.phase]);
+  // The music follows the situation, and falls silent while the tab is hidden.
+  useEffect(() => music.setMood(moodFor(state)), [state.hearing, state.crisis?.phase, state.over, state.outcome]);
   useEffect(() => {
-    if (state.alert) sfx.alert();
+    const onVis = () => music.setHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+  // A sound for what just happened: the most telling event since the last update, at most one at a time.
+  // Feed lines are copied on every update, so they are matched by day and text, not by object.
+  const feedKey = (f?: { day: number; text: string }) => (f ? `${f.day}|${f.text}` : '');
+  const lastFeed = useRef(feedKey(state.feed[state.feed.length - 1]));
+  const soundAt = useRef(0);
+  useEffect(() => {
+    const items: typeof state.feed = [];
+    for (let i = state.feed.length - 1; i >= 0 && feedKey(state.feed[i]) !== lastFeed.current && items.length < 40; i--) items.push(state.feed[i]);
+    lastFeed.current = feedKey(state.feed[state.feed.length - 1]);
+    for (const f of items) {
+      const id = soundFor(f.text, f.tone);
+      if (id) {
+        sfx[id]();
+        soundAt.current = performance.now();
+        break;
+      }
+    }
+  }, [state.feed]);
+  useEffect(() => {
+    // The event's own sound already says it.
+    if (state.alert && performance.now() - soundAt.current > 250) sfx.alert();
   }, [state.alert]);
   const months = useRef(state.history.length);
   useEffect(() => {
@@ -434,6 +464,20 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             ))}
           </nav>
           {state.tutorial && state.tutorial.step < TUTORIAL_DONE && <TutorialCard state={state} onStep={(step) => act({ type: 'tutorial', step })} />}
+          {tip && (
+            <TipCard
+              tip={tip}
+              onShow={() => {
+                setPanel(tip.panel);
+                act({ type: 'tipSeen', id: tip.id });
+              }}
+              onDismiss={() => act({ type: 'tipSeen', id: tip.id })}
+              onOff={() => {
+                setTipsEnabled(false);
+                setTips(false);
+              }}
+            />
+          )}
           <div className="min-h-0 flex-1 overflow-y-auto">
             {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}
             {panel === 'markets' && <MarketsPanel state={state} act={act} onSite={select} />}
@@ -485,7 +529,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           }}
         />
       )}
-      {help && <KeyboardHelp onClose={() => setHelp(false)} />}
+      {help && <KeyboardHelp onClose={() => setHelp(false)} audio={{ prefs: audioPrefs, set: setAudio }} />}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
     </div>
   );
