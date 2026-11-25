@@ -1,4 +1,4 @@
-# Forge Command 11.0: design
+# Forge Command 12.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -299,6 +299,34 @@ Physical figures follow public reference data where it exists, and are best gues
 - **The three-month plan:** gathers dated events (forecast shortfalls, contract, order, co-production and power
   contract ends, research, building, plants opening, rival weapons, the hearing, the audit, promises, crises) and
   sorts them by month and urgency.
+
+## Automation (`automation.ts`)
+- **When it acts:** automationDay runs at the end of every day's step.
+  - **Decisions and hearings:** answered at once, whenever any are open.
+  - **Every other area:** acts on days divisible by 7.
+  - **Never:** in a two-player game, in the tutorial, or once the game is over.
+- **What it does:** each area's proposals() is a list of actions, applied in place through applyInPlace (the in-place
+  core of apply) when they validate. Each one's feed line, or a short description, goes to a 60-line log.
+- **Reserve:** money gates compare the treasury with reserve + threshold × the stance's spending factor. The
+  thresholds are those of the old test player (for example expansion at $500M, generators at $700M, cyber at $800M).
+  In the game, every action that might cost money is also tried on a copy first, and skipped if it would take the
+  treasury below the reserve. Paid decision options (an ally's rounds, a bailout, a recall, a permit package) are
+  advised only when their cost leaves the reserve intact.
+- **Stances:** each sets an idle point, a restart point and an expand-below point (stock against target), a spending
+  factor, and a peace flag.
+  - **Balanced:** 1.6, 1.1, 1.2, ×1.
+  - **Stockpile:** 2.0, 1.3, 1.5, ×0.8.
+  - **Thrift:** 1.3, 1.0, 1.0, ×1.5, with no automation, route upgrades or audit team.
+  - **Peace:** settles claims, funds towns below 45, offers pay deals from union strength 55, and rests crews from
+    fatigue 30.
+- **recommend():** the advised option for each decision kind; the decisions area uses it. hearingPlan() answers
+  hearings, promising only what is in hand.
+- **The test player:** the balance check plays proposals() for every area, with no reserve and a balanced stance.
+- **The advisor:**
+  - **safeAdvice():** applies the top eight suggestions in order on copies, skipping any that would take the treasury
+    below the reserve.
+  - **diagnose():** follows each round below 80% of target, or forecast below half within six months, from its arsenal
+    line to the tightest input and that supplier's state.
 
 ## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
 - **Each new term:**

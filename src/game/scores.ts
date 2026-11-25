@@ -18,6 +18,8 @@ export interface ScoreEntry {
   term?: number;
   /** A custom scenario's name. */
   custom?: string;
+  /** Your chief of staff ran some of it. */
+  assisted?: boolean;
 }
 
 export interface Totals {
@@ -77,6 +79,7 @@ export function recordScore(s: SimState): ScoreEntry[] {
     world: s.world === null ? 'classic' : 'generated',
     term: s.term ?? 1,
     custom: s.custom?.name,
+    assisted: !!s.automation?.assisted,
   });
   list.sort((a, b) => b.score - a.score);
   const kept = list.slice(0, 100);

@@ -1,6 +1,8 @@
 // The advisor: the next best moves, each with a button that does it or takes you to it.
-import { useMemo, useState } from 'react';
-import { advise, threeMonthPlan, type Advice, type AdvicePanel } from '../sim/advisor';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { advise, diagnose, safeAdvice, threeMonthPlan, type Advice, type AdvicePanel } from '../sim/advisor';
+import { MATERIALS } from '../sim/world';
+import { money, pct } from '../ui/format';
 import { monthLabel2 } from './useSim';
 import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
@@ -22,19 +24,66 @@ export default function AdvisorCard({
   onSite: (id: string) => void;
   onMaterial: (m: MaterialId) => void;
 }) {
-  const items = useMemo(() => advise(state), [state]);
+  // Advice weighs every suggestion by trying it on a copy of the game, so it is worked out at most every 1.5 seconds
+  // while the clock runs, and at once when the game stands still.
+  const [snap, setSnap] = useState(state);
+  const last = useRef(0);
+  useEffect(() => {
+    const wait = 1500 - (Date.now() - last.current);
+    const take = () => {
+      last.current = Date.now();
+      setSnap(state);
+    };
+    if (wait <= 0) take();
+    else {
+      const t = setTimeout(take, wait);
+      return () => clearTimeout(t);
+    }
+  }, [state]);
+  const items = useMemo(() => advise(snap), [snap]);
   const [planOpen, setPlanOpen] = useState(false);
-  const plan = useMemo(() => (planOpen ? threeMonthPlan(state) : []), [state, planOpen]);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const plan = useMemo(() => (planOpen ? threeMonthPlan(snap) : []), [snap, planOpen]);
+  const diagnosis = useMemo(() => (whyOpen ? diagnose(snap) : []), [snap, whyOpen]);
 
   const go = (a: Advice) => (a.panel ? onPanel(a.panel) : a.site ? onSite(a.site) : a.material ? onMaterial(a.material) : undefined);
   return (
     <section className="border-b border-ops-line/60 p-3 text-[11px]" aria-label="Advisor">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="label text-ops-cyan">Advisor · next best moves</h3>
-        <Btn pressed={planOpen} onClick={() => setPlanOpen(!planOpen)} title="What is coming over the next three months, and what to do about it">
-          Three-month plan
-        </Btn>
+        <span className="flex flex-wrap gap-1">
+          <Btn
+            kind="primary"
+            why={items.some((a) => a.action) ? null : 'Nothing to take just now.'}
+            onClick={() => safeAdvice(state).forEach((a) => act(a))}
+            title={`Every suggestion with a button, in order, as long as the treasury stays above your reserve of ${money(state.automation?.reserve ?? 0)} (Staff tab)`}
+          >
+            Take the safe advice
+          </Btn>
+          <Btn pressed={whyOpen} onClick={() => setWhyOpen(!whyOpen)} title="Why each round that is short, or soon will be, is short">
+            Why short?
+          </Btn>
+          <Btn pressed={planOpen} onClick={() => setPlanOpen(!planOpen)} title="What is coming over the next three months, and what to do about it">
+            Three-month plan
+          </Btn>
+        </span>
       </div>
+      {whyOpen && (
+        <div className="mb-3 space-y-1 rounded border border-ops-amber/40 p-2">
+          {diagnosis.length ? (
+            diagnosis.map((d) => (
+              <div key={d.line}>
+                <span className={d.level < 0.5 ? 'text-ops-red' : 'text-ops-amber'}>
+                  {MATERIALS[d.line].name} · {pct(d.level)} of target{d.months !== null ? ` · below half in ${d.months} month${d.months > 1 ? 's' : ''}` : ''}
+                </span>
+                <span className="block text-ops-text">{d.cause}</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-ops-dim">Every round is at 80% of target or better, with no shortfall forecast for six months.</p>
+          )}
+        </div>
+      )}
       {planOpen && (
         <div className="mb-3 space-y-2 rounded border border-ops-cyan/40 p-2">
           {[0, 1, 2].map((m) => {

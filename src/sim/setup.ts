@@ -19,6 +19,7 @@ import { RIVAL_PACE, tidy, type CustomScenario } from './custom';
 import { newEnergy } from './energy';
 import { newOversight } from './audit';
 import { newCommunities } from './communities';
+import { newAutomation, type AutoArea } from './automation';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -40,6 +41,8 @@ export interface SimOptions {
   hotseat?: [string, string];
   /** Your own starting situation. */
   custom?: CustomScenario;
+  /** Areas handed to your chief of staff from the start. */
+  automation?: AutoArea[];
 }
 
 export const DEFAULT_SETTINGS: Settings = { inflation: true, seasons: true, crises: true, events: 1, endless: false, dismissal: true };
@@ -112,6 +115,7 @@ export function migrate(s: SimState): SimState {
   s.energy ??= newEnergy();
   s.oversight ??= newOversight();
   s.communities ??= newCommunities();
+  s.automation ??= newAutomation();
   s.month.spend.energy ??= 0;
   return s;
 }
@@ -163,7 +167,7 @@ function blankSite(id: string): SiteState {
   return { id, status: 'closed', condition: 100, repairDays: 0, processes: [], stock: {}, lots: {}, unserviceable: {}, workers: 0, trainees: [], extraCrew: 0, health: 100, qualified: true, qualifyingDays: null, embargoDays: 0, disruptionDays: 0, disruptionFactor: 1, ...PEOPLE_START };
 }
 
-export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null, hotseat, custom: customIn }: SimOptions): SimState {
+export function newSim({ seed, difficulty = 'normal', scenario = 'standard', months = 48, settings, money: extra, mode = 'campaign', story = false, world = null, hotseat, custom: customIn, automation }: SimOptions): SimState {
   // The story and the tutorial are written for the classic map.
   if (story || scenario === 'tutorial') world = null;
   applyWorld(world);
@@ -247,6 +251,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     energy: newEnergy(),
     oversight: newOversight(),
     communities: newCommunities(),
+    automation: newAutomation(hotseat || scenario === 'tutorial' ? [] : automation ?? []),
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },

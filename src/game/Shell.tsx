@@ -12,6 +12,7 @@ import TownsPanel from './TownsPanel';
 import AlliesPanel from './AlliesPanel';
 import PowerPanel from './PowerPanel';
 import StatsPanel from './StatsPanel';
+import StaffPanel from './StaffPanel';
 import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
@@ -44,7 +45,7 @@ import { GuidePanel, WatchPanel } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats';
+type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats' | 'staff';
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'watch', label: 'Watch' },
   { id: 'site', label: 'Site' },
@@ -65,6 +66,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'strategy', label: 'Board' },
   { id: 'money', label: 'Money' },
   { id: 'stats', label: 'Stats' },
+  { id: 'staff', label: 'Staff' },
   { id: 'news', label: 'Courier' },
   { id: 'feed', label: 'Feed' },
   { id: 'guide', label: 'Guide' },
@@ -444,6 +446,7 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             {panel === 'allies' && <AlliesPanel state={state} act={act} />}
             {panel === 'power' && <PowerPanel state={state} act={act} onSite={select} />}
             {panel === 'stats' && <StatsPanel state={state} onSite={select} />}
+            {panel === 'staff' && <StaffPanel state={state} act={act} />}
             {panel === 'intel' && <IntelPanel state={state} act={act} />}
             {panel === 'policy' && <PolicyPanel state={state} act={act} />}
             {panel === 'sandbox' && state.mode === 'sandbox' && <SandboxPanel state={state} act={act} selected={selected} />}

@@ -45,6 +45,7 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
             <div className="text-ops-dim">score {r.score}</div>
             {rank > 0 && <div className="text-[10px] text-ops-dim">#{rank} of your scored games</div>}
             {state.mode === 'sandbox' && <div className="text-[10px] text-ops-amber">sandbox · not scored</div>}
+            {state.mode !== 'sandbox' && state.automation?.assisted && <div className="text-[10px] text-ops-dim">assisted by your staff</div>}
           </div>
         </header>
 
