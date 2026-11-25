@@ -4,6 +4,7 @@
 // odds; every success puts the rival more on guard.
 import { DEVELOPMENTS, RIVAL_NAME, announceNext } from './rival';
 import { clamp, rand, randInt } from './rng';
+import { doctrineAgency, doctrineExposure, doctrineOps } from './doctrine';
 import type { FeedItem, SimState } from './types';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
@@ -32,9 +33,9 @@ export interface IntelState {
 export const newIntel = (): IntelState => ({ agency: 0, alert: 0, active: null, supplyUntil: 0, record: [] });
 
 export const opCost = (s: SimState, k: OpKind) => Math.round(OPS[k].cost * s.priceIndex);
-export const agencyCost = (s: SimState) => Math.round((30 + 25 * s.intel.agency) * s.priceIndex);
-export const opOdds = (s: SimState, k: OpKind) => clamp(OPS[k].odds + 0.08 * s.intel.agency - 0.06 * s.intel.alert, 0.1, 0.9);
-export const opExposure = (s: SimState, k: OpKind) => clamp(OPS[k].exposure - 0.05 * s.intel.agency + 0.03 * s.intel.alert, 0.03, 0.6);
+export const agencyCost = (s: SimState) => Math.round((30 + 25 * s.intel.agency) * s.priceIndex * doctrineAgency(s));
+export const opOdds = (s: SimState, k: OpKind) => clamp(OPS[k].odds + 0.08 * s.intel.agency - 0.06 * s.intel.alert + doctrineOps(s), 0.1, 0.9);
+export const opExposure = (s: SimState, k: OpKind) => clamp(OPS[k].exposure - 0.05 * s.intel.agency + 0.03 * s.intel.alert + doctrineExposure(s), 0.03, 0.6);
 /** Attacks while the rival's supply is disrupted. */
 export const supplyFactor = (s: SimState) => (s.intel && s.intel.supplyUntil > s.day ? 0.85 : 1);
 

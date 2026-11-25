@@ -91,6 +91,13 @@ Engineers are scarce: hire them from a national market, pay a premium to keep th
 run. Take the fight to the rival with intelligence operations that can fail or be exposed. The music follows the game,
 every kind of event has its own sound, and field notes explain each system the first time it shows up.
 
+## Doctrine, people and a legacy
+
+Five permanent doctrines shape the industry you build: mass or precision, home or allied supply, machines or
+craftsmen, deep reserves or lean logistics, deterrence or a shadow war. Every plant has a named manager with a trait
+you can promote or replace, and every union a leader with a temper. At the end of a term you earn a title and a
+timeline of the moments that defined it, and you carry a legacy and your grudges into the next.
+
 ## Find your way around
 
 Tabs sit in six groups, with a count of what needs you in each. Home shows the key numbers with their trend, the
@@ -122,13 +129,14 @@ Tabs are grouped:
 - **Home:** Home, Inbox, Watch, Story, Sandbox and Guide.
 - **Production:** Site, Plan, Materials, Industry, Testing and Stockpile.
 - **Supply:** Markets, Build, Logistics, Power and Allies.
-- **People:** Board, Towns, Staff and Policy.
+- **People:** Board, Doctrine, Staff, Towns and Policy.
 - **Rival:** Intel and Fight.
 - **Records:** Money, Stats, Courier and Feed.
 
 What each tab does:
 - **Home:** key numbers and trends, what needs you now, what changed since you last looked, and what is coming.
 - **Inbox:** decisions, alerts, bad news and field notes in one list.
+- **Doctrine:** five permanent forks in how you run the industry.
 - **Watch:** what needs you, most urgent first.
 - **Site:** the inspector for any site, with your controls on your own plants.
 - **Plan:** forecasts and the weakest links in the chain.
@@ -150,7 +158,8 @@ What each tab does:
 - **Board:** research, staff, the Committee, your promises, decisions and objectives.
 - **Money:** income and spending, and oversight: waste, audits and the internal audit team.
 - **Stats:** spending, output by round and plant, losses by threat, confidence and decisions over time.
-- **Staff:** your engineers and academies, the areas handed to your chief of staff, the reserve, the stance and what they did.
+- **Staff:** your engineers and academies, your plant managers, the areas handed to your chief of staff, the reserve,
+  the stance and what they did.
 - **Feed** and **Guide.**
 
 ## Develop

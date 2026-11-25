@@ -1,6 +1,7 @@
 // Building the network: new links, route upgrades, an icebreaker for the northern winter, supplier resilience
 // grants and plant automation. Projects take time and money, then change the world when they finish.
 import { permitHeld, seekPermit } from './communities';
+import { doctrineAutomate } from './doctrine';
 import { UPGRADE_STEP, setNetwork } from './graph';
 import { clamp } from './rng';
 import type { FeedItem, Project, SimState } from './types';
@@ -45,7 +46,7 @@ export const hardenCost = (s: SimState, site: string) => Math.round((12 + SITE_B
 export function automateCost(s: SimState, site: string, process: number): number {
   const p = s.sites[site].processes[process];
   const out = RECIPES[p.recipe].output;
-  return Math.max(15, Math.round(p.capacity * MATERIALS[out].price * 360 * 0.18 * s.priceIndex));
+  return Math.max(15, Math.round(p.capacity * MATERIALS[out].price * 360 * 0.18 * s.priceIndex * doctrineAutomate(s)));
 }
 
 const busy = (s: SimState, kind: Project['kind'], target: string, process?: number) => s.network.projects.some((p) => p.kind === kind && p.target === target && p.process === process);

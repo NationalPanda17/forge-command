@@ -44,6 +44,8 @@ import { communitiesMonth, resolveCommunity, type Permit } from './communities';
 import { automationDay } from './automation';
 import { engineerFactor, engineersMonth } from './engineers';
 import { intelDay, intelMonth } from './intelops';
+import { doctrineBan, doctrineDay, doctrineFreight, doctrineMonth, doctrinePrice, doctrineRate, doctrineRunning, doctrineScrap, doctrineShelf } from './doctrine';
+import { castMonth, managerOutput, managerScrap, resolvePoach } from './cast';
 import { foundCost } from './industry';
 import { expireDecisions, hasResearch, recipeInputs, recipeScrap, registerResolver, skillOf, strategyDay, strategyMonth } from './strategy';
 import type { FeedItem, Lot, SimState, SiteState, ThreatId } from './types';
@@ -69,7 +71,7 @@ export const DIFF = {
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
 
 // Decision cards from modules that strategy itself loads are registered here, once everything has loaded.
-registerResolver((s, d, opt, feed) => resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed) || resolveOversight(s, d, opt, feed) || resolveCommunity(s, d, opt, feed, (p) => withdrawPermit(s, p)));
+registerResolver((s, d, opt, feed) => resolvePoach(s, d, opt, feed) || resolveSecurity(s, d, opt, feed) || resolveTesting(s, d, opt, feed) || resolveCyber(s, d, opt, feed) || resolveOversight(s, d, opt, feed) || resolveCommunity(s, d, opt, feed, (p) => withdrawPermit(s, p)));
 
 /** Withdrawing a project a town objected to: undo it and return 80% of the money. */
 function withdrawPermit(s: SimState, p: Permit): number {
@@ -107,6 +109,10 @@ export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: s
   if (alert) {
     s.alert = item;
     (s.alerts ??= []).push(item);
+    // Remembered for the term report.
+    const m = (s.moments ??= []);
+    m.push({ day: s.day, tone, text });
+    if (m.length > 400) m.splice(0, m.length - 400);
   }
 }
 
@@ -139,7 +145,7 @@ function produce(s: SimState): void {
         p.lastLimit = 'idle';
         continue;
       }
-      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe) * powerFactor(s, site) * (def.owner === 'state' ? engineers : 1);
+      let want = processRate(s, site, p) * plantSeasonFactor(s, p.recipe) * powerFactor(s, site) * (def.owner === 'state' ? engineers * doctrineRate(s, p.recipe) * managerOutput(s, site.id) : 1);
       let limit: typeof p.lastLimit = site.status !== 'active' ? 'damaged' : 'capacity';
       if (def.owner === 'state' && crewNeed(site) > site.workers * 1.02) limit = 'crew';
       // Private producers stop when nobody is buying.
@@ -149,7 +155,7 @@ function produce(s: SimState): void {
         want = 0;
         limit = 'demand';
       }
-      const scrap = recipeScrap(s, p.recipe, def.owner) * (def.owner === 'state' ? (1 - 0.1 * skillOf(s, 'quality')) * skillScrap(site) * (p.automated ? 0.8 : 1) : 1);
+      const scrap = recipeScrap(s, p.recipe, def.owner) * (def.owner === 'state' ? (1 - 0.1 * skillOf(s, 'quality')) * skillScrap(site) * (p.automated ? 0.8 : 1) * doctrineScrap(s, p.recipe, !!p.automated) * managerScrap(s, site.id) : 1);
       const inputs = recipeInputs(s, p.recipe);
       const gross = want / (1 - scrap);
       let frac = 1;
@@ -171,7 +177,7 @@ function produce(s: SimState): void {
       p.lastOutput = round3(whole);
       p.lastLimit = limit;
       if (whole <= 0) continue;
-      if (isLine(rec.output)) addLots(site, rec.output, [{ qty: whole, made: s.day, until: s.day + Math.round(MATERIALS[rec.output].shelfDays * variantOf(s, rec.output).shelf) }]);
+      if (isLine(rec.output)) addLots(site, rec.output, [{ qty: whole, made: s.day, until: s.day + Math.round(MATERIALS[rec.output].shelfDays * variantOf(s, rec.output).shelf * (def.owner === 'state' ? doctrineShelf(s) : 1)) }]);
       else site.stock[rec.output] = (site.stock[rec.output] ?? 0) + whole;
       for (const [m, q] of Object.entries(rec.extra ?? {}) as [MaterialId, number][]) site.stock[m] = (site.stock[m] ?? 0) + gross * frac * q;
       s.month.made[rec.output] = (s.month.made[rec.output] ?? 0) + whole;
@@ -311,7 +317,7 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
     s.month.income.sales += sale;
   }
   if (toState) {
-    const freight = qty * w * path.costPerT * s.priceIndex * (1 - 0.1 * skillOf(s, 'logistics'));
+    const freight = qty * w * path.costPerT * s.priceIndex * (1 - 0.1 * skillOf(s, 'logistics')) * doctrineFreight(s);
     s.month.spend.transport += freight;
     s.treasury -= freight;
     if (SITE_BY_ID[from].owner !== 'state') {
@@ -319,7 +325,7 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
       const skill = 1 - 0.04 * skillOf(s, 'procurement');
       // Without a contract you pay the spot premium, and the supplier passes on its power bill.
       const spot = priceNow(s, m) * supplierEnergyFactor(s, from);
-      const price = (k ? k.price * (k.fraud ? 1 + FRAUD_MARKUP : 1) : spot * SPOT_PREMIUM) * skill;
+      const price = (k ? k.price * (k.fraud ? 1 + FRAUD_MARKUP : 1) : spot * SPOT_PREMIUM) * skill * doctrinePrice(s, SITE_BY_ID[from].owner === 'foreign');
       s.treasury -= qty * price;
       s.month.spend.purchases += qty * price;
       if (!k) addWaste(s, 'spot', qty * spot * (SPOT_PREMIUM - 1) * skill);
@@ -627,7 +633,7 @@ function world(s: SimState): void {
       const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike'];
       feed(s, 'bad', `${pick(s, kinds)} at ${def.name}: output down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.round(site.disruptionDays / 7)} weeks.`, site.id, true);
     }
-    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * eventScale(s) * banFactor(s, def.nation)) / DAYS_PER_MONTH) {
+    if (def.owner === 'foreign' && site.embargoDays === 0 && rand(s) < (0.015 * eventScale(s) * banFactor(s, def.nation) * doctrineBan(s)) / DAYS_PER_MONTH) {
       site.embargoDays = randInt(s, 90, 300);
       feed(s, 'bad', `Export ban: the ${def.nation} halts shipments from ${def.name}.`, site.id, true);
     }
@@ -654,7 +660,7 @@ function payDaily(s: SimState): void {
       if (p.run === 'idle' && !site.mothballed) idleCost += value * (0.12 - POWER_SHARE + kw) * run;
     }
   }
-  const scale = s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1);
+  const scale = s.priceIndex * (hasPolicy(s, 'warmBase') ? 1.06 : 1) * doctrineRunning(s);
   ops *= scale;
   power *= scale;
   s.treasury -= ops + power;
@@ -687,6 +693,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   oversightMonth(s, feed);
   communitiesMonth(s, feed);
   engineersMonth(s, feed);
+  doctrineMonth(s);
+  castMonth(s, feed);
   intelMonth(s);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
@@ -745,6 +753,7 @@ function stepDay(s: SimState): void {
   cyberDay(s, feed);
   energyDay(s, feed);
   intelDay(s, feed);
+  doctrineDay(s, feed);
   townsDay(s, feed);
   testingDay(s, feed);
   peopleDay(s, feed, eventScale(s));

@@ -14,6 +14,16 @@ import { crewNeed, nationalStock, readiness, reserveTarget } from './selectors';
 import { RESEARCH_IDS, STAFF_ROLE_IDS, type Decision } from './strategy';
 import { hireRoom, townIndex, townOf } from './towns';
 import { engineerNeed } from './engineers';
+import { FORKS, doctrineCost, doctrineDef, forkOpen, type ForkId, type Side } from './doctrine';
+import { MAX_LEVEL, matchCost, promoteCost } from './cast';
+
+/** Which way each stance settles each doctrine. */
+const STANCE_DOCTRINE: Record<Stance, Record<ForkId, Side>> = {
+  balanced: { production: 'a', supply: 'a', workforce: 'b', reserves: 'a', rival: 'a' },
+  stockpile: { production: 'a', supply: 'a', workforce: 'a', reserves: 'a', rival: 'a' },
+  thrift: { production: 'a', supply: 'b', workforce: 'a', reserves: 'b', rival: 'b' },
+  peace: { production: 'b', supply: 'a', workforce: 'b', reserves: 'a', rival: 'a' },
+};
 import type { SimState } from './types';
 import { unionTowns } from './unions';
 import { FINISHED, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId } from './world';
@@ -126,6 +136,12 @@ export function recommend(s: SimState, d: Decision, stance: Stance = s.automatio
       return pick('turn', 'Double agents buy you time against the rival.');
     case 'testFailure':
       return rich ? pick('fix', 'A fixed design passes sooner and is better in the field.') : { option: d.fallback, why: 'Money is tight; press on.' };
+    case 'poach': {
+      const m = d.site ? s.cast?.managers[d.site] : undefined;
+      if (m && m.level < MAX_LEVEL && afford(promoteCost(s, m))) return pick('promote', 'A promotion keeps them and makes them better at the job.');
+      if (m && afford(matchCost(s, m))) return pick('match', 'Experienced managers are hard to replace; matching is cheap.');
+      return pick('release', 'Money is tight; the best candidate on the list can take over.');
+    }
     default:
       return { option: d.fallback, why: 'The default.' };
   }
@@ -173,6 +189,8 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
         if (site.apprentices === 0) acts.push({ type: 'apprentices', site: def.id, perMonth: 10 });
         if (site.fatigue >= 50 || (t.peace && site.fatigue >= 30)) site.processes.forEach((p, i) => p.run === 'surge' && acts.push({ type: 'setRun', site: def.id, process: i, run: 'normal' }));
       }
+      // Keep experienced managers who are restless: a promotion before a private firm calls.
+      for (const [site, m] of Object.entries(s.cast?.managers ?? {})) if (m.level >= 2 && m.level < MAX_LEVEL && m.loyalty < 50 && money(promoteCost(s, m) + 100)) acts.push({ type: 'promoteManager', site });
       // Engineers: hire to the need, from whoever is looking; found an academy when the market runs dry.
       if (s.engineers) {
         // A buffer, so a new line or a research project does not leave the plants short.
@@ -237,6 +255,11 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
         const best = s.strategy.candidates.filter((c) => c.role === role).sort((a, b) => b.skill - a.skill)[0];
         if (best && money(best.salary * 3)) acts.push({ type: 'hireStaff', candidate: best.id });
       }
+      // Doctrine: settle the next open fork the way the stance leans.
+      if (s.doctrine && !s.doctrine.active) {
+        const fork = FORKS.find((f) => !s.doctrine.chosen[f.id] && forkOpen(s, f.id));
+        if (fork && money(doctrineCost(s, fork.id) + 250)) acts.push({ type: 'adoptDoctrine', fork: fork.id, side: STANCE_DOCTRINE[stance][fork.id] });
+      }
       if (!s.strategy.research.active && money(300)) {
         const counter = s.rival.known.map((k) => DEVELOPMENTS[k.id].counter).find((r) => validate(s, { type: 'research', research: r }) === null);
         const next = counter ?? RESEARCH_IDS.find((r) => validate(s, { type: 'research', research: r }) === null);
@@ -300,6 +323,10 @@ function describe(s: SimState, a: SimAction): string {
     case 'expand':
     case 'invest':
       return `Ordered new capacity at ${SITE_BY_ID[a.site].name}.`;
+    case 'adoptDoctrine':
+      return `Committed to a doctrine: ${doctrineDef(a.fork, a.side).name.toLowerCase()}.`;
+    case 'promoteManager':
+      return `Promoted ${s.cast.managers[a.site]?.name ?? 'the manager'} at ${SITE_BY_ID[a.site].name}.`;
     default:
       return 'Done.';
   }

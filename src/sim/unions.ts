@@ -2,6 +2,7 @@
 // prices and morale sags. It brings claims (pay, hours or safety); refused claims end in a strike, or in a
 // work-to-rule where the union is weaker, and a strike can spread to the other plants in the same town.
 import { clamp, rand, randInt } from './rng';
+import { leaderDrift, leaderHeat, leaderTalk } from './cast';
 import { MAX_SAFETY, safetyCost } from './people';
 import { townIndex, townOf } from './towns';
 import type { Chain, FeedItem, SimState } from './types';
@@ -38,12 +39,12 @@ export function unionsMonth(s: SimState): void {
     const u = s.unions.towns[i];
     const here = plants(s).filter((d) => townIndex(townOf(d.id)) === i);
     const morale = here.reduce((a, d) => a + s.sites[d.id].morale, 0) / Math.max(1, here.length);
-    u.strength = clamp(u.strength + (55 - morale) * 0.06 + Math.max(0, s.priceIndex - u.wage) * 6 - 0.6, 5, 95);
+    u.strength = clamp(u.strength + (55 - morale) * 0.06 + Math.max(0, s.priceIndex - u.wage) * 6 - 0.6 + leaderDrift(s, i), 5, 95);
   }
 }
 
 /** How much likelier a claim is this month, by the strongest union. */
-export const claimBoost = (s: SimState) => Math.max(0.5, Math.max(0, ...unionTowns(s).map((i) => s.unions.towns[i].strength)) / 45);
+export const claimBoost = (s: SimState) => Math.max(0.5, Math.max(0, ...unionTowns(s).map((i) => s.unions.towns[i].strength * leaderHeat(s, i))) / 45);
 
 /** A union brings a claim at one of your plants. */
 export function unionClaim(s: SimState, feed: Feed): void {
@@ -70,7 +71,7 @@ export function unionClaim(s: SimState, feed: Feed): void {
       body: `The union in ${name} wants pay to keep up with prices: up ${Math.round((s.priceIndex - 1) * 100)}% since your term began, against ${Math.round((u.wage - 1) * 100)}% on pay. It is ${u.strength >= 70 ? 'strong' : u.strength >= 50 ? 'well organised' : 'not very strong'} (${Math.round(u.strength)}), and will ${threat} in a month if nothing is offered.`,
       options: [
         { id: 'pay', label: `Meet it: 4% more pay ($${backPay}M now)`, detail: 'Wages there stay higher. The dispute ends and the union cools.' },
-        { id: 'talk', label: 'Offer 2%', detail: `About ${Math.round((1 - u.strength / 130) * 100)}% odds they accept.` },
+        { id: 'talk', label: 'Offer 2%', detail: `About ${Math.round(Math.max(0, Math.min(1, 1 - u.strength / 130 + leaderTalk(s, town))) * 100)}% odds they accept.` },
         { id: 'refuse', label: 'Refuse', detail: `They will ${threat}.` },
       ],
       fallback: 'refuse',
@@ -140,7 +141,7 @@ export function resolveClaim(s: SimState, d: { site?: string; value?: number; da
     u.wage *= 1.04;
     settle(12, 8, `Pay deal agreed in ${CITIES[town].name}: 4% more.`);
   } else if (claim === 'pay' && opt === 'talk') {
-    if (rand(s) < 1 - u.strength / 130) {
+    if (rand(s) < 1 - u.strength / 130 + leaderTalk(s, town)) {
       u.wage *= 1.02;
       settle(6, 4, `The union in ${CITIES[town].name} accepts 2%.`);
     } else {
@@ -186,7 +187,7 @@ export function industrialAction(s: SimState, chain: Chain, feed: Feed): void {
   feed(s, 'bad', `Strike at ${name}: production down to 30% for about ${Math.round(days / 7)} weeks.`, chain.site, true);
   // Sympathy strikes at the other plants in town.
   for (const p of townPlants(s, town)) {
-    if (p.id === chain.site || rand(s) >= u.strength / 150) continue;
+    if (p.id === chain.site || rand(s) >= (u.strength / 150) * leaderHeat(s, town)) continue;
     const other = s.sites[p.id];
     other.disruptionDays = Math.max(other.disruptionDays, Math.round(days / 2));
     other.disruptionFactor = Math.min(other.disruptionFactor, 0.5);

@@ -7,6 +7,7 @@ import { CITIES, SITES, SITE_BY_ID } from '../sim/world';
 import { Bar, Btn } from '../ui/kit';
 import { money, pct } from '../ui/format';
 import { PAY_DEAL, payDealCost, surgeBanned, unionTowns } from '../sim/unions';
+import { TEMPERS } from '../sim/cast';
 import { dateLabel } from './useSim';
 
 export default function TownsPanel({ state, act, onSite }: { state: SimState; act: (a: SimAction) => void; onSite: (id: string) => void }) {
@@ -106,6 +107,11 @@ export default function TownsPanel({ state, act, onSite }: { state: SimState; ac
                   </span>
                 </div>
                 <Bar ratio={u.strength / 100} tone={u.strength >= 70 ? 'bg-ops-red' : u.strength >= 50 ? 'bg-ops-amber' : 'bg-ops-cyan'} title="Union strength: at 50 or more it strikes rather than working to rule" />
+                {state.cast?.leaders[i] && (
+                  <p className="mt-0.5 text-[10px] text-ops-dim">
+                    Led by <span className="text-ops-text">{state.cast.leaders[i].name}</span>, a <span className={state.cast.leaders[i].temper === 'firebrand' ? 'text-ops-amber' : 'text-ops-text'}>{TEMPERS[state.cast.leaders[i].temper].name.toLowerCase()}</span>: {TEMPERS[state.cast.leaders[i].temper].blurb.charAt(0).toLowerCase() + TEMPERS[state.cast.leaders[i].temper].blurb.slice(1)}
+                  </p>
+                )}
               </li>
             );
           })}

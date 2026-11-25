@@ -16,9 +16,11 @@ import { controlBlock } from './hotseat';
 import { hireRoom, townIndex, townOf } from './towns';
 import { academyCost, academyTowns, coverage, engineerNeed } from './engineers';
 import { OPS, opCost, opOdds } from './intelops';
+import { FORKS, doctrineCost, forkOpen } from './doctrine';
+import { MAX_LEVEL, TRAITS, promoteCost } from './cast';
 import { CITIES, FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
 
-export type AdvicePanel = 'staff' | 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
+export type AdvicePanel = 'doctrine' | 'staff' | 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
 
 export interface Advice {
   id: string;
@@ -296,6 +298,19 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
         add({ id: 'academy', priority: 60, tone: 'warn', title: 'Found an engineering academy', why: `No engineers are looking for work and you are ${gap} short. An academy costs ${money(academyCost(s))} and adds graduates every month once it opens.`, action: a && ok(s, a) ? a : undefined, panel: 'staff' });
       }
     }
+  }
+  // Doctrine: an open fork waiting to be settled.
+  if (s.doctrine && !s.doctrine.active) {
+    const fork = FORKS.find((f) => !s.doctrine.chosen[f.id] && forkOpen(s, f.id));
+    if (fork && s.treasury >= doctrineCost(s, fork.id) + 150 && s.day >= 60)
+      add({ id: `doctrine-${fork.id}`, priority: 34, tone: 'info', title: `Choose a doctrine: ${fork.title.toLowerCase()}`, why: `${fork.question} ${fork.a.name} or ${fork.b.name}: each choice is for good, and opens the next fork.`, panel: 'doctrine' });
+  }
+  // Managers a private firm could tempt away.
+  for (const [site, m] of Object.entries(s.cast?.managers ?? {})) {
+    if (m.level < 2 || m.loyalty >= 45 || m.level >= MAX_LEVEL) continue;
+    const a: SimAction = { type: 'promoteManager', site };
+    add({ id: `keep-${site}`, priority: 44, tone: 'warn', title: `Keep ${m.name} at ${SITE_BY_ID[site].name}`, why: `Your ${TRAITS[m.trait].name.toLowerCase()} manager is restless (loyalty ${Math.round(m.loyalty)}), and private firms are hiring. A promotion ($${promoteCost(s, m)}M) keeps them and strengthens their trait.`, action: ok(s, a) ? a : undefined, site });
+    break;
   }
   // Intelligence: steal the plans for the next weapon when the service is idle and the odds are decent.
   if (s.intel && !s.intel.active && s.day >= 60 && s.rival.known.length < s.rival.order.length && opOdds(s, 'learn') >= 0.6) {

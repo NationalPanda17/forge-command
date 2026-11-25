@@ -1,5 +1,6 @@
 // The rival: the Vardan Directorate fields new weapons over your term, and each one changes what you need to build.
 import { RIVAL_PACE } from './custom';
+import { doctrineArrivals } from './doctrine';
 import { pick, rand, randInt } from './rng';
 import type { FeedItem, SimState, ThreatId } from './types';
 import type { LineId } from './world';
@@ -119,7 +120,7 @@ const hasCounter = (s: SimState, d: DevDef) => s.strategy.research.done.includes
 /** Multiplier on how many of a threat arrive. */
 export function rivalArrivals(s: SimState, t: ThreatId): number {
   // Your service disrupted the rival's supply: fewer attacks of every kind for a while.
-  let m = s.intel && s.intel.supplyUntil > s.day ? 0.85 : 1;
+  let m = (s.intel && s.intel.supplyUntil > s.day ? 0.85 : 1) * doctrineArrivals(s);
   for (const d of fielded(s)) {
     m *= tune(s, d.arrivals?.[t] ?? 1);
     if (hasCounter(s, d)) m *= tune(s, d.countered.arrivals?.[t] ?? 1);

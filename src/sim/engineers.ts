@@ -108,7 +108,7 @@ export function applyEngineers(s: SimState, a: { type: string; count?: number; t
     e.academies.push({ town: a.town!, days: ACADEMY_DAYS });
     s.strategy.factions.regions = clamp(s.strategy.factions.regions + 2);
     if (s.communities?.mood[a.town!] !== undefined) s.communities.mood[a.town!] = clamp(s.communities.mood[a.town!] + 5);
-    feed(s, 'good', `An engineering academy is founded in ${CITIES[a.town!].name}: its first graduates in about eighteen months.`);
+    feed(s, 'good', `An engineering academy is founded in ${CITIES[a.town!].name}: its first graduates in about eighteen months.`, undefined, true);
   } else if (a.type === 'engineerPay') {
     e.pay = a.level!;
     feed(s, 'info', a.level === 'premium' ? 'Engineers are paid a 30% premium: fewer will leave for private firms.' : 'Engineers are back on standard pay.');

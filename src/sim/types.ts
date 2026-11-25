@@ -18,6 +18,9 @@ import type { CommunityState } from './communities';
 import type { AutomationState } from './automation';
 import type { EngineerState } from './engineers';
 import type { IntelState } from './intelops';
+import type { DoctrineState } from './doctrine';
+import type { CastState } from './cast';
+import type { Moment } from './legacy';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type ScenarioId = 'standard' | 'warFooting' | 'sanctions' | 'rebuild' | 'tutorial' | 'custom';
@@ -413,6 +416,14 @@ export interface SimState {
   intel: IntelState;
   /** First-time tips already shown in this game. */
   tipsSeen?: string[];
+  /** The doctrines you have chosen, and the one bedding in. */
+  doctrine: DoctrineState;
+  /** Your plant managers, the union leaders, and the candidates you could appoint. */
+  cast: CastState;
+  /** The important things that happened, for the term report. */
+  moments?: Moment[];
+  /** The day the current term began (after a second term starts), so each term counts only its own moments. */
+  termStartDay?: number;
   fraudsCaught?: number;
   strategy: {
     research: { done: ResearchId[]; active: { id: ResearchId; days: number; total?: number } | null };

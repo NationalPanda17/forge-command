@@ -22,6 +22,9 @@ import { newCommunities } from './communities';
 import { newAutomation, type AutoArea } from './automation';
 import { newEngineers } from './engineers';
 import { newIntel } from './intelops';
+import { newDoctrine } from './doctrine';
+import { newCast } from './cast';
+import { seedFrom } from './rng';
 import { FIGHTING_REGIONS, FINISHED, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, START_LINES, processCapacity, type LineId, type RegionId } from './world';
 
 export interface SimOptions {
@@ -123,6 +126,10 @@ export function migrate(s: SimState): SimState {
   s.engineers ??= newEngineers(s);
   s.engineers.funded ??= s.engineers.staff;
   s.intel ??= newIntel();
+  s.doctrine ??= newDoctrine();
+  s.moments ??= s.feed.filter((f) => f.alert).map((f) => ({ day: f.day, tone: f.tone, text: f.text }));
+  if (!s.cast) s.cast = newCast(s);
+  s.cast.rng ??= seedFrom(`cast|${s.seed}`);
   s.month.spend.energy ??= 0;
   return s;
 }
@@ -261,6 +268,9 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     automation: newAutomation(hotseat || scenario === 'tutorial' ? [] : automation ?? []),
     engineers: { staff: 0, market: 0, academies: [], pay: 'standard', funded: 0, short: 0 },
     intel: newIntel(),
+    doctrine: newDoctrine(),
+    cast: { rng: 0, managers: {}, leaders: {}, pool: [], poolDay: 0 },
+    moments: [],
     strategy: {
       research: { done: [], active: null },
       staff: { procurement: null, quality: null, logistics: null, research: null, labor: null },
@@ -385,5 +395,6 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   state.strategy.candidates = makeCandidates(state);
   state.strategy.startWorkers = Object.values(state.sites).reduce((a, x) => a + x.workers, 0);
   state.engineers = newEngineers(state);
+  state.cast = newCast(state);
   return state;
 }
