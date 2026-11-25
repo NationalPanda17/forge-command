@@ -174,6 +174,8 @@ export interface FeedItem {
   tone: 'good' | 'bad' | 'warn' | 'info';
   text: string;
   site?: string;
+  /** Important enough to stop the clock. */
+  alert?: boolean;
 }
 
 export interface Crisis {
@@ -335,6 +337,8 @@ export interface SimState {
   outcome: 'running' | 'complete' | 'dismissed';
   /** Set when something important happens; the clock pauses if the player wants it to. */
   alert: FeedItem | null;
+  /** Every important event in the last update, for the pause rules. */
+  alerts?: FeedItem[];
   /** 1.0 at the start; prices, wages and running costs rise with it. */
   priceIndex: number;
   tenders: Tender[];

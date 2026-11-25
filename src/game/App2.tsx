@@ -1,5 +1,5 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
 import { CustomEditor } from './CustomEditor';
@@ -9,6 +9,7 @@ import { makeSpec } from '../sim/worldgen';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
 import { setTipsEnabled, tipsEnabled } from './Tips';
+import { loadPauseRules, savePauseRules } from './events';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { openCampaign } from '../sim/tick';
 import type { Difficulty, ScenarioId, Settings, SimState } from '../sim/types';
@@ -399,6 +400,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           <label className="ml-auto flex items-center gap-2">
             <input type="checkbox" checked={autoPause} onChange={(e) => setAutoPause(e.target.checked)} />
             Pause on important events
+            <span className="text-[10px] text-ops-dim">(choose which in Settings)</span>
           </label>
           {err && <p className="w-full text-ops-red">{err}</p>}
         </div>
@@ -471,12 +473,20 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
 
 export default function App2() {
   const [game, setGame] = useState<SimState | null>(null);
-  const [autoPause, setAutoPause] = useState(true);
+  // The master switch for the pause rules, which are kept in this browser; the rest are in Settings.
+  const [autoPause, setAutoPauseState] = useState(() => loadPauseRules().on);
+  // Settings in a game may have changed it.
+  useEffect(() => {
+    if (!game) setAutoPauseState(loadPauseRules().on);
+  }, [game]);
+  const setAutoPause = (on: boolean) => {
+    setAutoPauseState(on);
+    savePauseRules({ ...loadPauseRules(), on });
+  };
   if (!game) return <Title onStart={setGame} autoPause={autoPause} setAutoPause={setAutoPause} />;
   return (
     <Shell
       initial={game}
-      autoPause={autoPause}
       onMenu={(s) => {
         saveSim(s);
         setGame(null);

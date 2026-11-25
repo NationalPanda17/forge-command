@@ -1,4 +1,4 @@
-# Forge Command 13.0: design
+# Forge Command 14.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
@@ -360,6 +360,26 @@ Physical figures follow public reference data where it exists, and are best gues
   sound at most plays per update, chosen from new feed lines by `soundFor`.
 - Field notes are checked against the state and the last 40 feed lines; each is shown once per game (`tipsSeen` in the
   save) and the switch is kept in this browser.
+
+## Navigation and the inbox (`nav.ts`, `inbox.ts`, `events.ts`)
+
+- **Panels** are grouped (`GROUPS`). A badge is the sum of:
+  - decision cards (on the Board);
+  - unread inbox items;
+  - bad and warn watch items on the tab named by the item's `panel`.
+
+  A group's badge adds up its tabs.
+- **Feed lines** carry `alert: true` when they stopped the clock, and each update keeps `alerts`, every alert since the
+  last update. `eventKind` sorts a line into one of ten kinds by its text and tone, and each kind has a tab.
+- **The pause rules** (kept in this browser) pause for the worst alert whose kind is switched on (bad before warn before
+  good), or at month end if chosen. Hearings, handovers and briefings hold the clock regardless.
+- **The inbox** lists decision cards, the pending field note, alerts and bad news (not routine warnings), and the field
+  notes already read. The read mark is the last line's `day|text` key; leaving the inbox moves it to the newest line.
+- **Home** keeps a snapshot (day, treasury, readiness, confidence, stock per round, last feed key) taken when you leave
+  it, and shows the difference.
+- **Search** scores each word typed: 4 for a whole word, 3 for a word start, 2 inside the label, 1 in the hint, and
+  0 if any word misses. It shows only as many whole rows as fit the screen.
+- **The map chain** links the selected site to sites whose lines make its inputs (up) or use its outputs (down).
 
 ## Careers and custom scenarios (`commitments.ts`, `custom.ts`)
 - **Each new term:**

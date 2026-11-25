@@ -16,7 +16,17 @@ import StaffPanel from './StaffPanel';
 import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
-import { KeyboardHelp } from './Options';
+import { SettingsDialog, type SettingsTab } from './Options';
+import HomePanel, { snapshot } from './HomePanel';
+import InboxPanel from './InboxPanel';
+import CommandPalette, { placeCommands, type Command } from './CommandPalette';
+import { GROUPS, PANEL_LABEL, allPanels, groupBadge, groupOf, panelBadges, panelsFor, type GroupId, type PanelId } from './nav';
+import { loadPauseRules, pauseFor, savePauseRules, type PauseRules } from './events';
+import { feedKey, unreadCount } from './inbox';
+import { safeAdvice } from '../sim/advisor';
+import { engineerNeed } from '../sim/engineers';
+import { validate } from '../sim/actions';
+import { SiteCard, chainOf, quickActions } from './mapInfo';
 import { saveSlot } from './saves';
 import { isFounded } from '../sim/industry';
 import PolicyPanel from './PolicyPanel';
@@ -42,36 +52,11 @@ import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
 import SitePanel from './SitePanel';
 import StrategyPanel from './StrategyPanel';
-import { GuidePanel, WatchPanel } from './WatchGuide';
+import { GuidePanel, WatchPanel, watchList } from './WatchGuide';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
-export type PanelId = 'watch' | 'site' | 'plan' | 'material' | 'markets' | 'build' | 'stockpile' | 'logistics' | 'fight' | 'strategy' | 'money' | 'news' | 'feed' | 'guide' | 'sandbox' | 'intel' | 'policy' | 'industry' | 'story' | 'testing' | 'towns' | 'allies' | 'power' | 'stats' | 'staff';
-const PANELS: { id: PanelId; label: string }[] = [
-  { id: 'watch', label: 'Watch' },
-  { id: 'site', label: 'Site' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'material', label: 'Materials' },
-  { id: 'markets', label: 'Markets' },
-  { id: 'build', label: 'Build' },
-  { id: 'industry', label: 'Industry' },
-  { id: 'testing', label: 'Testing' },
-  { id: 'towns', label: 'Towns' },
-  { id: 'allies', label: 'Allies' },
-  { id: 'power', label: 'Power' },
-  { id: 'intel', label: 'Intel' },
-  { id: 'policy', label: 'Policy' },
-  { id: 'stockpile', label: 'Stockpile' },
-  { id: 'logistics', label: 'Logistics' },
-  { id: 'fight', label: 'Fight' },
-  { id: 'strategy', label: 'Board' },
-  { id: 'money', label: 'Money' },
-  { id: 'stats', label: 'Stats' },
-  { id: 'staff', label: 'Staff' },
-  { id: 'news', label: 'Courier' },
-  { id: 'feed', label: 'Feed' },
-  { id: 'guide', label: 'Guide' },
-];
+export type { PanelId } from './nav';
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
 
 function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> {
@@ -101,21 +86,58 @@ function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> 
   return out;
 }
 
-export default function Shell({ initial, onMenu, autoPause }: { initial: SimState; onMenu: (s: SimState) => void; autoPause: boolean }) {
-  const { state, speed, setSpeed: rawSetSpeed, act, step, clock } = useSim(initial, autoPause);
+export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: (s: SimState) => void }) {
+  // What pauses the clock: chosen in Settings, kept in this browser.
+  const [pauseRules, setPauseRulesState] = useState<PauseRules>(() => loadPauseRules());
+  const setPauseRules = (r: PauseRules) => {
+    setPauseRulesState(r);
+    savePauseRules(r);
+  };
+  const rulesRef = useRef(pauseRules);
+  rulesRef.current = pauseRules;
+  const { state, speed, setSpeed: rawSetSpeed, act, step: rawStep, clock, pausedBy, clearPause } = useSim(initial, (next, prev) => pauseFor(rulesRef.current, next.alerts ?? [], next.history.length > prev.history.length));
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
   const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
-  const setSpeed = useCallback((sp: Speed) => rawSetSpeed(held ? 0 : sp), [held, rawSetSpeed]);
+  // Any change of speed by the player, or a step, ends the reason the clock last stopped.
+  const setSpeed = useCallback(
+    (sp: Speed) => {
+      clearPause();
+      rawSetSpeed(held ? 0 : sp);
+    },
+    [held, rawSetSpeed, clearPause],
+  );
+  const step = useCallback(
+    (days: number) => {
+      clearPause();
+      rawStep(days);
+    },
+    [rawStep, clearPause],
+  );
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
-  const [panel, setPanel] = useState<PanelId>('watch');
+  const [panel, setPanelRaw] = useState<PanelId>(initial.tutorial && initial.tutorial.step < TUTORIAL_DONE ? 'watch' : 'home');
+  // The last tab used in each group, so a group opens where you left it.
+  const [lastIn, setLastIn] = useState<Partial<Record<GroupId, PanelId>>>({});
+  const setPanel = useCallback((p: PanelId) => {
+    setPanelRaw(p);
+    setLastIn((l) => (l[groupOf(p)] === p ? l : { ...l, [groupOf(p)]: p }));
+  }, []);
+  const [palette, setPalette] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (!document.querySelector('[role="dialog"]')) setPalette(true);
+        return;
+      }
+      // Escape closes Settings wherever the focus is (the search box closes itself).
+      if (e.key === 'Escape' && !el?.closest('[aria-label="Search and commands"]')) setHelp(null);
       if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       // While a dialog is open, only Escape works; Space presses the focused button, never the clock.
+      if (document.querySelector('[aria-label="Search and commands"]')) return;
       if (document.querySelector('[role="dialog"]') && e.key !== 'Escape' && e.key !== '?') return;
       if (e.key === ' ' && el?.closest('button, [role="button"], a')) return;
       if (e.key === ' ') {
@@ -126,18 +148,21 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         const ids = tabsRef.current.map((t) => t.id);
         const i = ids.indexOf(panelRef.current);
         setPanel(ids[(i + (e.key === ']' ? 1 : ids.length - 1)) % ids.length]);
-      } else if (e.key === '?') setHelp((h) => !h);
+      } else if (e.key === '/') {
+        e.preventDefault();
+        setPalette(true);
+      } else if (e.key === '?') setHelp((h) => (h ? null : 'keys'));
       else if (e.key === 'm' || e.key === 'M') document.querySelector<HTMLElement>('[role="region"][aria-label^="Map of"]')?.focus();
-      else if (e.key === 'Escape') setHelp(false);
+      else if (e.key === 'Escape') setHelp(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [speed, setSpeed]);
+  }, [speed, setSpeed, setPanel]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
-  const [help, setHelp] = useState(false);
+  const [help, setHelp] = useState<SettingsTab | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
-  const tabs = [...(state.story ? [{ id: 'story' as PanelId, label: 'Story' }] : []), ...(state.mode === 'sandbox' ? [{ id: 'sandbox' as PanelId, label: 'Sandbox' }] : []), ...PANELS];
+  const tabs = allPanels(state).map((id) => ({ id, label: PANEL_LABEL[id] }));
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const panelRef = useRef(panel);
@@ -204,7 +229,6 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
   }, []);
   // A sound for what just happened: the most telling event since the last update, at most one at a time.
   // Feed lines are copied on every update, so they are matched by day and text, not by object.
-  const feedKey = (f?: { day: number; text: string }) => (f ? `${f.day}|${f.text}` : '');
   const lastFeed = useRef(feedKey(state.feed[state.feed.length - 1]));
   const soundAt = useRef(0);
   useEffect(() => {
@@ -277,6 +301,70 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
     setMaterial(m);
     setPanel('material');
   };
+
+  // The inbox read mark, and what Home last showed you: both move on when you leave those tabs.
+  const [readKey, setReadKey] = useState(() => feedKey(initial.feed.at(-1)));
+  const [seen, setSeen] = useState(() => snapshot(initial));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const prevPanel = useRef(panel);
+  const openedAt = useRef(feedKey(initial.feed.at(-1)));
+  useEffect(() => {
+    const prev = prevPanel.current;
+    prevPanel.current = panel;
+    if (prev === panel) return;
+    if (prev === 'home') setSeen(snapshot(stateRef.current));
+    // Leaving the inbox marks read what was there when you opened it; anything newer stays new.
+    if (prev === 'inbox') setReadKey(openedAt.current);
+    if (panel === 'inbox') openedAt.current = feedKey(stateRef.current.feed.at(-1));
+  }, [panel]);
+  const markRead = () => setReadKey(feedKey(state.feed.at(-1)));
+  // Work that only needs to keep up with a person (badges, Home) uses a copy of the state refreshed at most once a
+  // second while the clock runs, and at once when it is paused or something is done.
+  const slowRef = useRef({ s: state, t: 0 });
+  {
+    const now = typeof performance === 'undefined' ? 0 : performance.now();
+    const cur = slowRef.current;
+    if (speed === 0 || now - cur.t > 1000 || cur.s.over !== state.over || cur.s.strategy.decisions.length !== state.strategy.decisions.length) slowRef.current = { s: state, t: now };
+  }
+  const slow = slowRef.current.s;
+  const unread = useMemo(() => unreadCount(slow, readKey), [slow, readKey]);
+  const watch = useMemo(() => watchList(slow), [slow]);
+  const badges = useMemo(() => panelBadges(slow, watch, unread), [slow, watch, unread]);
+  const group = groupOf(panel);
+  // The selected site's supply chain, drawn on the map; worked out again only when the selection or a month changes.
+  const chainKey = Object.values(state.sites)
+    .map((x) => `${x.status[0]}${x.mothballed ? 'm' : ''}${x.processes.length}`)
+    .join('');
+  const chain = useMemo(() => (selected ? chainOf(state, selected) : null), [selected, chainKey]);
+
+  // Search and commands.
+  const commands = useMemo<Command[]>(() => {
+    if (!palette) return [];
+    const safe = safeAdvice(state);
+    const gap = state.engineers ? Math.min(Math.ceil(engineerNeed(state).total - state.engineers.staff), Math.floor(state.engineers.market)) : 0;
+    const hire = { type: 'hireEngineers' as const, count: Math.max(1, gap) };
+    const out: Command[] = [
+      { id: 'c-pause', group: 'Command', label: speed === 0 ? 'Resume the clock' : 'Pause the clock', hint: 'Space', why: held ? 'Deal with the open screen first.' : null, run: () => setSpeed(speed === 0 ? lastSpeed.current : 0) },
+      ...([1, 2, 4, 8] as Speed[]).map((sp) => ({ id: `c-speed-${sp}`, group: 'Command' as const, label: `Speed ${sp}×`, hint: `${sp} day${sp > 1 ? 's' : ''} a second`, why: held ? 'Deal with the open screen first.' : null, run: () => setSpeed(sp) })),
+      { id: 'c-week', group: 'Command', label: 'Advance one week', hint: '+7d', why: held ? 'Deal with the open screen first.' : speed !== 0 ? 'Pause first.' : null, run: () => step(7) },
+      { id: 'c-safe', group: 'Command', label: 'Take the safe advice', hint: `${safe.length} suggestion${safe.length === 1 ? '' : 's'} within your reserve`, why: safe.length ? null : 'No safe suggestions right now.', run: () => safe.forEach((a) => act(a)) },
+      { id: 'c-hire', group: 'Command', label: 'Hire engineers to the need', hint: gap > 0 ? `${gap} engineers` : 'Staff tab', why: gap > 0 ? validate(state, hire) : 'You have all the engineers the work needs.', run: () => act(hire) },
+      { id: 'c-read', group: 'Command', label: 'Mark the inbox read', hint: `${unread} unread`, why: unread ? null : 'Nothing unread.', run: markRead },
+      { id: 'c-save', group: 'Command', label: 'Save the game', hint: 'under a name', run: () => setSaving(`Day ${state.day + 1}`) },
+      { id: 'c-settings', group: 'Command', label: 'Settings', hint: 'pause rules, field notes, sound, display', run: () => setHelp('clock') },
+      { id: 'c-pauserules', group: 'Command', label: 'Pause rules', hint: 'choose what stops the clock', run: () => setHelp('clock') },
+      { id: 'c-keys', group: 'Command', label: 'Keyboard shortcuts', hint: '?', run: () => setHelp('keys') },
+      { id: 'c-music', group: 'Command', label: audioPrefs.music ? 'Turn the music off' : 'Turn the music on', hint: 'sound', run: () => setAudio({ music: !audioPrefs.music }) },
+      { id: 'c-sfx', group: 'Command', label: audioPrefs.sfx ? 'Turn sounds off' : 'Turn sounds on', hint: 'sound effects', run: () => setAudio({ sfx: !audioPrefs.sfx }) },
+      { id: 'c-menu', group: 'Command', label: 'Main menu', hint: 'the game is kept', run: () => onMenu(state) },
+    ];
+    return [...out, ...placeCommands(state, { panel: setPanel, site: select, material: showMaterial })];
+    // Rebuilt only while the palette is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [palette ? state : null, palette, speed, held, unread, audioPrefs]);
+
+  const banner = pausedBy as { text: string; tone: string; site?: string } | null;
 
   return (
     <div className="flex min-h-screen flex-col gap-2 p-2">
@@ -353,8 +441,11 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" pressed={saving !== null}>
             Save
           </Btn>
-          <Btn onClick={() => setHelp(true)} title="Keyboard shortcuts and display options (?)">
-            ?
+          <Btn onClick={() => setPalette(true)} title="Go to any tab, site, material or town, or run a command (Ctrl K or /)">
+            Search
+          </Btn>
+          <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)">
+            Settings
           </Btn>
           <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
             Sound
@@ -408,13 +499,13 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
         </div>
       )}
 
-      {state.alert && speed === 0 && (
-        <div role="status" className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${state.alert.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : state.alert.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
+      {banner && speed === 0 && (
+        <div role="status" className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
           <span>
-            Paused: {tr(state.alert.text)}
+            Paused: {tr(banner.text)}
           </span>
           <span className="flex gap-1">
-            {state.alert.site && <Btn onClick={() => select(state.alert!.site!)}>Show</Btn>}
+            {banner.site && <Btn onClick={() => select(banner.site!)}>Show</Btn>}
             <Btn kind="primary" onClick={() => setSpeed(lastSpeed.current)}>
               Resume
             </Btn>
@@ -442,6 +533,31 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
             highlight={highlight}
             ripples={ripples}
             clock={clock}
+            hoverCard={(id) => <SiteCard state={stateRef.current} id={id} />}
+            quickMenu={(id, close) => (
+              <ul className="text-[12px]">
+                <li className="truncate px-2 py-1 text-[10px] uppercase tracking-wider text-ops-dim">{tr(stateRef.current.sites[id]?.plantName ?? SITE_BY_ID[id].name)}</li>
+                {quickActions(stateRef.current, id, { site: select, material: showMaterial, act }).map((q) => (
+                  <li key={q.label}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!!q.why}
+                      title={q.why ?? undefined}
+                      className="block w-full rounded px-2 py-1 text-left text-ops-text hover:bg-ops-cyan/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => {
+                        close();
+                        q.run();
+                      }}
+                    >
+                      {q.label}
+                      {q.why && <span className="block text-[10px] text-ops-amber">{q.why}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            related={chain}
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
           <div className="border-t border-ops-line/60 px-2 py-1">
@@ -449,19 +565,46 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           </div>
         </div>
         <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
+          <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 pt-1" aria-label="Panel groups">
+            {GROUPS.map((g) => {
+              const on = group === g.id;
+              const b = groupBadge(state, badges, g);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  data-group={g.id}
+                  className={`whitespace-nowrap rounded-t border-b-2 px-2 py-1 font-sans text-[12px] font-semibold uppercase tracking-wider ${on ? 'border-ops-cyan text-white' : 'border-transparent text-ops-dim hover:text-ops-text'}`}
+                  aria-current={on ? 'true' : undefined}
+                  onClick={() => setPanel(on ? panel : (lastIn[g.id] ?? panelsFor(state, g)[0]))}
+                >
+                  {g.label}
+                  {b.count > 0 && (
+                    <span className={`ml-1.5 rounded-full px-1.5 text-[10px] ${b.bad ? 'bg-ops-red/20 text-ops-red' : 'bg-ops-amber/20 text-ops-amber'}`} aria-label={`${b.count} need${b.count === 1 ? 's' : ''} you`}>
+                      {b.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
           <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 py-1" aria-label="Panels">
-            {tabs.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`whitespace-nowrap rounded px-2 py-1 font-sans text-[12px] font-semibold uppercase tracking-wider ${panel === p.id ? 'bg-ops-cyan/15 text-ops-cyan' : 'text-ops-dim hover:text-ops-text'}`}
-                aria-current={panel === p.id ? 'page' : undefined}
-                onClick={() => setPanel(p.id)}
-              >
-                {p.label}
-                {p.id === 'strategy' && state.strategy.decisions.length > 0 && <span className="ml-1 text-ops-amber">●</span>}
-              </button>
-            ))}
+            {panelsFor(state, GROUPS.find((g) => g.id === group)!).map((id) => {
+              const b = badges[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  data-panel={id}
+                  className={`whitespace-nowrap rounded px-2 py-1 font-sans text-[12px] font-semibold uppercase tracking-wider ${panel === id ? 'bg-ops-cyan/15 text-ops-cyan' : 'text-ops-dim hover:text-ops-text'}`}
+                  aria-current={panel === id ? 'page' : undefined}
+                  onClick={() => setPanel(id)}
+                >
+                  {PANEL_LABEL[id]}
+                  {b && b.count > 0 && <span className={`ml-1 text-[10px] ${b.bad ? 'text-ops-red' : 'text-ops-amber'}`}>{b.count}</span>}
+                </button>
+              );
+            })}
           </nav>
           {state.tutorial && state.tutorial.step < TUTORIAL_DONE && <TutorialCard state={state} onStep={(step) => act({ type: 'tutorial', step })} />}
           {tip && (
@@ -509,6 +652,8 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
               </>
             )}
             {panel === 'guide' && <GuidePanel />}
+            {panel === 'home' && <HomePanel state={slow} act={act} seen={seen} unread={unread} onPanel={setPanel} onSite={select} onLine={showMaterial} />}
+            {panel === 'inbox' && <InboxPanel state={state} readKey={readKey} tip={tip} onMarkRead={markRead} onPanel={setPanel} onSite={select} />}
           </div>
         </aside>
       </div>
@@ -529,7 +674,22 @@ export default function Shell({ initial, onMenu, autoPause }: { initial: SimStat
           }}
         />
       )}
-      {help && <KeyboardHelp onClose={() => setHelp(false)} audio={{ prefs: audioPrefs, set: setAudio }} />}
+      {help && (
+        <SettingsDialog
+          initial={help}
+          onClose={() => setHelp(null)}
+          audio={{ prefs: audioPrefs, set: setAudio }}
+          pause={{ rules: pauseRules, set: setPauseRules }}
+          tips={{
+            on: tips,
+            set: (on) => {
+              setTipsEnabled(on);
+              setTips(on);
+            },
+          }}
+        />
+      )}
+      {palette && <CommandPalette commands={commands} onClose={() => setPalette(false)} />}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
     </div>
   );

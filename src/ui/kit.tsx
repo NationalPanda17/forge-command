@@ -219,3 +219,19 @@ export function NumberInput({ value, onChange, min = 0, step = 1, label, classNa
 export function Empty({ children }: { children: ReactNode }) {
   return <p className="p-3 text-[11px] text-ops-dim">{children}</p>;
 }
+
+/** A small trend line with no axes: the shape of the last few months. */
+export function Sparkline({ values, color = COLORS.cyan, width = 96, height = 22, label }: { values: number[]; color?: string; width?: number; height?: number; label: string }) {
+  if (values.length < 2) return <svg width={width} height={height} role="img" aria-label={`${label}: not enough history yet`} />;
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const span = hi - lo || 1;
+  const pts = values.map((v, i) => `${((i / (values.length - 1)) * (width - 4) + 2).toFixed(1)},${(height - 2 - ((v - lo) / span) * (height - 4)).toFixed(1)}`).join(' ');
+  const last = pts.split(' ').at(-1)!.split(',');
+  return (
+    <svg width={width} height={height} role="img" aria-label={`${label}, last ${values.length} months`} className="block">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={last[0]} cy={last[1]} r={2} fill={color} />
+    </svg>
+  );
+}

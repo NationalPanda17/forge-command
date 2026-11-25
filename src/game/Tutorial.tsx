@@ -21,7 +21,7 @@ export const TUTORIAL_SKIPPED = 100;
 export const STEPS: Step[] = [
   {
     title: 'Welcome, Director',
-    text: 'You run the munitions industry of Aldmere, from the mines to the launchers. Time is paused. Press the 1× button at the top, or Space, to start the clock.',
+    text: 'You run the munitions industry of Aldmere, from the mines to the launchers. Time is paused. Press the 1× button at the top, or Space, to start the clock. The tabs are in groups; a number on a group shows how many things there need you, and Search (or Ctrl K) finds any tab, site or command.',
     done: (_s, ui) => ui.speed > 0,
   },
   {
@@ -31,7 +31,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Look a year ahead',
-    text: 'Open the Plan tab. It shows each round’s stock, the Committee’s target, and a forecast for the next twelve months.',
+    text: 'Open the Plan tab, under Production. It shows each round’s stock, the Committee’s target, and a forecast for the next twelve months.',
     done: (_s, ui) => ui.panel === 'plan',
   },
   {
@@ -41,7 +41,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Buy at a better price',
-    text: 'The starting contracts end after nine months; after that you pay 30% over list. Open Markets and open a tender for something your arsenals use.',
+    text: 'The starting contracts end after nine months; after that you pay 30% over list. Open Markets, under Supply, and open a tender for something your arsenals use.',
     done: (s) => s.tenders.length > 0 || s.feed.some((f) => f.text.startsWith('Contract awarded')),
   },
   {
@@ -51,22 +51,22 @@ export const STEPS: Step[] = [
   },
   {
     title: 'People and projects',
-    text: 'Open the Board. Hire someone for a key post, and start a research project. Both pay off for years.',
+    text: 'Open the Board, under People. Hire someone for a key post, and start a research project. Both pay off for years.',
     done: (s) => Object.values(s.strategy.staff).some(Boolean) && (s.strategy.research.active !== null || s.strategy.research.done.length > 0),
   },
   {
     title: 'Your engineers',
-    text: 'Open the Staff tab. Your research project and every plant line need engineers. Too few and plants lose output and research slows. Hire from the market, or found an academy for the long run.',
+    text: 'Open the Staff tab, under People. Your research project and every plant line need engineers. Too few and plants lose output and research slows. Hire from the market, or found an academy for the long run.',
     done: (_s, ui) => ui.panel === 'staff',
   },
   {
     title: 'The towns around you',
-    text: 'Open the Towns tab. Every town has a mood toward you. Jobs and housing lift it; an unhappy town strikes, protests and objects to new plants.',
+    text: 'Open the Towns tab, under People. Every town has a mood toward you. Jobs and housing lift it; an unhappy town strikes, protests and objects to new plants.',
     done: (_s, ui) => ui.panel === 'towns',
   },
   {
     title: 'Keep watch',
-    text: 'The Watch tab lists what needs you, most urgent first, with the advisor’s next best moves above it. “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
+    text: 'The Watch tab, under Home, lists what needs you, most urgent first, with the advisor’s next best moves above it. “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
     done: (s, _ui, start) => s.history.length >= start.history.length + 3 || s.history.length >= 3,
   },
 ];

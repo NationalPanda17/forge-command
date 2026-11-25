@@ -1,6 +1,6 @@
 // Operational map of the country (classic or generated): static geography, transport network, sites, shipments.
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef, type SiteKind } from '../../sim/world';
 import * as G from './geo';
 import { countryTitle, onWorldChange } from '../../sim/worldgen';
@@ -64,6 +64,12 @@ export interface MapViewProps {
   clock?: () => number;
   /** Weather to draw. */
   weather?: MapWeather;
+  /** A card to show while the pointer rests on a site. */
+  hoverCard?: (siteId: string) => ReactNode;
+  /** Quick actions for a site, from a right-click, a long press, or the context-menu key. */
+  quickMenu?: (siteId: string, close: () => void) => ReactNode;
+  /** The selected site's suppliers (up) and customers (down), drawn as lines from it. */
+  related?: { up: string[]; down: string[] } | null;
 }
 
 export const DEFAULT_LAYERS: MapLayers = { terrain: true, labels: true, rail: true, road: true, sea: true, air: true, flows: true, regions: false, weather: true, night: false };
@@ -524,9 +530,11 @@ interface SitesLayerProps {
   onActivate: (id: string, e: ReactMouseEvent | ReactKeyboardEvent) => void;
   onFocusSite: (id: string | null) => void;
   onHover: (id: string | null) => void;
+  onMenu: (id: string, at: { clientX: number; clientY: number } | null) => void;
+  onPress: (id: string, e: ReactPointerEvent) => void;
 }
 
-const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, spread, onActivate, onFocusSite, onHover }: SitesLayerProps) {
+const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, spread, onActivate, onFocusSite, onHover, onMenu, onPress }: SitesLayerProps) {
   const k = 1 / S;
   const m = markerPx(S);
   const h = m / 2;
@@ -572,8 +580,17 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 onActivate(s.id, e);
+              } else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+                e.preventDefault();
+                onMenu(s.id, null);
               }
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMenu(s.id, e);
+            }}
+            onPointerDown={(e) => onPress(s.id, e)}
             onFocus={() => onFocusSite(s.id)}
             onBlur={() => onFocusSite(null)}
             onPointerEnter={() => onHover(s.id)}
@@ -951,6 +968,10 @@ export default function MapView(props: MapViewProps): JSX.Element {
   const [focused, setFocused] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** The quick-action menu: which site, and where (in the map's own pixels). */
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const { hoverCard, quickMenu, related = null } = props;
 
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -1105,6 +1126,10 @@ export default function MapView(props: MapViewProps): JSX.Element {
   };
   const onPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
     const p = local(e);
+    if (press.current && Math.hypot(p.x - press.current.x, p.y - press.current.y) > 8) {
+      window.clearTimeout(press.current.timer);
+      press.current = null;
+    }
     const v = viewRef.current;
     if (readoutRef.current) {
       const wx = (p.x - v.tx) / v.S;
@@ -1141,6 +1166,10 @@ export default function MapView(props: MapViewProps): JSX.Element {
     apply({ S, tx: x - wx * S, ty: y - wy * S });
   };
   const onPointerEnd = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (press.current) {
+      window.clearTimeout(press.current.timer);
+      press.current = null;
+    }
     ptrs.current.delete(e.pointerId);
     if (captured.current.has(e.pointerId)) {
       captured.current.delete(e.pointerId);
@@ -1182,6 +1211,81 @@ export default function MapView(props: MapViewProps): JSX.Element {
     [animateTo],
   );
   const onHover = useCallback((id: string | null) => setHovered(id), []);
+  // The quick-action menu opens at the pointer, or beside the marker from the keyboard.
+  const quickRef = useRef(quickMenu);
+  quickRef.current = quickMenu;
+  const onMenu = useCallback((id: string, at: { clientX: number; clientY: number } | null) => {
+    if (!quickRef.current) return;
+    const box = wrapRef.current?.getBoundingClientRect();
+    if (!box) return;
+    if (at) {
+      setMenu({ id, x: at.clientX - box.left, y: at.clientY - box.top });
+    } else {
+      const v = viewRef.current;
+      const [mx, my] = markerAt(id, v.S, spreadRef.current);
+      setMenu({ id, x: mx + v.tx + 12, y: my + v.ty + 12 });
+    }
+  }, []);
+  // A long press on a touch screen opens the menu too.
+  const onPress = useCallback(
+    (id: string, e: ReactPointerEvent) => {
+      if (e.pointerType === 'mouse') return;
+      if (press.current) window.clearTimeout(press.current.timer);
+      const at = { clientX: e.clientX, clientY: e.clientY };
+      const box = wrapRef.current?.getBoundingClientRect();
+      press.current = {
+        x: box ? at.clientX - box.left : 0,
+        y: box ? at.clientY - box.top : 0,
+        timer: window.setTimeout(() => {
+          press.current = null;
+          moved.current = true;
+          onMenu(id, at);
+        }, 550),
+      };
+    },
+    [onMenu],
+  );
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuFrom = useRef<HTMLElement | null>(null);
+  // Open: keep the menu inside the map, and move the keyboard into it. Close: give focus back.
+  useLayoutEffect(() => {
+    const el = menuRef.current;
+    if (!menu || !el) return;
+    const { w, h } = sizeRef.current;
+    el.style.left = `${Math.max(4, Math.min(w - el.offsetWidth - 4, menu.x))}px`;
+    el.style.top = `${Math.max(4, Math.min(h - el.offsetHeight - 4, menu.y))}px`;
+  }, [menu]);
+  const menuId = menu?.id ?? null;
+  useEffect(() => {
+    if (!menuId) return;
+    menuFrom.current = document.activeElement as HTMLElement | null;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus();
+    return () => {
+      const back = menuFrom.current;
+      if (back && document.contains(back) && back.closest('.fcm-marker')) back.focus();
+    };
+  }, [menuId]);
+  // Moving the map closes the menu: it would no longer point at its site.
+  const viewSig = `${view.S}|${view.tx}|${view.ty}`;
+  const menuView = useRef(viewSig);
+  useEffect(() => {
+    if (menu && menuView.current !== viewSig) setMenu(null);
+    menuView.current = viewSig;
+  }, [viewSig, menu]);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(null);
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest('[data-map-menu]')) setMenu(null);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown, true);
+    };
+  }, [menu]);
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -1195,7 +1299,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
       case '+': case '=': zoomBy(1.6); break;
       case '-': case '_': zoomBy(1 / 1.6); break;
       case '0': reset(); break;
-      case 'Escape': onSelectRef.current(null); break;
+      case 'Escape':
+        // With the quick menu open, Escape only closes it.
+        if (menu) setMenu(null);
+        else onSelectRef.current(null);
+        break;
       default: return;
     }
     e.preventDefault();
@@ -1244,6 +1352,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
   // Labels are laid out for the settled zoom; markers are spaced at the live zoom every frame, so they never touch.
   const spread = useMemo(() => spreadMarkers(settledS, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden), [settledS, badgeSig, hidden]);
   const liveSpread = useMemo(() => (S === settledS ? spread : spreadMarkers(S, Object.fromEntries(SITES.map((s) => [s.id, markers[s.id]?.badge])), hidden)), [S, settledS, spread, badgeSig, hidden]);
+  const spreadRef = useRef(liveSpread);
+  spreadRef.current = liveSpread;
   const placement = useMemo(
     () =>
       layoutMap({
@@ -1318,7 +1428,25 @@ export default function MapView(props: MapViewProps): JSX.Element {
                 return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
               })}
             </g>
-            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={liveSpread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} />
+            {related && selected && G.SITE_POS[selected] && !zooming && (
+              <g pointerEvents="none" aria-hidden="true">
+                {(['up', 'down'] as const).flatMap((dir) =>
+                  related[dir].map((id) => {
+                    if (!G.SITE_POS[id] || markers[id]?.hidden) return null;
+                    const [ax, ay] = markerAt(selected, S, liveSpread);
+                    const [bx, by] = markerAt(id, S, liveSpread);
+                    const col = dir === 'up' ? ops('amber', 0.8) : ops('cyan', 0.8);
+                    return (
+                      <g key={`${dir}-${id}`}>
+                        <line x1={ax / S} y1={ay / S} x2={bx / S} y2={by / S} stroke={col} strokeWidth={1.4} strokeDasharray="5 4" style={nss} />
+                        <circle cx={bx / S} cy={by / S} r={(markerPx(S) / 2 + 5) / S} fill="none" stroke={col} strokeWidth={1.5} style={nss} />
+                      </g>
+                    );
+                  }),
+                )}
+              </g>
+            )}
+            <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={liveSpread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} onMenu={onMenu} onPress={onPress} />
           </g>
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>
@@ -1327,6 +1455,47 @@ export default function MapView(props: MapViewProps): JSX.Element {
         <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">{countryTitle()}</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
+      {hoverCard && hovered && !markers[hovered]?.hidden && !menu && !dragging && !zooming && G.SITE_POS[hovered] && size.w >= 480 && (() => {
+        const [mx, my] = markerAt(hovered, S, liveSpread);
+        const x = mx + view.tx;
+        const y = my + view.ty;
+        // Beside the marker, on whichever side has room; above it in the lower half of the map.
+        const left = x > size.w - 280 ? undefined : x + 16;
+        const right = x > size.w - 280 ? size.w - x + 16 : undefined;
+        const top = y < size.h / 2 ? Math.max(8, y - 20) : undefined;
+        const bottom = y < size.h / 2 ? undefined : Math.max(8, size.h - y - 20);
+        return (
+          <div className="pointer-events-none absolute z-20 max-h-[calc(100%-16px)] overflow-hidden rounded border border-ops-line bg-ops-panel/95 p-2 shadow-lg" style={{ left, right, top, bottom }} role="tooltip">
+            {hoverCard(hovered)}
+          </div>
+        );
+      })()}
+      {quickMenu && menu && (
+        <div
+          ref={menuRef}
+          data-map-menu=""
+          role="menu"
+          aria-label="Quick actions"
+          className="absolute z-30 max-h-[calc(100%-8px)] min-w-[180px] max-w-[260px] overflow-y-auto rounded border border-ops-line bg-ops-panel p-1 shadow-lg"
+          style={{ left: menu.x, top: menu.y }}
+          onKeyDown={(e) => {
+            // Up and down move between the actions; Escape and Tab close the menu.
+            const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+            const i = items.indexOf(document.activeElement as HTMLElement);
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              e.stopPropagation();
+              items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % Math.max(1, items.length)]?.focus();
+            } else if (e.key === 'Escape' || e.key === 'Tab') {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenu(null);
+            }
+          }}
+        >
+          {quickMenu(menu.id, closeMenu)}
+        </div>
+      )}
       <div data-hud="" className="absolute right-3 top-3 flex flex-col gap-1">
         <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in">
           +

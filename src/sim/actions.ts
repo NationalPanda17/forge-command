@@ -340,6 +340,7 @@ export function apply(state: SimState, a: SimAction): SimState {
   if (validate(state, a)) return state;
   applyWorld(state.world ?? null);
   const s = structuredClone(state);
+  s.alerts = [];
   setNetwork(s.network.built, s.network.upgrades);
   applyInPlace(s, a);
   return s;
