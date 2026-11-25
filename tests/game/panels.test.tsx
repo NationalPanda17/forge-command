@@ -23,7 +23,7 @@ import StatsPanel from '../../src/game/StatsPanel';
 import { Hearing } from '../../src/game/Hearing';
 import { Handover, HotseatChip } from '../../src/game/Hotseat';
 import StoryPanel, { Briefing } from '../../src/game/StoryPanel';
-import { KeyboardHelp } from '../../src/game/Options';
+import { SettingsDialog } from '../../src/game/Options';
 import PolicyPanel from '../../src/game/PolicyPanel';
 import AdvisorCard from '../../src/game/AdvisorCard';
 import PlanPanel from '../../src/game/PlanPanel';
@@ -119,7 +119,7 @@ describe('every panel renders cleanly', () => {
 
   it('the modals: hearing, keyboard help, term report with a career', () => {
     check('hearing', <Hearing state={s} act={act} />);
-    check('keys', <KeyboardHelp onClose={noop} />);
+    check('keys', <SettingsDialog onClose={noop} initial="keys" />);
     let c = openCampaign(newSim({ seed: 8, months: 12 }));
     c = advanceDays(c, 12 * 30 + 1);
     c = apply(c, { type: 'secondTerm' });

@@ -101,10 +101,13 @@ function withdrawPermit(s: SimState, p: Permit): number {
 export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
 
 export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert = false): void {
-  const item = { day: s.day, tone, text, site };
+  const item: FeedItem = alert ? { day: s.day, tone, text, site, alert: true } : { day: s.day, tone, text, site };
   s.feed.push(item);
   if (s.feed.length > 300) s.feed.splice(0, s.feed.length - 300);
-  if (alert) s.alert = item;
+  if (alert) {
+    s.alert = item;
+    (s.alerts ??= []).push(item);
+  }
 }
 
 // ---------- Lots ----------
@@ -773,6 +776,7 @@ export function advanceDays(prev: SimState, n = 1, opts?: { stopOnHold?: boolean
   applyWorld(prev.world ?? null);
   const s = structuredClone(prev);
   s.alert = null;
+  s.alerts = [];
   setNetwork(s.network.built, s.network.upgrades);
   for (let i = 0; i < n && !s.over; i++) {
     stepDay(s);

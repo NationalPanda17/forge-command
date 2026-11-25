@@ -233,6 +233,20 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: 'finding',
+    title: 'Finding your way around',
+    body: (
+      <ul className="list-disc pl-5">
+        <Li><b>Groups:</b> the tabs sit in six groups. A number on a group or a tab counts what needs you there; red means something is going badly.</Li>
+        <Li><b>Home:</b> the key numbers and their trend, the advisor’s top three suggestions, the rounds against their goal, and what changed since you last looked.</Li>
+        <Li><b>Search:</b> Ctrl K, Cmd K or / jumps to any tab, site, material or town, and runs commands such as pausing, taking the safe advice or hiring engineers.</Li>
+        <Li><b>Inbox:</b> decisions, alerts, bad news and field notes in one list. Click an item to go where it is handled.</Li>
+        <Li><b>The map:</b> rest the pointer on a site for its numbers; right-click or long-press it for quick actions. The selected site is linked to its suppliers in amber and its customers in cyan.</Li>
+        <Li><b>Pause rules:</b> in Settings, choose which kinds of event stop the clock, or pause at every month end.</Li>
+      </ul>
+    ),
+  },
+  {
     id: 'engineers',
     title: 'Engineers and intelligence operations',
     body: (

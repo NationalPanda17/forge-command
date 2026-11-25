@@ -28,9 +28,15 @@ export function saveSim(s: SimState): void {
   }
 }
 
-export function useSim(initial: SimState, autoPause: boolean) {
+/** Whether an update should stop the clock, and why. */
+export type PauseCheck = (next: SimState, prev: SimState) => { text: string; tone: string } | null;
+
+export function useSim(initial: SimState, shouldPause: PauseCheck) {
   const [state, setState] = useState(initial);
   const [speed, setSpeed] = useState<Speed>(0);
+  const [pausedBy, setPausedBy] = useState<{ text: string; tone: string } | null>(null);
+  const check = useRef(shouldPause);
+  check.current = shouldPause;
   /** t: continuous simulated time in days. committed: the last day React has drawn. */
   const sim = useRef({ t: initial.day, committed: initial.day, pending: false });
 
@@ -59,7 +65,9 @@ export function useSim(initial: SimState, autoPause: boolean) {
         c.pending = true;
         setState((s) => {
           const next = advanceDays(s, Math.min(due, 8), { stopOnHold: true });
-          if (next.over || (autoPause && next.alert)) setSpeed(0);
+          const why = next.over ? null : check.current(next, s);
+          if (next.over || why) setSpeed(0);
+          if (why) setPausedBy(why);
           if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) saveSim(next);
           return next;
         });
@@ -68,7 +76,7 @@ export function useSim(initial: SimState, autoPause: boolean) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [speed, autoPause]);
+  }, [speed]);
 
   const act = useCallback((a: SimAction) => setState((s) => apply(s, a)), []);
   const step = useCallback((days: number) => setState((s) => advanceDays(s, days, { stopOnHold: true })), []);
@@ -78,7 +86,8 @@ export function useSim(initial: SimState, autoPause: boolean) {
     return Math.min(c.t, c.committed + 0.999);
   }, []);
 
-  return { state, setState, speed, setSpeed, act, step, clock };
+  const clearPause = useCallback(() => setPausedBy(null), []);
+  return { state, setState, speed, setSpeed, act, step, clock, pausedBy, clearPause };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

@@ -3,7 +3,7 @@
 import type { SimState } from '../sim/types';
 import { coverage } from '../sim/engineers';
 import { Btn } from '../ui/kit';
-import type { PanelId } from './Shell';
+import type { PanelId } from './nav';
 
 export interface Tip {
   id: string;

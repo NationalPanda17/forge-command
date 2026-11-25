@@ -91,6 +91,13 @@ Engineers are scarce: hire them from a national market, pay a premium to keep th
 run. Take the fight to the rival with intelligence operations that can fail or be exposed. The music follows the game,
 every kind of event has its own sound, and field notes explain each system the first time it shows up.
 
+## Find your way around
+
+Tabs sit in six groups, with a count of what needs you in each. Home shows the key numbers with their trend, the
+advisor's top suggestions and what changed since you last looked. Search (Ctrl K) jumps to any tab, site, material or
+town, or runs a command. One inbox gathers decisions, alerts and field notes. Hover a site on the map for its numbers,
+right-click it for quick actions, and choose exactly what pauses the clock.
+
 ## A new country every game
 
 Campaigns and sandboxes are played in a country generated from the seed: its own coastline, mountains, rivers,
@@ -106,9 +113,22 @@ palette, larger text, keyboard shortcuts and named saves come as standard.
 ## Real time
 
 The clock runs at 1 to 8 days a second, or you can step a day or a week. It pauses itself when something important
-happens. Use **Space** to pause and **1** to **4** to set the speed.
+happens. Use **Space** to pause, **1** to **4** to set the speed, and **Ctrl K** or **/** to search. Choose what pauses the clock
+in Settings.
 
 ## Panels
+
+Tabs are grouped:
+- **Home:** Home, Inbox, Watch, Story, Sandbox and Guide.
+- **Production:** Site, Plan, Materials, Industry, Testing and Stockpile.
+- **Supply:** Markets, Build, Logistics, Power and Allies.
+- **People:** Board, Towns, Staff and Policy.
+- **Rival:** Intel and Fight.
+- **Records:** Money, Stats, Courier and Feed.
+
+What each tab does:
+- **Home:** key numbers and trends, what needs you now, what changed since you last looked, and what is coming.
+- **Inbox:** decisions, alerts, bad news and field notes in one list.
 - **Watch:** what needs you, most urgent first.
 - **Site:** the inspector for any site, with your controls on your own plants.
 - **Plan:** forecasts and the weakest links in the chain.

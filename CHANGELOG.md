@@ -1,5 +1,56 @@
 # Changelog
 
+## 14.0.0: a game that is easier to find your way around
+
+### Grouped tabs
+- **Six groups** replace the row of 25 tabs: Home, Production, Supply, People, Rival and Records, each with its own tabs.
+- **Badges** on each group and tab count what needs you there: decision cards, unread mail, and the watch list's
+  items, placed on the tab where each fix lives. Red means something is going badly.
+- **Each group remembers** the tab you last used in it.
+
+### Home
+- **The key numbers:** readiness, treasury and confidence, with their change this month and a trend line for the
+  last year.
+- **Needs you now:** the advisor's top three suggestions, each with a "Do it" or "Show me" button, plus your decisions
+  and your inbox.
+- **Rounds against the one-year goal,** worst first; click one to trace it.
+- **Since you last looked:** the change in money, readiness, confidence and the rounds that moved most, and the
+  important events by kind, each a button to the tab that handles them.
+- **Coming up:** the advisor's plan for the next three months.
+
+### Search and commands
+- **Ctrl K, Cmd K, / or the Search button** opens a search box. Type to jump to any tab, site, material or town.
+- **Commands:**
+  - pause, the speeds, or a week ahead;
+  - take the safe advice, or hire engineers to the need;
+  - save, open settings, the pause rules or the keyboard shortcuts;
+  - turn music or sounds on and off, or go back to the main menu.
+
+### The inbox
+- **One list,** newest first: decision cards, alerts, bad news and field notes. Unread items are marked, and Home's
+  group shows how many.
+- **Filters** for decisions, alerts, bad news and notes, and **Mark all read**. Leaving the inbox marks it read.
+- **Click any item** to go to the site or the tab that deals with it.
+
+### The map
+- **Hover cards:** rest the pointer on any site to see what it is, how it is doing, what its lines make each day and
+  what limits them, and its crew's morale and fatigue.
+- **Quick actions:** right-click, long-press or press the menu key on a site to inspect it, trace what it makes, or:
+  - at your plants: expand or restart a line, vet the staff, or fit backup generators;
+  - at suppliers: qualify them or invest in them.
+- **Supply chains:** the selected site is linked to its suppliers (amber) and its customers (cyan).
+
+### Pause rules and Settings
+- **Choose what pauses the clock,** by kind of event:
+  - decisions and hearings, crises, the rival;
+  - spies, hackers and sabotage; strikes and towns; power;
+  - accidents and disruptions, money and the Committee;
+  - good news, and everything else.
+- **Pause at the end of every month** is also an option.
+- **Good news** no longer pauses the clock by default.
+- **One Settings dialog** gathers the pause rules, field notes, sound, display and the keyboard shortcuts. Press
+  Settings or "?".
+
 ## 13.0.0: engineers, operations against the rival, music that follows the game, and field notes
 
 ### Engineers and academies

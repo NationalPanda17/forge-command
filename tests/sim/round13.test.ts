@@ -15,7 +15,7 @@ import { moodFor } from '../../src/ui/music';
 import { TIPS, TipCard, nextTip } from '../../src/game/Tips';
 import StaffPanel from '../../src/game/StaffPanel';
 import IntelPanel from '../../src/game/IntelPanel';
-import { KeyboardHelp } from '../../src/game/Options';
+import { SettingsDialog } from '../../src/game/Options';
 
 const start = (seed = 1) => openCampaign(newSim({ seed }));
 const at60 = (seed = 1): SimState => ({ ...advanceDays(start(seed), 60), treasury: 5000 });
@@ -309,7 +309,7 @@ describe('panels', () => {
   });
 
   it('the help dialog has volume sliders, and a tip card renders', () => {
-    const html = clean(renderToString(createElement(KeyboardHelp, { onClose: noop, audio: { prefs: { sfx: true, music: false, volume: 0.5, sfxVolume: 0.7 }, set: noop } })));
+    const html = clean(renderToString(createElement(SettingsDialog, { onClose: noop, initial: 'sound', audio: { prefs: { sfx: true, music: false, volume: 0.5, sfxVolume: 0.7 }, set: noop } })));
     expect(html).toMatch(/Music volume/);
     expect(html).toMatch(/Sounds volume/);
     const tip = clean(renderToString(createElement(TipCard, { tip: TIPS[0], onShow: noop, onDismiss: noop, onOff: noop })));
