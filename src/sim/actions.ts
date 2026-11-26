@@ -193,6 +193,7 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'tipSeen':
       return (s.tipsSeen ?? []).includes(a.id) ? 'Already seen.' : null;
     case 'setRun':
+      if (!['idle', 'single', 'normal', 'surge'].includes(a.run)) return 'Unknown shift pattern.';
       if (def!.owner !== 'state') return 'You can only run your own plants.';
       if (site!.mothballed && a.run !== 'idle') return 'Reopen the plant first.';
       if (a.run === 'surge' && surgeBanned(s, a.site)) return 'A union deal rules out round-the-clock shifts here for now.';
@@ -219,6 +220,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (site!.status === 'closed') return `${def!.name} has closed.`;
       if (!site!.qualified) return `${def!.name} is not qualified to supply your arsenals yet.`;
       if (!def!.processes.some((p) => RECIPES[p.recipe].output === a.material || RECIPES[p.recipe].extra?.[a.material])) return `${def!.name} does not make that.`;
+      if (!(a.months in CONTRACT_DISCOUNT)) return 'Contracts run for 12, 24 or 36 months.';
       return a.perDay > 0 && Number.isFinite(a.perDay) ? null : 'Quantity must be above zero.';
     }
     case 'cancelContract':
@@ -299,7 +301,8 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (def!.owner !== 'state' || !def!.crew) return 'Only your own plants.';
       return a.perMonth >= 0 && a.perMonth <= 60 ? null : 'Between 0 and 60 a month.';
     case 'programme':
-      if (!s.lines[a.line].unlocked) return 'That line is not in production.';
+      if (a.years !== 3 && a.years !== 5) return 'Programmes run for 3 or 5 years.';
+      if (!s.lines[a.line]?.unlocked) return 'That line is not in production.';
       if (s.programmes.some((p) => p.line === a.line)) return 'A programme for that round is already running.';
       if (s.programmes.length >= 3) return 'The Committee will fund three programmes at most.';
       return monthlyCapacity(s, a.line) >= 1 ? null : 'Your arsenals cannot make that yet.';
@@ -326,7 +329,8 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'handover':
       return s.hotseat?.handover ? null : 'No handover waiting.';
     case 'storyBriefed':
-      return s.story?.briefing !== null && s.story !== null ? null : 'No briefing waiting.';
+      // A briefing is waiting only when there is a story and its briefing is set (not null and not missing).
+      return s.story && s.story.briefing !== null && s.story.briefing !== undefined ? null : 'No briefing waiting.';
     case 'found':
       return foundBlock(s, a.plot, a.recipe);
     case 'inhouse':
@@ -340,6 +344,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (op.kind === 'endCrisis') return s.crisis ? null : 'No crisis to end.';
       if (op.kind === 'disrupt') return s.sites[op.site]?.processes.length ? null : 'That site makes nothing.';
       if (op.kind === 'finishResearch') return s.strategy.research.active ? null : 'Nothing is being researched.';
+      if (op.kind === 'money') return Number.isFinite(op.amount) && Math.abs(op.amount) <= 1e6 ? null : 'Enter an amount up to $1,000,000M either way.';
       return null;
     }
   }

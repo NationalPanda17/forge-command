@@ -1,6 +1,6 @@
 // The advisor: the next best moves, each with a button that does it or takes you to it.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { advise, diagnose, safeAdvice, threeMonthPlan, type Advice, type AdvicePanel } from '../sim/advisor';
+import { SAFE_RESERVE, advise, diagnose, safeAdvice, threeMonthPlan, type Advice, type AdvicePanel } from '../sim/advisor';
 import { MATERIALS } from '../sim/world';
 import { money, pct } from '../ui/format';
 import { monthLabel2 } from './useSim';
@@ -41,6 +41,8 @@ export default function AdvisorCard({
     }
   }, [state]);
   const items = useMemo(() => advise(snap), [snap]);
+  // The count and the tooltip use the snapshot; a click works out the steps afresh from the game as it is now.
+  const safe = useMemo(() => safeAdvice(snap), [snap]);
   const [planOpen, setPlanOpen] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const plan = useMemo(() => (planOpen ? threeMonthPlan(snap) : []), [snap, planOpen]);
@@ -54,9 +56,9 @@ export default function AdvisorCard({
         <span className="flex flex-wrap gap-1">
           <Btn
             kind="primary"
-            why={items.some((a) => a.action) ? null : 'Nothing to take just now.'}
+            why={safe.length ? null : 'Nothing to take just now.'}
             onClick={() => safeAdvice(state).forEach((a) => act(a))}
-            title={`Every suggestion with a button, in order, as long as the treasury stays above your reserve of ${money(state.automation?.reserve ?? 0)} (Staff tab)`}
+            title={`What your chief of staff would do now: answer the Board and any hearing, staff and supply the plants, start research and set the lines, keeping the treasury above ${money(Math.max(state.automation?.reserve ?? 0, SAFE_RESERVE))} (${safe.length} step${safe.length === 1 ? '' : 's'})`}
           >
             Take the safe advice
           </Btn>

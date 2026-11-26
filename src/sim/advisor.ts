@@ -5,7 +5,7 @@ import { MOOD_WORD, communityTowns, permitHeld } from './communities';
 import { attackOdds } from './cyber';
 import { GRID_REGIONS, blackoutOdds, regionPlants } from './energy';
 import { unionTowns } from './unions';
-import type { Stance } from './automation';
+import { AUTO_AREA_IDS, proposals, type Stance } from './automation';
 import { balances, bottleneck, forecast, monthsTo } from './analytics';
 import { liveRoutes, routeCap } from './build';
 import { DEVELOPMENTS, COUNTER_NAMES } from './rival';
@@ -319,18 +319,33 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
   }
 }
 
-/** Advice you can take in one go: actions that pass, in order, without taking the treasury below the reserve. */
-export function safeAdvice(s: SimState, reserve = s.automation?.reserve ?? 0): SimAction[] {
+/** The reserve safe advice keeps when no chief of staff has set one: the same as the staff's default. */
+export const SAFE_RESERVE = 300;
+
+/**
+ * The safe advice: what your chief of staff would do right now in every area (decisions and the hearing, staffing,
+ * supply, research, production and the rest), in order, never taking the treasury below the reserve.
+ *
+ * It is built from the same rules the autopilot plays by, which balance runs show finish a Normal term well; the
+ * advisor's own list (advise) explains and ranks, but on its own it overspends and leaves hearings and cards to their
+ * defaults.
+ */
+export function safeAdvice(s: SimState, reserve = Math.max(s.automation?.reserve ?? 0, SAFE_RESERVE)): SimAction[] {
+  if (s.over) return [];
   let t = s;
   const out: SimAction[] = [];
-  // The top suggestions only: this runs every game day while the advisor is on screen.
-  for (const a of advise(s, 8)) {
-    // Operations can be exposed: never "safe", always your own call.
-    if (!a.action || a.action.type === 'intelOp' || validate(t, a.action)) continue;
-    const next = apply(t, a.action);
-    if (next.treasury < reserve && next.treasury < t.treasury) continue;
-    out.push(a.action);
-    t = next;
+  const stance: Stance = s.automation?.stance ?? 'balanced';
+  for (const area of AUTO_AREA_IDS) {
+    for (const a of proposals(t, area, reserve, stance)) {
+      // Operations can be exposed: never "safe", always your own call.
+      if (a.type === 'intelOp' || validate(t, a)) continue;
+      // Two-player games: only your own plants.
+      if ('site' in a && controlBlock(t, a.site as string)) continue;
+      const next = apply(t, a);
+      if (next.treasury < reserve && next.treasury < t.treasury) continue;
+      out.push(a);
+      t = next;
+    }
   }
   return out;
 }

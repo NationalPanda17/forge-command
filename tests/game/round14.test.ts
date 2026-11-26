@@ -79,7 +79,7 @@ describe('pause rules', () => {
     const good = { day: 1, tone: 'good' as const, text: 'Research complete: x.', alert: true };
     const strike = { day: 1, tone: 'bad' as const, text: 'Strike at X.', alert: true };
     expect(pauseFor(DEFAULT_PAUSE, [good], false)).toBeNull();
-    expect(pauseFor(DEFAULT_PAUSE, [good, strike], false)).toBe(strike);
+    expect(pauseFor(DEFAULT_PAUSE, [good, strike], false)).toEqual({ ...strike, more: 0 });
     expect(pauseFor({ ...DEFAULT_PAUSE, kinds: { ...DEFAULT_PAUSE.kinds, labour: false } }, [strike], false)).toBeNull();
     expect(pauseFor({ ...DEFAULT_PAUSE, on: false }, [strike], true)).toBeNull();
     expect(pauseFor({ ...DEFAULT_PAUSE, monthEnd: true }, [], true)?.text).toMatch(/month is over/);

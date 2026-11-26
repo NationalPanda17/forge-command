@@ -23,7 +23,7 @@ import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
 import { countryTitle, tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
-import { sfx, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
+import { play, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
 import { loadAudioPrefs, moodFor, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
 import PlanPanel from './PlanPanel';
@@ -105,10 +105,25 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
   const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
   // Any change of speed by the player, or a step, ends the reason the clock last stopped.
+  // The speed when the last control was pressed, so a press can tell pause from resume from a speed change.
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
+  // Every button in the game gives a quiet tick (the clock's own controls have their own sounds).
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const b = (e.target as Element | null)?.closest?.('button');
+      if (!b || b.disabled || b.closest('[aria-label="Game speed"]') || b.classList.contains('fc-clock-pause')) return;
+      play('click');
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, []);
   const setSpeed = useCallback(
     (sp: Speed) => {
       clearPause();
-      rawSetSpeed(held ? 0 : sp);
+      const next = held ? 0 : sp;
+      if (next !== speedRef.current) play(next === 0 ? 'pause' : speedRef.current === 0 ? 'resume' : 'speed');
+      rawSetSpeed(next);
     },
     [held, rawSetSpeed, clearPause],
   );
@@ -246,23 +261,22 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     for (const f of items) {
       const id = soundFor(f.text, f.tone);
       if (id) {
-        sfx[id]();
-        soundAt.current = performance.now();
+        if (play(id)) soundAt.current = performance.now();
         break;
       }
     }
   }, [state.feed]);
   useEffect(() => {
     // The event's own sound already says it.
-    if (state.alert && performance.now() - soundAt.current > 250) sfx.alert();
+    if (state.alert && performance.now() - soundAt.current > 250) play('alert');
   }, [state.alert]);
   const months = useRef(state.history.length);
   useEffect(() => {
-    if (state.history.length > months.current) sfx.month();
+    if (state.history.length > months.current) play('month');
     months.current = state.history.length;
   }, [state.history.length]);
   useEffect(() => {
-    if (toast.length) sfx.fanfare();
+    if (toast.length) play('fanfare');
   }, [toast]);
 
   // The map: what is built or building, and brief rings where things just happened.
@@ -382,7 +396,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [palette ? state : null, palette, speed, held, unread, audioPrefs]);
 
-  const banner = pausedBy as { text: string; tone: string; site?: string } | null;
+  const banner = pausedBy as { text: string; tone: string; site?: string; more?: number } | null;
 
   // One live region, always on the page, so screen readers hear what stopped the clock, a crisis, and achievements.
   const [announce, setAnnounce] = useState('');
@@ -584,6 +598,11 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         <div className={`fc-drop panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
           <span>
             Paused: {tr(banner.text)}
+            {(banner.more ?? 0) > 0 && (
+              <button type="button" className="ml-2 text-ops-dim underline decoration-dotted underline-offset-2 hover:text-ops-text" onClick={() => setPanel('inbox')}>
+                +{banner.more} more in the inbox
+              </button>
+            )}
           </span>
           <span className="flex gap-1">
             {banner.site && <Btn onClick={() => select(banner.site!)}>Show</Btn>}

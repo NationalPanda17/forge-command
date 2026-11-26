@@ -21,7 +21,7 @@ export const TUTORIAL_SKIPPED = 100;
 export const STEPS: Step[] = [
   {
     title: 'Welcome, Director',
-    text: 'You run the munitions industry of Aldmere, from the mines to the launchers. Time is paused. Press the 1× button at the top, or Space, to start the clock. The tabs are in groups; a number on a group shows how many things there need you, and Search (or Ctrl K) finds any tab, site or command.',
+    text: 'You run the munitions industry of Aldmere, from the mines to the launchers. Your job: keep a year’s supply of every round in reserve, the Committee’s target, and keep the Defence Committee’s confidence (top bar). If confidence falls to zero you are dismissed. Time is paused: press the round play button in the clock at the top right, or Space, to start it; the bars beside it set the speed. A number on a tab group shows how many things there need you, and Search (Ctrl K) finds any tab, site or command.',
     done: (_s, ui) => ui.speed > 0,
   },
   {
@@ -66,7 +66,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Keep watch',
-    text: 'The Watch tab, under Home, lists what needs you, most urgent first, with the advisor’s next best moves above it. “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
+    text: 'The Home tab shows what needs you now and the advisor’s next best moves; “Take the safe advice” does what your chief of staff would, within your reserve, and “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
     done: (s, _ui, start) => s.history.length >= start.history.length + 3 || s.history.length >= 3,
   },
 ];

@@ -698,7 +698,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   intelMonth(s);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
-  if ((s.history.length + 1) % 12 === 0 && s.day < s.days) openHearing(s, s.appropriation, feed);
+  // An endless sandbox has no last month, so it never skips a hearing (its nominal end date is only a placeholder).
+  if ((s.history.length + 1) % 12 === 0 && (s.settings.endless || s.day < s.days)) openHearing(s, s.appropriation, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
   // Each later term, the Committee expects a little more.
   const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty] + 0.02 * Math.min(3, (s.term ?? 1) - 1);
