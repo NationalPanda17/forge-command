@@ -49,7 +49,8 @@ export interface PauseRules {
 const KEY = 'forge-command-pause';
 export const DEFAULT_PAUSE: PauseRules = {
   on: true,
-  kinds: { decision: true, crisis: true, rival: true, security: true, labour: true, power: true, disruption: true, money: true, good: false, other: true },
+  // Minor news ("everything else") no longer stops the clock by default: it was most of the interruptions at speed.
+  kinds: { decision: true, crisis: true, rival: true, security: true, labour: true, power: true, disruption: true, money: true, good: false, other: false },
   monthEnd: false,
 };
 export function loadPauseRules(): PauseRules {
@@ -69,13 +70,16 @@ export function savePauseRules(r: PauseRules): void {
   }
 }
 
+/** The event that stops the clock, and how many other pausing events arrived with it (they are in the log). */
+export type PauseHit = (FeedItem | { text: string; tone: 'info'; day: number }) & { more?: number };
+
 /** The event that should stop the clock, if any, among those that just happened. */
-export function pauseFor(rules: PauseRules, alerts: FeedItem[], monthEnded: boolean): FeedItem | { text: string; tone: 'info'; day: number } | null {
+export function pauseFor(rules: PauseRules, alerts: FeedItem[], monthEnded: boolean): PauseHit | null {
   if (!rules.on) return null;
   // The worst first: a bad event over a warning over good news.
   const rank = { bad: 0, warn: 1, info: 2, good: 3 } as const;
-  const hit = [...alerts].sort((a, b) => rank[a.tone] - rank[b.tone]).find((a) => rules.kinds[eventKind(a.text, a.tone)]);
-  if (hit) return hit;
+  const pausing = [...alerts].sort((a, b) => rank[a.tone] - rank[b.tone]).filter((a) => rules.kinds[eventKind(a.text, a.tone)]);
+  if (pausing.length) return { ...pausing[0], more: pausing.length - 1 };
   if (rules.monthEnd && monthEnded) return { text: 'The month is over.', tone: 'info', day: alerts[0]?.day ?? 0 };
   return null;
 }

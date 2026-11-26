@@ -1,5 +1,32 @@
 # Changelog
 
+## 16.1.0: fix and stabilise
+
+The first release from the studio-wide review: the bugs and traps it found, fixed before the bigger work begins.
+
+### Fixed
+- **A long endless sandbox no longer crashes for good.** Once every private mine, quarry and well had closed (around
+  year 20), the monthly events crashed on every tick, and reloading crashed again. Accidents and quality escapes now
+  simply do not happen when there is no site left for them; the same guard covers allies' requests and export offers.
+- **"Take the safe advice" is now safe.** It used to leave the budget hearing and the Board's cards to their defaults
+  and run up monthly bills, so a player who followed it on Normal was dismissed in three games of five, and in debt.
+  It is now what your chief of staff would do right now in every area, within a $300M reserve. In balance runs a
+  player who takes it each week finishes every Normal term (score 86, up from 41) and four Hard terms in five.
+- **Endless sandboxes keep their yearly budget hearing** past year 100.
+- **The tutorial** now says what the job is and how it is lost, starts the clock with the new pause button and speed
+  bars (it still told you to press "1×"), and ends on Home, where "Needs you now" lives.
+- **Malformed actions are turned down**: unknown shift patterns, contract lengths and programme lengths, sandbox money
+  that is not a number, and a story briefing with no story. These could only come from an edited save or a script.
+
+### Smoother
+- **Home no longer re-runs the advisor on every redraw.** Its advice, plan and changes are worked out once a second,
+  which was about half of the game screen's work on each tick.
+- **Fewer interruptions.** "Everything else" no longer pauses the clock by default, and the pause banner says how many
+  other events arrived at the same moment, with a link to the inbox.
+- **Sound that keeps up with the clock.** The month chime plays at most every twenty seconds, events have a cooldown,
+  and a lesser sound never cuts across a weightier one. Buttons tick quietly, pausing and resuming have a tape-stop
+  sound, and changing speed ratchets.
+
 ## 16.0.0: Industrial Command
 
 A new look, in the tradition of the great strategy games: steel, bronze and amber, a command bar across the top, and

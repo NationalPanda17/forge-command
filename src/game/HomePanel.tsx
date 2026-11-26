@@ -1,5 +1,6 @@
 // Home: the whole game on one screen. The key numbers and their trend, what needs you now, what is coming, and what
 // changed since you last looked.
+import { useMemo } from 'react';
 import { validate, type SimAction } from '../sim/actions';
 import { advise, threeMonthPlan } from '../sim/advisor';
 import { nationalStock, readiness, reserveTarget } from '../sim/selectors';
@@ -88,9 +89,11 @@ export default function HomePanel({
     .filter((l) => state.lines[l].unlocked && reserveTarget(state, l) > 0)
     .map((l) => ({ line: l, level: nationalStock(state, l) / reserveTarget(state, l) }))
     .sort((a, b) => a.level - b.level);
-  const advice = advise(state, 3);
-  const plan = threeMonthPlan(state).slice(0, 4);
-  const ch = changesSince(state, seen);
+  // The advice and the plan try actions on copies of the game, so they are worked out only when the (once-a-second)
+  // state Home is given changes, not on every redraw of the game screen.
+  const advice = useMemo(() => advise(state, 3), [state]);
+  const plan = useMemo(() => threeMonthPlan(state).slice(0, 4), [state]);
+  const ch = useMemo(() => changesSince(state, seen), [state, seen]);
   const evKinds = Object.entries(ch.events) as [EventKind, number][];
   return (
     <div className="space-y-4 p-3 text-[11px]">

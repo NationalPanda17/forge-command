@@ -60,7 +60,17 @@ function noise(start: number, dur: number, freq: number, gain = 0.04): void {
 }
 
 export const sfx = {
-  click: () => tone(880, 0, 0.05, 'triangle', 0.025),
+  /** A control pressed: a short, dry tick. */
+  click: () => tone(1250, 0, 0.035, 'triangle', 0.014),
+  /** The clock stops: a falling tape-stop. */
+  pause: () => tone(330, 0, 0.22, 'triangle', 0.03, 140),
+  /** The clock starts: the same, rising. */
+  resume: () => tone(170, 0, 0.18, 'triangle', 0.03, 360),
+  /** Speed changed: a gear ratchet, one tick for each step. */
+  speed: () => {
+    tone(700, 0, 0.03, 'square', 0.012);
+    tone(820, 0.045, 0.03, 'square', 0.012);
+  },
   month: () => {
     tone(523, 0, 0.18, 'sine');
     tone(659, 0.09, 0.22, 'sine');
@@ -121,6 +131,39 @@ export const sfx = {
 };
 
 export type SoundId = keyof typeof sfx;
+
+/** How weighty each sound is: a lesser sound never cuts across a weightier one just played. */
+const PRIORITY: Record<SoundId, number> = {
+  click: 0, speed: 1, pause: 1, resume: 1, month: 2, done: 3, success: 3, decision: 4, failure: 4, crowd: 5, spy: 5, cyber: 5, fanfare: 5, alert: 6, blackout: 7, rival: 8,
+};
+/** The least time, in real milliseconds, before the same sound plays again. */
+const COOLDOWN: Partial<Record<SoundId, number>> = { click: 40, speed: 60, pause: 150, resume: 150, month: 20000 };
+const EVENT_COOLDOWN = 1500;
+/** After an event sound, lesser sounds wait this long (so a burst of news at 8× is one sound, not a chord). */
+const HOLD = 700;
+
+const lastPlayed: Partial<Record<SoundId, number>> = {};
+let held: { until: number; priority: number } = { until: 0, priority: -1 };
+
+/**
+ * Plays a sound unless it played too recently, or a weightier sound has just played. Returns whether it played.
+ * Everything should go through here rather than calling sfx directly; `now` is for tests.
+ */
+export function play(id: SoundId, now: number = typeof performance === 'undefined' ? Date.now() : performance.now()): boolean {
+  const wait = COOLDOWN[id] ?? EVENT_COOLDOWN;
+  if (now - (lastPlayed[id] ?? -Infinity) < wait) return false;
+  if (now < held.until && PRIORITY[id] < held.priority && PRIORITY[id] >= 2) return false;
+  lastPlayed[id] = now;
+  if (PRIORITY[id] >= 2) held = { until: now + HOLD, priority: PRIORITY[id] };
+  sfx[id]();
+  return true;
+}
+
+/** Clears the cooldowns (tests, or a new game). */
+export function resetSounds(): void {
+  for (const k of Object.keys(lastPlayed)) delete lastPlayed[k as SoundId];
+  held = { until: 0, priority: -1 };
+}
 
 /** Which sound a feed line calls for, if any. */
 export function soundFor(text: string, tone: string): SoundId | null {

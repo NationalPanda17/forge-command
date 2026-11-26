@@ -137,9 +137,10 @@ export function livingMonth(s: SimState, feed: Feed): void {
   const open = (k: string) => s.strategy.decisions.some((d) => d.kind === k);
 
   // An ally asks for help.
-  if (!calm && !open('allyRequest') && rand(s) < 0.07) {
+  const airOpen = AIR_LINES.filter((l) => s.lines[l].unlocked);
+  if (!calm && !open('allyRequest') && rand(s) < 0.07 && airOpen.length) {
     const ally = pick(s, ALLY_IDS);
-    const line = pick(s, AIR_LINES.filter((l) => s.lines[l].unlocked));
+    const line = pick(s, airOpen);
     const qty = Math.max(10, Math.round(nationalDailyDraw(s, line) * 40));
     const price = Math.round(MATERIALS[line].price * s.priceIndex * 1.1 * 1e4) / 1e4;
     s.strategy.decisions.push({
@@ -184,8 +185,9 @@ export function livingMonth(s: SimState, feed: Feed): void {
     }
   }
   // Export customers.
-  if (!calm && !open('export') && s.exports.length < 2 && rand(s) < 0.06 * (hasPolicy(s, 'exportDrive') ? 2 : 1)) {
-    const line = pick(s, FINISHED.filter((l) => s.lines[l as LineId].unlocked) as LineId[]);
+  const forSale = FINISHED.filter((l) => s.lines[l as LineId].unlocked) as LineId[];
+  if (!calm && !open('export') && s.exports.length < 2 && rand(s) < 0.06 * (hasPolicy(s, 'exportDrive') ? 2 : 1) && forSale.length) {
+    const line = pick(s, forSale);
     const months = pick(s, [6, 9, 12]);
     const qty = Math.max(20, Math.round(nationalDailyDraw(s, line) * DAYS_PER_MONTH * months * 0.25));
     const price = Math.round(MATERIALS[line].price * s.priceIndex * 1.25 * (hasPolicy(s, 'exportDrive') ? 1.1 : 1) * 1e4) / 1e4;
@@ -218,7 +220,10 @@ export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
   if (s.chains.some((c) => c.kind === kind)) return;
   if (kind === 'labour') unionClaim(s, feed);
   if (kind === 'quality') {
-    const def = pick(s, SITES.filter((d) => d.owner === 'private' && d.kind === 'components' && s.sites[d.id].qualified && s.sites[d.id].status === 'active'));
+    // No qualified, working supplier left (late in a long game): nothing to go wrong.
+    const pool = SITES.filter((d) => d.owner === 'private' && d.kind === 'components' && s.sites[d.id].qualified && s.sites[d.id].status === 'active');
+    if (!pool.length) return;
+    const def = pick(s, pool);
     const m = RECIPES[def.processes[0].recipe].output;
     const c: Chain = { id: s.nextId++, kind, site: def.id, stage: 0, due: s.day + 45, material: m };
     s.chains.push(c);
@@ -240,7 +245,10 @@ export function startChain(s: SimState, kind: Chain['kind'], feed: Feed): void {
     feed(s, 'warn', `Quality escape at ${def.name}. A decision is waiting.`, def.id, true);
   }
   if (kind === 'safety') {
-    const def = pick(s, SITES.filter((d) => d.owner === 'private' && ['mine', 'quarry', 'well'].includes(d.kind) && s.sites[d.id].status === 'active'));
+    // Every private mine, quarry and well may have closed in a long game: then there is no site to have an accident.
+    const pool = SITES.filter((d) => d.owner === 'private' && ['mine', 'quarry', 'well'].includes(d.kind) && s.sites[d.id].status === 'active');
+    if (!pool.length) return;
+    const def = pick(s, pool);
     const site = s.sites[def.id];
     site.disruptionDays = Math.max(site.disruptionDays, 21);
     site.disruptionFactor = Math.min(site.disruptionFactor, 0.4);
