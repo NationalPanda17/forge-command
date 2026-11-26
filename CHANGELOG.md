@@ -1,5 +1,56 @@
 # Changelog
 
+## 15.1.0: ready for players
+
+A release about polish, not new systems: a smoother first visit, a game that plays properly on a phone, and saves
+that cannot be lost by accident.
+
+### A better first visit
+- **New players are pointed at the tutorial.** On a first visit the title screen opens on the tutorial, with a short
+  note and a way to skip straight to a campaign.
+- **Version, privacy and feedback** at the foot of the title screen: no account and no tracking, games saved in this
+  browser only, and a link to report a problem.
+- **A finished term can be reopened** from the title screen, so its report and the offer of a second term are never
+  lost to a reload.
+- **The Continue button names the game** it continues: story, tutorial, two-player game, sandbox or campaign.
+
+### Phones and small screens
+- **A compact top bar:** the season and the sound and music switches (also in Settings) step aside on a phone, so
+  the map starts much higher up the screen.
+- **The map fits the screen:** its frame is sized to the country, and the map key folds away on narrow screens.
+- **No text is cut off at the map's edge:** site labels, sea and upland names and foreign suppliers stay on the
+  sheet, the zoom buttons sit in a row clear of the country, and the scale bar is shorter.
+- **Bigger touch targets:** every button and tab is at least 44 pixels tall on a touch screen.
+
+### Saves you can trust
+- **Saved the moment you start, and whenever the page is hidden or closed,** not only at the end of each month: a
+  decision made mid-month is no longer lost to a closed tab or a phone that drops the page.
+- **A warning when the browser will not save,** with a button to download the game as a file.
+- **Long games stay small:** months more than two years back are stored rounded, and the per-plant detail of months
+  more than ten years back is dropped.
+- **A failed named save no longer leaves an invisible file** taking up space.
+- **If a tab breaks,** the rest of the game keeps running, with a way back to Home. If the whole screen breaks, the
+  game is saved as it stood a moment before.
+- **The offline copy** of the game is only ever replaced by a good page.
+
+### Fixes
+- **Story mode:** a director dismissed on the last day of a chapter no longer gets a briefing that cannot be closed.
+- **The watch list** no longer reports the open building plots as "closed" from the first day.
+- **Number boxes** no longer accept an infinite quantity.
+
+### Faster and kinder to batteries
+- **The game screen and rarely opened tabs load when needed,** so the title screen appears sooner: the largest
+  file is now about 310 kB, down from 620 kB.
+- **The map no longer redraws every marker and label on every tick,** and pinch or wheel zooming reuses its
+  spacing instead of working it out again on every frame.
+- **The map's moving lines stop while the clock is stopped,** and panels no longer use a background blur.
+
+### Accessibility
+- **Dialogs** (hearings, briefings, the term report, handovers and Settings) take the focus when they open, keep Tab
+  inside, and hand the focus back when they close; the game behind them is set aside for screen readers.
+- **Announcements:** what paused the clock, a crisis and achievements are read out by screen readers.
+- **The pause button has a name** for screen readers, and the map's zoom readout is easier to read.
+
 ## 15.0.0: doctrine, the people who run your plants, and a legacy
 
 ### Doctrine

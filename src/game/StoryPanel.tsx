@@ -1,4 +1,5 @@
 // The story: this chapter's goals, how earlier chapters went, and the briefing that opens each one.
+import { DialogFocus } from '../ui/DialogFocus';
 import type { SimAction } from '../sim/actions';
 import { CHAPTERS, CHAPTER_DAYS, CHARACTERS, chapterGoals } from '../sim/story';
 import type { SimState } from '../sim/types';
@@ -6,11 +7,12 @@ import { Btn } from '../ui/kit';
 
 export function Briefing({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   const i = state.story?.briefing;
-  if (i === null || i === undefined) return null;
+  if (i === null || i === undefined || state.over) return null;
   const ch = CHAPTERS[i];
   const who = CHARACTERS[ch.speaker];
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="brief-title">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/90 p-3" role="dialog" aria-modal="true" aria-labelledby="brief-title">
+      <DialogFocus labelledBy="brief-title" />
       <div className="panel mx-auto mt-[8vh] max-w-xl space-y-3 p-4 text-[12px]">
         <div className="label text-ops-amber">
           Chapter {i + 1} of {CHAPTERS.length}

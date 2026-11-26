@@ -1,4 +1,5 @@
 // Display options and keyboard help, used on the title screen and in the game.
+import { DialogFocus } from '../ui/DialogFocus';
 import { useState } from 'react';
 import type { AudioPrefs } from '../ui/music';
 import { DEFAULT_PAUSE, EVENT_KINDS, EVENT_KIND_IDS, type PauseRules } from './events';
@@ -145,6 +146,7 @@ export function SettingsDialog({
   const [tab, setTab] = useState<SettingsTab>(tabs.some((t) => t.id === initial) ? initial : tabs[0].id);
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/85 p-3" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={onClose}>
+      <DialogFocus labelledBy="settings-title" />
       <div className="fc-zoom panel mx-auto mt-[8vh] max-w-lg p-4 text-[12px]" onClick={(e) => e.stopPropagation()}>
         <h2 id="settings-title" className="mb-2 font-sans text-[18px] font-semibold text-white">
           Settings

@@ -219,7 +219,7 @@ export function validate(s: SimState, a: SimAction): string | null {
       if (site!.status === 'closed') return `${def!.name} has closed.`;
       if (!site!.qualified) return `${def!.name} is not qualified to supply your arsenals yet.`;
       if (!def!.processes.some((p) => RECIPES[p.recipe].output === a.material || RECIPES[p.recipe].extra?.[a.material])) return `${def!.name} does not make that.`;
-      return a.perDay > 0 ? null : 'Quantity must be above zero.';
+      return a.perDay > 0 && Number.isFinite(a.perDay) ? null : 'Quantity must be above zero.';
     }
     case 'cancelContract':
       return s.contracts.some((c) => c.id === a.contract) ? null : 'No such contract.';
@@ -275,7 +275,7 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'appointManager':
       return validateCast(s, a);
     case 'openTender':
-      if (!(a.perDay > 0)) return 'Quantity must be above zero.';
+      if (!(a.perDay > 0) || !Number.isFinite(a.perDay)) return 'Quantity must be above zero.';
       if (!bidders(s, a.material).length) return 'No qualified supplier makes that. Qualify one first.';
       if (s.tenders.some((t) => t.material === a.material)) return 'A tender for that is already open.';
       return funds(s, TENDER_COST);

@@ -20,11 +20,16 @@ export function loadSim(): SimState | null {
   }
 }
 
-export function saveSim(s: SimState): void {
+/** The game the player is in, kept so it can still be saved if the screen breaks. */
+export let lastPlayed: SimState | null = null;
+
+/** Writes the autosave; false if the browser refused (storage full, or private browsing that allows none). */
+export function saveSim(s: SimState): boolean {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    return true;
   } catch {
-    /* storage may be full or unavailable */
+    return false;
   }
 }
 
@@ -41,6 +46,26 @@ export function useSim(initial: SimState, shouldPause: PauseCheck) {
   const sim = useRef({ t: initial.day, committed: initial.day, pending: false });
 
   useEffect(() => setState(initial), [initial]);
+
+  // Saved at once, and again whenever the page is hidden or closed: a decision made mid-month is never lost to a
+  // closed tab or a phone that drops the page in the background.
+  const latest = useRef(state);
+  latest.current = state;
+  lastPlayed = state;
+  const [saveFailed, setSaveFailed] = useState(false);
+  useEffect(() => {
+    setSaveFailed(!saveSim(latest.current));
+    const flush = () => setSaveFailed(!saveSim(latest.current));
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
 
   // Each new state: the simulation has caught up with the clock.
   useEffect(() => {
@@ -68,7 +93,7 @@ export function useSim(initial: SimState, shouldPause: PauseCheck) {
           const why = next.over ? null : check.current(next, s);
           if (next.over || why) setSpeed(0);
           if (why) setPausedBy(why);
-          if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) saveSim(next);
+          if (Math.floor(next.day / 30) !== Math.floor(s.day / 30)) setSaveFailed(!saveSim(next));
           return next;
         });
       }
@@ -87,7 +112,7 @@ export function useSim(initial: SimState, shouldPause: PauseCheck) {
   }, []);
 
   const clearPause = useCallback(() => setPausedBy(null), []);
-  return { state, setState, speed, setSpeed, act, step, clock, pausedBy, clearPause };
+  return { state, setState, speed, setSpeed, act, step, clock, pausedBy, clearPause, saveFailed };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

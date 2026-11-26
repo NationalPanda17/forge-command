@@ -30,12 +30,20 @@ export function saveSlot(name: string, s: SimState): string | null {
   if (!n) return 'Give the save a name.';
   const list = listSlots().filter((x) => x.name !== n);
   if (list.length >= MAX_SLOTS) return `At most ${MAX_SLOTS} named saves. Delete one first.`;
+  const existed = list.length !== listSlots().length;
   try {
     localStorage.setItem(slotKey(n), JSON.stringify(s));
     list.unshift({ name: n, saved: new Date().toISOString().slice(0, 16).replace('T', ' '), day: s.day, scenario: s.scenario, mode: s.mode, story: !!s.story });
     localStorage.setItem(INDEX, JSON.stringify(list));
     return null;
   } catch {
+    // A new save that is not in the list could never be deleted: take it back out.
+    if (!existed)
+      try {
+        localStorage.removeItem(slotKey(n));
+      } catch {
+        /* storage unavailable */
+      }
     return 'This browser has no room left for another save. Delete one, or export it to a file.';
   }
 }
@@ -57,5 +65,19 @@ export function deleteSlot(name: string): void {
     localStorage.setItem(INDEX, JSON.stringify(listSlots().filter((x) => x.name !== name)));
   } catch {
     /* storage may be unavailable */
+  }
+}
+
+/** Hands the player a game as a file they can import later from the title screen. */
+export function downloadSave(s: SimState): void {
+  try {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(s)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `forge-command-day-${s.day}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    /* nothing to hand over */
   }
 }

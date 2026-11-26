@@ -35,7 +35,8 @@ body {
 
 @layer components {
   .panel {
-    @apply rounded-md border border-ops-line bg-ops-panel/80 backdrop-blur-sm;
+    /* Nearly opaque rather than blurred: a backdrop blur costs a phone's GPU every frame and shows nothing here. */
+    @apply rounded-md border border-ops-line bg-ops-panel/95;
     box-shadow: inset 0 1px 0 rgba(120, 180, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.25);
   }
   .panel-title {
@@ -81,6 +82,17 @@ input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
 .ticker { animation: ticker linear infinite; }
 @media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
 
+/* Touch screens: every button and tab is at least 44px tall, the size a fingertip can hit reliably. */
+@media (pointer: coarse) {
+  .btn,
+  nav[aria-label='Panel groups'] button,
+  nav[aria-label='Panels'] button,
+  [role='group'][aria-label='Map layers'] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 html.rm *, html.rm *::before, html.rm *::after { animation: none !important; transition: none !important; }
 
 /* Colour-blind-safe palette (Okabe–Ito): every status colour stays distinct under the common colour-vision deficiencies. */
@@ -96,3 +108,9 @@ html[data-palette='cb'] {
 /* Larger text for panels, headers and dialogs. The map keeps its own sizing so its labels stay collision-free. */
 html[data-text='large'] .fc-zoom { zoom: 1.15; }
 html[data-text='larger'] .fc-zoom { zoom: 1.3; }
+
+/* A heading given focus when a dialog opens (for screen readers) needs no focus ring: it is not a control. */
+h1[tabindex='-1']:focus,
+h2[tabindex='-1']:focus {
+  outline: none;
+}

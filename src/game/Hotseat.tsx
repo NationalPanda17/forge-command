@@ -1,4 +1,5 @@
 // Hot-seat two-player: the handover screen and the scoreboard chip.
+import { DialogFocus } from '../ui/DialogFocus';
 import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
 import { Btn } from '../ui/kit';
@@ -9,6 +10,7 @@ export function Handover({ state, act }: { state: SimState; act: (a: SimAction) 
   const next = h.players[h.active];
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg p-3" role="dialog" aria-modal="true" aria-labelledby="handover-title">
+      <DialogFocus labelledBy="handover-title" />
       <div className="fc-zoom panel mx-auto mt-[12vh] max-w-md space-y-4 p-5 text-center text-[12px]">
         <div className="label">{state.history.length === 0 ? 'Two directors, one country' : 'Month over'}</div>
         <h2 id="handover-title" className="font-sans text-2xl font-bold tracking-[0.1em] text-white">
