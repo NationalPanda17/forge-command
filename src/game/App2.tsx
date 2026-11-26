@@ -1,5 +1,6 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon, type IconName } from '../ui/icons';
 import { lazyPart } from '../ui/lazyPart';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
@@ -28,6 +29,8 @@ const DIFF: Record<Difficulty, string> = {
 };
 
 type Mode = 'story' | 'campaign' | 'sandbox' | 'hotseat' | 'tutorial';
+/** The title screen's pages: the main menu, and one page for each of its entries. */
+type Screen = 'menu' | 'new' | 'load' | 'records' | 'settings';
 
 const MODES: { id: Mode; name: string; blurb: string }[] = [
   { id: 'story', name: 'Story', blurb: 'Four chapters, a year each, with the people around you and consequences that carry forward.' },
@@ -64,6 +67,19 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [tips, setTips] = useState(() => tipsEnabled());
   const autos = PRESETS[pilot];
   const [slots, setSlots] = useState(listSlots);
+  const [screen, setScreen] = useState<Screen>('menu');
+  const screenHeading = useRef<HTMLHeadingElement>(null);
+  // A new page moves the keyboard (and a screen reader) to its heading; back on the menu, to the page's own entry.
+  const lastScreen = useRef<Screen>('menu');
+  useEffect(() => {
+    if (screen !== 'menu') {
+      screenHeading.current?.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    } else if (lastScreen.current !== 'menu') {
+      document.querySelector<HTMLElement>(`[data-menu="${lastScreen.current}"]`)?.focus({ preventScroll: true });
+    }
+    lastScreen.current = screen;
+  }, [screen]);
   const begin = () => {
     const seedNum = seedFrom(seed || '0');
     if (mode === 'tutorial') return onStart(openCampaign(newSim({ seed: seedNum, scenario: 'tutorial' })));
@@ -104,27 +120,12 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       )}
     </div>
   );
-  return (
-    <div className="fc-zoom mx-auto max-w-3xl space-y-4 p-4">
-      <header className="pt-8 text-center">
-        <h1 className="font-sans text-5xl font-bold tracking-[0.25em] text-ops-amber">FORGE COMMAND</h1>
-        <p className="mt-2 text-balance text-[13px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
-      </header>
-      {saved && saved.over && (
-        <div className="flex justify-center">
-          <Btn className="px-4 py-2 text-[12px]" onClick={() => onStart(saved)} title="Your grade, the term in charts, and a second term if the Committee offers one">
-            Your last term report · {dateLabel(saved.day)}
-          </Btn>
-        </div>
-      )}
-      {saved && !saved.over && (
-        <div className="flex justify-center">
-          <Btn kind="primary" className="px-4 py-2 text-[12px]" onClick={() => onStart(saved)}>
-            Continue {saved.story ? 'story' : saved.scenario === 'tutorial' ? 'tutorial' : saved.hotseat ? 'two-player game' : saved.mode === 'sandbox' ? 'sandbox' : 'campaign'} · {dateLabel(saved.day)}
-          </Btn>
-        </div>
-      )}
+  const kindOf = (s: SimState) => (s.story ? 'Story' : s.scenario === 'tutorial' ? 'Tutorial' : s.hotseat ? 'Two players' : s.mode === 'sandbox' ? 'Sandbox' : 'Campaign');
+  const startTutorial = () => onStart(openCampaign(newSim({ seed: seedFrom(seed || '0'), scenario: 'tutorial' })));
+  const earnedCount = ACHIEVEMENTS.filter((a) => earned[a.id]).length;
 
+  const setup = (
+    <>
       {firstVisit && (
         <div className="panel flex flex-wrap items-center justify-between gap-3 border-ops-cyan/50 px-4 py-3 text-[12px]">
           <p className="min-w-0 flex-1 text-ops-text">
@@ -144,7 +145,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             type="button"
             aria-pressed={mode === m.id}
             onClick={() => setMode(m.id)}
-            className={`panel flex flex-col justify-start p-3 text-left ${mode === m.id ? 'border-ops-amber bg-ops-amber/10' : 'hover:border-ops-dim'}`}
+            className={`panel flex flex-col justify-start p-3 text-left transition-colors ${mode === m.id ? 'border-ops-amber bg-ops-amber/10' : 'hover:border-ops-dim'}`}
           >
             <div className={`font-sans text-[17px] font-bold tracking-wider ${mode === m.id ? 'text-ops-amber' : 'text-white'}`}>{m.name}</div>
             <div className="text-[11px] text-ops-dim">{m.blurb}</div>
@@ -163,7 +164,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               </p>
               <div>
                 <div className="label mb-1">Difficulty</div>
-                <div className="flex gap-1">
+                <div className="seg">
                   {(Object.keys(DIFF) as Difficulty[]).map((d) => (
                     <Btn key={d} pressed={difficulty === d} onClick={() => setDifficulty(d)}>
                       {d}
@@ -228,7 +229,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <div className="label mb-1">Difficulty</div>
-                  <div className="flex gap-1">
+                  <div className="seg">
                     {(Object.keys(DIFF) as Difficulty[]).map((d) => (
                       <Btn key={d} pressed={difficulty === d} onClick={() => setDifficulty(d)}>
                         {d}
@@ -240,7 +241,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 {(mode !== 'sandbox' || !rules.endless) && (
                   <div>
                     <div className="label mb-1">Term</div>
-                    <div className="flex gap-1">
+                    <div className="seg">
                       {[2, 4, 6].map((y) => (
                         <Btn key={y} pressed={years === y} onClick={() => setYears(y)}>
                           {y} years
@@ -333,23 +334,31 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               <p className="mt-1 text-[10px] text-ops-dim">A short tip the first time each system shows up: strikes, blackouts, audits, hackers, spies, the rival and more, with a button to the tab that handles it.</p>
             </div>
           )}
-          <div className="flex justify-end">
-            <Btn kind="primary" className="px-5 py-2 text-[13px]" onClick={begin}>
-              {mode === 'story' ? 'Begin the story →' : mode === 'campaign' ? 'Take command →' : mode === 'sandbox' ? 'Start sandbox →' : mode === 'hotseat' ? 'Start the game →' : 'Play the tutorial →'}
+          <div className="flex justify-end border-t border-ops-line/60 pt-4">
+            <Btn kind="primary" className="px-6 py-2.5 font-sans text-[15px] font-bold tracking-[0.15em]" onClick={begin}>
+              {mode === 'story' ? 'Begin the story' : mode === 'campaign' ? 'Take command' : mode === 'sandbox' ? 'Start sandbox' : mode === 'hotseat' ? 'Start the game' : 'Play the tutorial'}
+              <Icon name="continue" />
             </Btn>
           </div>
         </div>
       </section>
-      {slots.length > 0 && (
-        <section className="panel">
-          <div className="panel-title">Named saves</div>
-          <ul className="space-y-1 p-4 text-[12px]">
+    </>
+  );
+
+  const loadScreen = (
+    <>
+      <section className="panel">
+        <div className="panel-title">Named saves</div>
+        {slots.length === 0 ? (
+          <p className="p-4 text-[12px] text-ops-dim">No named saves yet. In a game, Save keeps a copy under a name of your choosing.</p>
+        ) : (
+          <ul className="divide-y divide-ops-line/50 text-[12px]">
             {slots.map((x) => (
-              <li key={x.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <span className="min-w-0 truncate">
-                  <span className="text-white">{x.name}</span>{' '}
-                  <span className="text-ops-dim">
-                    · {x.story ? 'story' : x.mode === 'sandbox' ? 'sandbox' : SCENARIOS[x.scenario]?.name ?? x.scenario} · {dateLabel(x.day)} · saved {x.saved}
+              <li key={x.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
+                <span className="min-w-0">
+                  <span className="block truncate font-sans text-[15px] font-semibold text-white">{x.name}</span>
+                  <span className="block truncate text-[11px] text-ops-dim">
+                    {x.story ? 'Story' : x.mode === 'sandbox' ? 'Sandbox' : SCENARIOS[x.scenario]?.name ?? x.scenario} · {dateLabel(x.day)} · saved {x.saved}
                   </span>
                 </span>
                 <span className="flex gap-1">
@@ -376,18 +385,10 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               </li>
             ))}
           </ul>
-        </section>
-      )}
-
-      <section className="panel">
-        <div className="panel-title">Display</div>
-        <div className="p-4">
-          <DisplayOptions />
-        </div>
+        )}
       </section>
-
       <section className="panel">
-        <div className="panel-title">Saves and settings</div>
+        <div className="panel-title">Save files</div>
         <div className="flex flex-wrap items-center gap-2 p-4 text-[12px]">
           {saved && (
             <Btn
@@ -422,16 +423,15 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               e.target.value = '';
             }}
           />
-          <label className="ml-auto flex items-center gap-2">
-            <input type="checkbox" checked={autoPause} onChange={(e) => setAutoPause(e.target.checked)} />
-            Pause on important events
-            <span className="text-[10px] text-ops-dim">(choose which in Settings)</span>
-          </label>
           {err && <p className="w-full text-ops-red">{err}</p>}
         </div>
       </section>
+    </>
+  );
 
-      {allScores.length > 0 && (
+  const records = (
+    <>
+      {allScores.length > 0 ? (
         <section className="panel">
           <div className="panel-title">Record book</div>
           <div className="space-y-4 p-4 text-[11px]">
@@ -446,9 +446,9 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 ['Promises kept', totals.promisesKept],
                 ['Best score', allScores[0]?.score ?? 0],
               ].map(([label, v]) => (
-                <div key={label as string} className="min-w-0">
+                <div key={label as string} className="min-w-0 rounded border border-ops-line/60 bg-ops-bg/40 px-3 py-2">
                   <div className="label truncate">{label}</div>
-                  <div className="text-[15px] text-white">{v}</div>
+                  <div className="font-sans text-[20px] font-semibold text-white">{v}</div>
                 </div>
               ))}
             </div>
@@ -476,11 +476,20 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
             </div>
           </div>
         </section>
+      ) : (
+        <p className="panel p-4 text-[12px] text-ops-dim">Your record book fills in when you finish your first term.</p>
       )}
-
       <section className="panel">
         <div className="panel-title">
-          Achievements · {ACHIEVEMENTS.filter((a) => earned[a.id]).length} of {ACHIEVEMENTS.length}
+          <span>Achievements</span>
+          <span className="label normal-case tracking-normal">
+            {earnedCount} of {ACHIEVEMENTS.length}
+          </span>
+        </div>
+        <div className="px-4 pt-3">
+          <div className="bar">
+            <span className="bg-ops-green" style={{ width: `${(earnedCount / ACHIEVEMENTS.length) * 100}%` }} />
+          </div>
         </div>
         <ul className="grid gap-x-4 gap-y-1 p-4 text-[11px] sm:grid-cols-2">
           {ACHIEVEMENTS.map((a) => (
@@ -490,16 +499,156 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           ))}
         </ul>
       </section>
+    </>
+  );
 
-      <footer className="space-y-1 pb-4 text-center text-[10px] text-ops-dim">
-        <p>A game. Designations and makers are real; every site, company, nation and person is fictional.</p>
-        <p>
-          Version {typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'} · No account and no tracking: your games are saved in this browser only. ·{' '}
-          <a className="underline decoration-dotted underline-offset-2 hover:text-ops-text" href="https://github.com/NationalPanda17/forge-command/issues" target="_blank" rel="noreferrer">
-            Report a problem
-          </a>
-        </p>
-      </footer>
+  const settings = (
+    <>
+      <section className="panel">
+        <div className="panel-title">Display</div>
+        <div className="p-4">
+          <DisplayOptions />
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-title">Play</div>
+        <div className="p-4 text-[12px]">
+          <label className="flex flex-wrap items-center gap-2">
+            <input type="checkbox" checked={autoPause} onChange={(e) => setAutoPause(e.target.checked)} />
+            Pause on important events
+            <span className="text-[10px] text-ops-dim">(choose which in a game's Settings)</span>
+          </label>
+        </div>
+      </section>
+    </>
+  );
+
+  const SCREEN_TITLE: Record<Exclude<Screen, 'menu'>, string> = { new: 'New game', load: 'Load a game', records: 'Records', settings: 'Settings' };
+
+  const footer = (
+    <footer className="space-y-1 px-4 pb-4 text-center text-[10px] text-ops-dim">
+      <p>A game. Designations and makers are real; every site, company, nation and person is fictional.</p>
+      <p>
+        Version {typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'} · No account and no tracking: your games are saved in this browser only. ·{' '}
+        <a className="underline decoration-dotted underline-offset-2 hover:text-ops-text" href="https://github.com/NationalPanda17/forge-command/issues" target="_blank" rel="noreferrer">
+          Report a problem
+        </a>
+      </p>
+    </footer>
+  );
+
+  if (screen !== 'menu') {
+    return (
+      <div className="relative min-h-[100dvh]">
+        <div className="fc-hero-glow pointer-events-none fixed inset-0" aria-hidden="true" />
+        <div className="fc-zoom relative mx-auto max-w-3xl space-y-4 p-4" onKeyDown={(e) => e.key === 'Escape' && setScreen('menu')}>
+          <header className="flex items-center gap-3 pt-4">
+            <Btn onClick={() => setScreen('menu')} ariaLabel="Back to the main menu" title="Back (Esc)">
+              <Icon name="back" />
+              <span className="hidden sm:inline">Back</span>
+            </Btn>
+            <h1 ref={screenHeading} tabIndex={-1} className="font-sans text-2xl font-bold uppercase tracking-[0.2em] text-white">
+              {SCREEN_TITLE[screen]}
+            </h1>
+            <span className="ml-auto hidden font-sans text-[13px] font-bold tracking-[0.3em] text-ops-amber/80 sm:block">FORGE COMMAND</span>
+          </header>
+          <div key={screen} className="fc-enter space-y-4">
+            {screen === 'new' ? setup : screen === 'load' ? loadScreen : screen === 'records' ? records : settings}
+          </div>
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  const items: { id: string; icon: IconName; label: string; sub: string; primary?: boolean; run: () => void; title?: string }[] = [];
+  if (saved && !saved.over) items.push({ id: 'continue', icon: 'continue', label: 'Continue', sub: `${kindOf(saved)} · ${dateLabel(saved.day)}`, primary: true, run: () => onStart(saved) });
+  if (saved && saved.over)
+    items.push({ id: 'report', icon: 'report', label: 'Last term report', sub: `${kindOf(saved)} · ${dateLabel(saved.day)}`, run: () => onStart(saved), title: 'Your grade, the term in charts, and a second term if the Committee offers one' });
+  if (firstVisit) items.push({ id: 'tutorial', icon: 'play', label: 'Play the tutorial', sub: 'Two guided years on Easy. Best for a first game.', primary: !saved, run: startTutorial });
+  items.push({ id: 'new', icon: 'plus', label: 'New game', sub: 'Story, campaign, sandbox or two players', primary: !saved && !firstVisit, run: () => setScreen('new') });
+  items.push({ id: 'load', icon: 'folder', label: 'Load', sub: slots.length > 0 ? `${slots.length} named save${slots.length === 1 ? '' : 's'}, or import a file` : 'Import a save file', run: () => setScreen('load') });
+  items.push({ id: 'records', icon: 'trophy', label: 'Records', sub: `Record book · ${earnedCount} of ${ACHIEVEMENTS.length} achievements`, run: () => setScreen('records') });
+  items.push({ id: 'settings', icon: 'settings', label: 'Settings', sub: 'Display, text size, colours, pausing', run: () => setScreen('settings') });
+
+  return (
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
+      <Backdrop />
+      <main className="fc-zoom relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
+        <header className="fc-rise mb-8 text-center">
+          <p className="label mb-3 tracking-[0.4em] text-ops-cyan/80">Munitions Production Board</p>
+          <h1 className="font-sans text-[44px] font-bold leading-[0.95] tracking-[0.18em] sm:text-[60px]">
+            <span className="fc-title-word block">FORGE</span>
+            <span className="fc-title-word block">COMMAND</span>
+          </h1>
+          <p className="mx-auto mt-4 max-w-xs text-balance text-[12px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
+        </header>
+        <nav aria-label="Main menu" className="space-y-2">
+          {items.map((it, i) => (
+            <button
+              key={it.id}
+              data-menu={it.id}
+              type="button"
+              className={`fc-menu-item fc-rise ${it.primary ? 'fc-menu-primary' : ''}`}
+              style={{ animationDelay: `${120 + i * 50}ms` }}
+              onClick={it.run}
+              title={it.title}
+            >
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded border ${it.primary ? 'border-ops-amber/60 text-ops-amber' : 'border-ops-line text-ops-dim'}`}>
+                <Icon name={it.icon} size={16} />
+              </span>
+              <span className="min-w-0">
+                <span className={`block font-sans text-[18px] font-bold uppercase tracking-[0.12em] ${it.primary ? 'text-ops-amber' : 'text-white'}`}>{it.label}</span>
+                <span className="block truncate text-[11px] text-ops-dim">{it.sub}</span>
+              </span>
+            </button>
+          ))}
+        </nav>
+      </main>
+      <div className="relative z-10">{footer}</div>
+    </div>
+  );
+}
+
+/** The title screen's backdrop: a forge glow from below, a faint grid of contours, and embers drifting up. */
+function Backdrop() {
+  const embers = useMemo(
+    () =>
+      Array.from({ length: 26 }, (_, i) => {
+        const r = (n: number) => {
+          const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453;
+          return x - Math.floor(x);
+        };
+        // Only in the margins beside the 28rem menu column, so an ember never crosses text.
+        const x = r(1) * 0.9;
+        const left = i % 2 ? `calc((100% - 30rem) / 2 * ${x})` : `calc(100% - (100% - 30rem) / 2 * ${x})`;
+        return { left, duration: `${9 + r(2) * 10}s`, delay: `${-r(3) * 18}s`, dx: `${(r(4) - 0.5) * 40}px`, o: 0.35 + r(5) * 0.55, s: 2 + r(6) * 2 };
+      }),
+    [],
+  );
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div className="fc-hero-glow absolute inset-0" />
+      <svg className="absolute inset-0 h-full w-full opacity-[0.07]" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600">
+        <g fill="none" stroke="#38d6f5" strokeWidth="1">
+          {[0, 1, 2, 3, 4, 5, 6].map((k) => (
+            <ellipse key={k} cx="560" cy="380" rx={60 + k * 55} ry={34 + k * 32} transform={`rotate(-14 560 380)`} />
+          ))}
+          {[0, 1, 2, 3, 4].map((k) => (
+            <ellipse key={`b${k}`} cx="170" cy="150" rx={40 + k * 45} ry={26 + k * 26} transform={`rotate(18 170 150)`} />
+          ))}
+        </g>
+      </svg>
+      <div className="absolute inset-x-0 bottom-16 top-0 hidden overflow-hidden sm:block">
+      {embers.map((e, i) => (
+        <span
+          key={i}
+          className="fc-ember"
+          style={{ left: e.left, width: e.s, height: e.s, animationDuration: e.duration, animationDelay: e.delay, ['--dx' as string]: e.dx, ['--o' as string]: e.o }}
+        />
+      ))}
+      </div>
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-ops-bg/80 to-transparent" />
     </div>
   );
 }
@@ -518,7 +667,14 @@ export default function App2() {
   };
   if (!game) return <Title onStart={setGame} autoPause={autoPause} setAutoPause={setAutoPause} />;
   return (
-    <Suspense fallback={<p className="p-6 text-center font-sans text-[14px] uppercase tracking-[0.2em] text-ops-dim">Opening the command centre…</p>}>
+    <Suspense
+      fallback={
+        <div className="fc-boot" role="status">
+          OPENING THE COMMAND CENTRE
+          <i />
+        </div>
+      }
+    >
     <Shell
       initial={game}
       onMenu={(s) => {

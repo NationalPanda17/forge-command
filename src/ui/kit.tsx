@@ -1,5 +1,5 @@
 // Small shared UI pieces.
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { toneFor } from './format';
 
 export function Panel({ title, right, children, className = '', id }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; id?: string }) {
@@ -90,7 +90,7 @@ export function Btn({
 
 export function Segmented<T extends string>({ value, options, onChange, label, tones }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; label: string; tones?: Partial<Record<T, string>> }) {
   return (
-    <div className="inline-flex gap-0.5" role="group" aria-label={label}>
+    <div className="seg" role="group" aria-label={label}>
       {options.map((o) => (
         <button
           key={o.id}
@@ -241,5 +241,25 @@ export function Sparkline({ values, color = COLORS.cyan, width = 96, height = 22
       <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={last[0]} cy={last[1]} r={2} fill={color} />
     </svg>
+  );
+}
+
+/** Wraps a number in the header: when `value` moves, it glows green (up) or red (down) for a moment. */
+export function Flash({ value, children }: { value: number; children: ReactNode }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const prev = useRef(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || value === prev.current) return;
+    const cls = value > prev.current ? 'fc-up' : 'fc-down';
+    prev.current = value;
+    el.classList.remove('fc-up', 'fc-down');
+    void el.offsetWidth; // restart the animation
+    el.classList.add(cls);
+  }, [value]);
+  return (
+    <span ref={ref} className="inline-block">
+      {children}
+    </span>
   );
 }

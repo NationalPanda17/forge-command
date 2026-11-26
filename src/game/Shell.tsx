@@ -34,7 +34,8 @@ import MapView, { DEFAULT_LAYERS, MapLayerToggles, MapLegend, type MapLayers, ty
 import { readiness } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { MATERIALS, RECIPES, ROUTES, ROUTE_KEY, SITE_BY_ID, type MaterialId } from '../sim/world';
-import { Btn } from '../ui/kit';
+import { Btn, Flash } from '../ui/kit';
+import { Icon } from '../ui/icons';
 import { money, pct, textToneFor } from '../ui/format';
 import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
@@ -165,7 +166,17 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   }, [speed, setSpeed, setPanel]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
   // The map key starts open on a wide screen and folded away on a phone, where it would push the panels far down.
-  const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.matchMedia?.('(min-width: 1280px)').matches !== false);
+  // The key starts closed: on a phone it would push the panels down, and on a wide screen it would take the map's height.
+  const [legendOpen, setLegendOpen] = useState(false);
+  // On a wide screen the game fills the window exactly, with no page scroll: the map takes the height that is left.
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1280px)').matches === true);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1280px)');
+    if (!mq) return;
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
   const [help, setHelp] = useState<SettingsTab | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -396,13 +407,13 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   }, [toast]);
 
   return (
-    <div className={`flex min-h-screen flex-col gap-2 p-2 ${speed === 0 ? 'fc-paused' : ''}`}>
+    <div className={`flex min-h-screen flex-col gap-2 p-2 xl:h-[100dvh] xl:min-h-0 xl:overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announce}
       </div>
       <a href="#panels" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-ops-panel focus:px-2 focus:py-1">Skip to panels</a>
       <header className="fc-zoom panel flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 sm:gap-x-5 sm:gap-y-2">
-        <button type="button" className="font-sans text-base font-bold tracking-[0.2em] text-ops-amber sm:text-lg" onClick={() => onMenu(state)} title="Main menu">
+        <button type="button" className="fc-title-word font-sans text-base font-bold tracking-[0.2em] sm:text-lg" onClick={() => onMenu(state)} title="Main menu">
           FORGE COMMAND
         </button>
         {state.mode === 'sandbox' && (
@@ -434,17 +445,21 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         <div>
           <div className="label">Readiness</div>
           <div className={textToneFor(ready)}>
-            <Explain title="Readiness" lines={() => readinessWhy(state)}>
-              {pct(ready)}
-            </Explain>
+            <Flash value={Math.round(ready * 100)}>
+              <Explain title="Readiness" lines={() => readinessWhy(state)}>
+                {pct(ready)}
+              </Explain>
+            </Flash>
           </div>
         </div>
         <div>
           <div className="label">Confidence</div>
           <div className={textToneFor(state.confidence / 70)}>
-            <Explain title="Confidence" lines={() => confidenceWhy(state)}>
-              {Math.round(state.confidence)}
-            </Explain>
+            <Flash value={Math.round(state.confidence)}>
+              <Explain title="Confidence" lines={() => confidenceWhy(state)}>
+                {Math.round(state.confidence)}
+              </Explain>
+            </Flash>
           </div>
         </div>
         {state.crisis && (
@@ -453,38 +468,55 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             <div className="max-w-[220px] truncate">{state.crisis.name}</div>
           </div>
         )}
-        <div className="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto" role="group" aria-label="Game speed">
-          {SPEEDS.map((sp) => (
-            <Btn key={sp} pressed={speed === sp} onClick={() => setSpeed(sp)} ariaLabel={sp === 0 ? 'Pause' : `Speed ${sp}×`} title={sp === 0 ? 'Pause (space)' : `${sp} day${sp > 1 ? 's' : ''} a second`}>
-              {sp === 0 ? '❚❚' : `${sp}×`}
+        <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
+          <div className="seg" role="group" aria-label="Game speed">
+            {SPEEDS.map((sp) => (
+              <Btn key={sp} pressed={speed === sp} onClick={() => setSpeed(sp)} ariaLabel={sp === 0 ? 'Pause' : `Speed ${sp}×`} title={sp === 0 ? 'Pause (space)' : `${sp} day${sp > 1 ? 's' : ''} a second`}>
+                {sp === 0 ? <Icon name="pause" /> : (
+                  <>
+                    <Icon name="play" size={10} />
+                    {sp}×
+                  </>
+                )}
+              </Btn>
+            ))}
+          </div>
+          <div className="seg" role="group" aria-label="Step">
+            <Btn onClick={() => step(1)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one day">
+              +1d
             </Btn>
-          ))}
-          <Btn onClick={() => step(1)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one day">
-            +1d
-          </Btn>
-          <Btn onClick={() => step(7)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one week">
-            +7d
-          </Btn>
+            <Btn onClick={() => step(7)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one week">
+              +7d
+            </Btn>
+          </div>
           {state.over && reportClosed && (
             <Btn kind="warn" onClick={() => setReportClosed(false)} title="Your grade, the term in charts, and the next term">
+              <Icon name="report" />
               Term report
             </Btn>
           )}
-          <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" pressed={saving !== null}>
-            Save
-          </Btn>
-          <Btn onClick={() => setPalette(true)} title="Go to any tab, site, material or town, or run a command (Ctrl K or /)">
-            Search
-          </Btn>
-          <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)">
-            Settings
-          </Btn>
-          <Btn className="hidden sm:inline-flex" pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects">
-            Sound
-          </Btn>
-          <Btn className="hidden sm:inline-flex" pressed={audioPrefs.music} onClick={() => setAudio({ music: !audioPrefs.music })} title="Generated background music">
-            Music
-          </Btn>
+          <div className="seg" role="group" aria-label="Game">
+            <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" ariaLabel="Save" pressed={saving !== null}>
+              <Icon name="save" />
+              <span className="hidden xl:inline">Save</span>
+            </Btn>
+            <Btn onClick={() => setPalette(true)} title="Go to any tab, site, material or town, or run a command (Ctrl K or /)" ariaLabel="Search">
+              <Icon name="search" />
+              <span className="hidden xl:inline">Search</span>
+            </Btn>
+            <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)" ariaLabel="Settings">
+              <Icon name="settings" />
+              <span className="hidden xl:inline">Settings</span>
+            </Btn>
+          </div>
+          <div className="seg" role="group" aria-label="Audio">
+            <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects" ariaLabel="Sound effects">
+              <Icon name={audioPrefs.sfx ? 'sound' : 'mute'} />
+            </Btn>
+            <Btn pressed={audioPrefs.music} onClick={() => setAudio({ music: !audioPrefs.music })} title="Generated background music" ariaLabel="Music">
+              <Icon name="music" />
+            </Btn>
+          </div>
         </div>
       </header>
 
@@ -507,7 +539,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </form>
       )}
       {saveFailed && (
-        <div role="alert" className="fc-zoom panel flex flex-wrap items-center justify-between gap-2 border-ops-amber/60 px-3 py-1.5 text-[12px] text-ops-amber">
+        <div role="alert" className="fc-zoom fc-drop panel flex flex-wrap items-center justify-between gap-2 border-ops-amber/60 px-3 py-1.5 text-[12px] text-ops-amber">
           <span>This browser would not save your game (its storage is full or switched off). Keep a copy as a file so you do not lose it.</span>
           <Btn kind="warn" onClick={() => downloadSave(state)}>
             Download save
@@ -515,7 +547,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </div>
       )}
       {saveNote && (
-        <div role="status" className="fc-zoom panel flex items-center justify-between gap-2 px-3 py-1 text-[12px] text-ops-green">
+        <div role="status" className="fc-zoom fc-drop panel flex items-center justify-between gap-2 px-3 py-1 text-[12px] text-ops-green">
           <span>{saveNote}</span>
           <Btn onClick={() => setSaveNote(null)}>OK</Btn>
         </div>
@@ -529,7 +561,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       )}
 
       {toast.length > 0 && (
-        <div className="panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
+        <div className="fc-drop panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
           <span>★ Achievement{toast.length > 1 ? 's' : ''}:</span>
           {toast.map((a) => (
             <span key={a.id} className="text-white">
@@ -540,7 +572,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       )}
 
       {banner && speed === 0 && (
-        <div className={`panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
+        <div className={`fc-drop panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
           <span>
             Paused: {tr(banner.text)}
           </span>
@@ -553,11 +585,12 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </div>
       )}
 
-      <div className="grid flex-1 gap-2 xl:grid-cols-[minmax(0,1fr)_460px]">
-        <div className="panel min-w-0 overflow-hidden">
+      <div className="grid flex-1 gap-2 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <div className="panel min-w-0 overflow-hidden xl:flex xl:flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ops-line/60 px-2 py-1">
             <MapLayerToggles layers={layers} onChange={setLayers} />
           </div>
+          <div className="xl:min-h-0 xl:flex-1">
           <MapView
             key={state.world ?? 'classic'}
             markers={markers}
@@ -567,7 +600,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             selected={selected}
             onSelect={select}
             layers={layers}
-            height="min(calc(100dvh - 220px), max(370px, 78vw))"
+            height={wide ? '100%' : 'min(calc(100dvh - 220px), max(370px, 78vw))'}
             network={network}
             showPlans={panel === 'build'}
             highlight={highlight}
@@ -600,12 +633,13 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             related={chain}
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
-          <details className="group border-t border-ops-line/60 px-2 py-1" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
+          </div>
+          <details className="group border-t border-ops-line/60 px-2 py-1 xl:max-h-44 xl:shrink-0 xl:overflow-y-auto" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
             <summary className="label cursor-pointer select-none py-1 hover:text-ops-text">Map key</summary>
             <MapLegend />
           </details>
         </div>
-        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:max-h-[calc(100vh-150px)]">
+        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:min-h-0">
           <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 pt-1" aria-label="Panel groups">
             {GROUPS.map((g) => {
               const on = group === g.id;
@@ -662,7 +696,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               }}
             />
           )}
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div key={panel} className="fc-enter min-h-0 flex-1 overflow-y-auto">
             <PanelBoundary resetKey={panel} onHome={() => setPanel('home')}>
             <Suspense fallback={<p className="p-3 text-[11px] text-ops-dim">Loading…</p>}>
             {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}
@@ -703,7 +737,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
           </div>
         </aside>
       </div>
-      <footer className="fc-zoom panel max-h-28 overflow-y-auto">
+      <footer className="fc-zoom panel max-h-28 shrink-0 overflow-y-auto">
         <Feed state={state} onSite={select} limit={6} />
       </footer>
       <Briefing state={state} act={act} />
