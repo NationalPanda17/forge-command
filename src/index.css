@@ -114,3 +114,93 @@ h1[tabindex='-1']:focus,
 h2[tabindex='-1']:focus {
   outline: none;
 }
+
+/* ---------- Finish: scrollbars, selection, press feedback, entrances ---------- */
+
+::selection { background: rgb(var(--ops-cyan) / 0.3); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--ops-line)) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--ops-line)); border: 3px solid transparent; border-radius: 8px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--ops-dim) / 0.6); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+:focus-visible { outline: 2px solid rgb(var(--ops-cyan) / 0.8); outline-offset: 1px; }
+
+/* A button gives under the finger. */
+.btn { transition: color 120ms, background-color 120ms, border-color 120ms, transform 80ms; }
+.btn:not(:disabled):active { transform: translateY(1px); }
+
+/* Joined control: buttons side by side sharing borders (speed, segmented choices). In the components layer so a
+   utility such as hidden or sm:inline-flex still wins. */
+@layer components {
+  .seg { @apply inline-flex overflow-hidden rounded border border-ops-line; }
+  .seg > .btn { @apply rounded-none border-0 border-r border-ops-line; }
+  .seg > .btn:last-child { @apply border-r-0; }
+  .seg > .btn-active { box-shadow: inset 0 -2px 0 rgb(var(--ops-cyan)); }
+}
+
+/* A panel's content eases in when the tab changes. */
+@keyframes fc-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fc-enter { animation: fc-enter 180ms ease-out both; }
+/* A notice slides down into place. */
+@keyframes fc-drop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.fc-drop { animation: fc-drop 220ms ease-out both; }
+
+/* A header number glows briefly when it moves: green up, red down. */
+@keyframes fc-up { from { text-shadow: 0 0 10px rgb(var(--ops-green)); color: rgb(var(--ops-green)); } }
+@keyframes fc-down { from { text-shadow: 0 0 10px rgb(var(--ops-red)); color: rgb(var(--ops-red)); } }
+.fc-up { animation: fc-up 900ms ease-out; }
+.fc-down { animation: fc-down 900ms ease-out; }
+
+/* ---------- Title screen ---------- */
+
+.fc-title-word {
+  background: linear-gradient(180deg, #ffe0a3 0%, rgb(var(--ops-amber)) 45%, #c4721f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 24px rgba(245, 150, 50, 0.28));
+}
+.fc-hero-glow {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 115%, rgba(245, 130, 40, 0.22), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 50% -10%, rgba(56, 214, 245, 0.08), transparent 70%);
+}
+@keyframes fc-ember {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  10% { opacity: var(--o, 0.8); }
+  100% { transform: translate3d(var(--dx, 0px), -100vh, 0); opacity: 0; }
+}
+.fc-ember {
+  position: absolute;
+  bottom: -8px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffb35c;
+  box-shadow: 0 0 6px 1px rgba(255, 150, 60, 0.7);
+  animation: fc-ember linear infinite;
+  will-change: transform, opacity;
+}
+@keyframes fc-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.fc-rise { animation: fc-rise 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+.fc-menu-item {
+  @apply relative flex w-full items-center gap-3 rounded border border-ops-line/70 bg-ops-panel/80 px-4 py-3 text-left transition-colors;
+}
+.fc-menu-item::before {
+  content: '';
+  @apply absolute inset-y-2 left-0 w-[3px] rounded-r bg-ops-amber opacity-0 transition-opacity;
+}
+.fc-menu-item:hover, .fc-menu-item:focus-visible { @apply border-ops-amber/60 bg-ops-panel2; }
+.fc-menu-item:hover::before, .fc-menu-item:focus-visible::before { @apply opacity-100; }
+.fc-menu-item:active { transform: translateY(1px); }
+.fc-menu-primary { @apply border-ops-amber/70 bg-ops-amber/10; }
+.fc-menu-primary::before { @apply opacity-100; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-enter, .fc-drop, .fc-up, .fc-down, .fc-rise { animation: none; }
+  .fc-ember { display: none; }
+}
+html.rm .fc-ember { display: none; }

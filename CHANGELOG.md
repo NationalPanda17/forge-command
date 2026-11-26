@@ -1,5 +1,28 @@
 # Changelog
 
+## 15.2.0: look and feel
+
+The game now looks and handles like a finished product, from the first frame to the map.
+
+### Title screen
+- **A real main menu.** A forge glow, drifting embers and faint contour lines behind a menu with Continue, New game,
+  Load, Records and Settings. Each entry opens its own page, and Esc or Back returns.
+- **New players** see "Play the tutorial" first. Everyone else sees Continue, with the game and its date.
+- **Loading** shows a branded screen from the very first moment, before the game's code has arrived.
+
+### In the game
+- **The window is the game.** On a wide screen the layout fits the window exactly: no page scroll, and the map takes
+  all the height that is left. The map key starts closed.
+- **A cleaner top bar.** Joined speed, step and game controls with icons, and readiness and confidence glow green or
+  red for a moment when they move.
+- **Panels ease in** when you change tabs, notices slide into place, and buttons press down under the pointer.
+- **Themed scrollbars, focus rings and text selection** throughout.
+- **On a phone,** one finger scrolls the page past the map, and two fingers move it.
+
+### Under the hood
+- **Fonts ship with the game.** Nothing is fetched from Google any more, so "no tracking" holds completely, and the
+  fonts work offline.
+
 ## 15.1.0: ready for players
 
 A release about polish, not new systems: a smoother first visit, a game that plays properly on a phone, and saves
