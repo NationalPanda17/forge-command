@@ -1,5 +1,16 @@
 # Changelog
 
+## 15.3.0: finish
+
+A second pass on the details that make the game feel made rather than assembled.
+
+- **Tooltips in the game's own style,** in place of the browser's yellow box, everywhere a control explains itself.
+- **Checkboxes, radio buttons, sliders and drop-downs** are drawn in the game's colours instead of the browser's.
+- **Dialogs** fade in and rise into place, with an amber top edge, and Settings has a close button.
+- **The map's layer bar** is split into two compact groups, Map and Networks. On a phone it scrolls sideways.
+- **The event log** reads like a log: a date column and a coloured marker for good, bad and warning news.
+- **Header readouts** are separated by hairlines, and panel headings carry an accent mark.
+
 ## 15.2.0: look and feel
 
 The game now looks and handles like a finished product, from the first frame to the map.

@@ -1627,13 +1627,28 @@ const LAYER_LABEL: [keyof MapLayers, string, string | null][] = [
 ];
 
 export function MapLayerToggles({ layers, onChange, className = '' }: { layers: MapLayers; onChange: (next: MapLayers) => void; className?: string }) {
+  // Two groups: how the map is drawn, and which networks are on it.
+  const groups: [string, (keyof MapLayers)[]][] = [
+    ['Map', ['terrain', 'labels', 'weather', 'night']],
+    ['Networks', ['rail', 'road', 'sea', 'air', 'flows', 'regions']],
+  ];
   return (
-    <div className={`flex flex-wrap gap-1 ${className}`} role="group" aria-label="Map layers">
-      {LAYER_LABEL.map(([k, label, c]) => (
-        <button key={k} type="button" className={`btn min-h-[24px] px-2 py-0.5 text-[10px] md:min-h-0 ${layers[k] ? 'btn-active' : ''}`} aria-pressed={layers[k]} onClick={() => onChange({ ...layers, [k]: !layers[k] })}>
-          {c && <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c, opacity: layers[k] ? 1 : 0.4 }} />}
-          {label}
-        </button>
+    <div className={`flex min-w-0 max-w-full items-center gap-x-3 gap-y-1 overflow-x-auto md:flex-wrap md:overflow-visible ${className}`} role="group" aria-label="Map layers">
+      {groups.map(([name, keys]) => (
+        <div key={name} className="flex shrink-0 items-center gap-1.5">
+          <span className="label hidden md:inline">{name}</span>
+          <div className="seg" role="group" aria-label={`${name} layers`}>
+            {keys.map((k) => {
+              const [, label, c] = LAYER_LABEL.find(([id]) => id === k)!;
+              return (
+                <button key={k} type="button" className={`btn min-h-[24px] px-2 py-0.5 text-[10px] md:min-h-0 ${layers[k] ? 'btn-active' : 'text-ops-dim'}`} aria-pressed={layers[k]} onClick={() => onChange({ ...layers, [k]: !layers[k] })}>
+                  {c && <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c, opacity: layers[k] ? 1 : 0.4 }} />}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ))}
     </div>
   );

@@ -44,3 +44,11 @@ export const messageTone = {
   warn: 'text-ops-amber',
   info: 'text-ops-text',
 } as const;
+
+/** The marker beside a log line, in the same colour as its text. */
+export const messageDot = {
+  good: 'bg-ops-green',
+  bad: 'bg-ops-red',
+  warn: 'bg-ops-amber',
+  info: 'bg-ops-dim',
+} as const;
