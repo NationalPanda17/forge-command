@@ -1,5 +1,28 @@
 # Changelog
 
+## 16.0.0: Industrial Command
+
+A new look, in the tradition of the great strategy games: steel, bronze and amber, a command bar across the top, and
+key art on the title screen. Forge Command is now made for desktop and laptop screens.
+
+### A new look
+- **Typography.** Barlow Condensed for headings, buttons and tabs, and Inter for reading, in place of the
+  all-monospace text. Numbers line up in columns.
+- **Steel plates.** Every panel is a lit steel plate with a bevel and bronze corner brackets, under a heading plate
+  with an amber mark. Command buttons are gilded, toggles light up cyan, and a fine grain sits under it all.
+- **The command bar.** The Board's insignia and your country's name, then treasury, readiness, confidence and the
+  season as readouts with icons. On the right, a clock plate holds the date, a round pause button, four speed pips
+  and the day and week steps.
+- **Tabs** are plates with an amber underline, and the map sits in a recessed bezel.
+- **Title screen key art:** an industrial skyline at dusk, with saw-tooth halls, stacks trailing smoke, cranes,
+  warning beacons and a launcher, lit by the forge. The Board's insignia sits over the title.
+
+### Desktop only
+- **The game is built for screens at least 1280 pixels wide.** It always fills the window exactly. On a smaller
+  window it scrolls sideways, and the title screen says so.
+- **One finger pans the map again** on a touchscreen laptop: the game screen no longer scrolls, so the map has
+  nothing to share the gesture with.
+
 ## 15.3.0: finish
 
 A second pass on the details that make the game feel made rather than assembled.

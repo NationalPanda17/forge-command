@@ -974,9 +974,6 @@ export default function MapView(props: MapViewProps): JSX.Element {
   /** The quick-action menu: which site, and where (in the map's own pixels). */
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const press = useRef<{ timer: number; x: number; y: number } | null>(null);
-  // On a touch screen one finger scrolls the page past the map, and two fingers move it. A sideways one-finger swipe
-  // shows a short hint saying so.
-  const [twoFingerHint, setTwoFingerHint] = useState(false);
   const { hoverCard, quickMenu, related = null } = props;
 
   const onSelectRef = useRef(onSelect);
@@ -1102,63 +1099,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
     };
   }, [apply, size.w > 0]);
 
-  // Touch: the page keeps one-finger scrolling (touch-action pan-x pan-y); a two-finger touch is kept from the browser
-  // so it pans and pinches the map, not the page.
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    let start: { x: number; y: number } | null = null;
-    let hintTimer = 0;
-    let lastHint = 0;
-    const onStart = (e: TouchEvent) => {
-      if (e.touches.length >= 2) {
-        if (e.cancelable) e.preventDefault();
-        start = null;
-        setTwoFingerHint(false);
-      } else {
-        start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      }
-    };
-    const onMove = (e: TouchEvent) => {
-      if (e.touches.length >= 2) {
-        if (e.cancelable) e.preventDefault();
-        return;
-      }
-      if (!start || e.touches.length !== 1) return;
-      const dx = e.touches[0].clientX - start.x;
-      const dy = e.touches[0].clientY - start.y;
-      // A sideways swipe was meant for the map; an up-or-down one is the page scrolling, which needs no hint.
-      if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - lastHint > 4000) {
-        lastHint = Date.now();
-        start = null;
-        setTwoFingerHint(true);
-        window.clearTimeout(hintTimer);
-        hintTimer = window.setTimeout(() => setTwoFingerHint(false), 1600);
-      }
-    };
-    const onEnd = (e: TouchEvent) => {
-      if (e.touches.length === 0) start = null;
-    };
-    // Safari's own page pinch.
-    const onGesture = (e: Event) => e.preventDefault();
-    el.addEventListener('touchstart', onStart, { passive: false });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', onEnd);
-    el.addEventListener('touchcancel', onEnd);
-    el.addEventListener('gesturestart', onGesture);
-    return () => {
-      window.clearTimeout(hintTimer);
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
-      el.removeEventListener('gesturestart', onGesture);
-    };
-  }, [size.w > 0]);
-
-  // Drag to pan, two pointers to pinch. A single touch or pen pointer moves nothing: it is a tap, or the page scrolling.
+  // Drag to pan, two pointers to pinch.
   const ptrs = useRef(new Map<number, { x: number; y: number }>());
-  const touchIds = useRef(new Set<number>());
   const gesture = useRef<{ v: View; x: number; y: number; d: number } | null>(null);
   const moved = useRef(false);
   const captured = useRef(new Set<number>());
@@ -1169,7 +1111,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
   };
   const startGesture = () => {
     const ps = [...ptrs.current.values()];
-    if (ps.length === 0 || (ps.length === 1 && touchIds.current.size === 1)) {
+    if (ps.length === 0) {
       gesture.current = null;
       return;
     }
@@ -1183,7 +1125,6 @@ export default function MapView(props: MapViewProps): JSX.Element {
     cancelAnimationFrame(anim.current);
     if (ptrs.current.size === 0) moved.current = false;
     ptrs.current.set(e.pointerId, local(e));
-    if (e.pointerType !== 'mouse') touchIds.current.add(e.pointerId);
     startGesture();
   };
   const onPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -1233,7 +1174,6 @@ export default function MapView(props: MapViewProps): JSX.Element {
       press.current = null;
     }
     ptrs.current.delete(e.pointerId);
-    touchIds.current.delete(e.pointerId);
     if (captured.current.has(e.pointerId)) {
       captured.current.delete(e.pointerId);
       try {
@@ -1472,7 +1412,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           data-lod={lod}
           width={size.w}
           height={size.h}
-          style={{ touchAction: 'pan-x pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
+          style={{ touchAction: 'none', cursor: dragging ? 'grabbing' : 'grab' }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
@@ -1599,13 +1539,6 @@ export default function MapView(props: MapViewProps): JSX.Element {
       <div data-hud="" className="pointer-events-none absolute bottom-2 right-3 rounded border border-ops-line/80 bg-ops-bg px-1.5 py-0.5 text-[9.5px] tracking-wider text-ops-dim">
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
-      </div>
-      <div
-        data-hud=""
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-ops-bg/80 transition-opacity duration-200 motion-reduce:transition-none ${twoFingerHint ? 'opacity-100' : 'opacity-0'}`}
-      >
-        <span className="rounded border border-ops-line bg-ops-panel px-3 py-2 text-sm text-ops-text">Use two fingers to move the map</span>
       </div>
     </div>
   );

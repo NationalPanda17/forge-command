@@ -2,21 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   Forge Command: "Industrial Command" art direction.
+   Steel plates with a bevel and bronze corner brackets; amber for command (primary actions, titles), cyan for
+   state (selection, toggles, live data). Barlow Condensed for display, Inter for reading.
+   ========================================================================== */
+
 :root {
   color-scheme: dark;
   /* Theme colours as RGB triplets so Tailwind's opacity modifiers work (see tailwind.config.js). */
-  --ops-bg: 6 11 20;
-  --ops-panel: 11 20 36;
-  --ops-panel2: 15 27 47;
-  --ops-line: 27 44 71;
-  --ops-dim: 112 136 168; /* #7088a8: 4.7:1 or better on every panel (WCAG AA) */
-  --ops-text: 201 216 236;
+  --ops-bg: 7 10 16;
+  --ops-panel: 13 19 29;
+  --ops-panel2: 21 29 42;
+  --ops-line: 40 54 74;
+  --ops-dim: 124 142 168; /* 5:1 or better on every panel (WCAG AA) */
+  --ops-text: 214 223 235;
   --ops-cyan: 56 214 245;
   --ops-blue: 59 130 246;
   --ops-green: 52 211 153;
   --ops-amber: 245 177 61;
   --ops-red: 242 84 91;
   --ops-violet: 167 139 250;
+  /* Bronze trim for frames and corner brackets. */
+  --fc-bronze: 176 132 72;
+  /* Film grain, so flat fills read as a material. */
+  --fc-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 html, body, #root {
@@ -24,47 +34,93 @@ html, body, #root {
 }
 
 body {
-  @apply bg-ops-bg text-ops-text font-mono antialiased;
-  font-size: 12px;
+  @apply bg-ops-bg font-body text-ops-text antialiased;
+  font-size: 12.5px;
+  font-feature-settings: 'tnum' 1, 'cv11' 1; /* aligned figures; Inter's single-storey a */
   background-image:
-    radial-gradient(ellipse at 50% -20%, rgba(56, 214, 245, 0.07), transparent 60%),
-    linear-gradient(rgba(56, 214, 245, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 214, 245, 0.025) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+    var(--fc-grain),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(70, 110, 160, 0.10), transparent 70%),
+    radial-gradient(ellipse 120% 80% at 50% 120%, rgba(245, 150, 60, 0.06), transparent 60%);
+  background-attachment: fixed;
 }
 
+h1, h2, h3 { font-family: theme('fontFamily.sans'); }
+
 @layer components {
+  /* A steel plate: lit from above, a dark inner keyline, and bronze brackets at the four corners. */
   .panel {
-    /* Nearly opaque rather than blurred: a backdrop blur costs a phone's GPU every frame and shows nothing here. */
-    @apply rounded-md border border-ops-line bg-ops-panel/95;
-    box-shadow: inset 0 1px 0 rgba(120, 180, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --c: rgb(var(--fc-bronze) / 0.75);
+    @apply rounded-[3px] border border-ops-line;
+    /* The colour is separate so a tint such as bg-ops-amber/10 on a selected card still shows. */
+    background-color: rgb(var(--ops-panel) / 0.97);
+    background:
+      linear-gradient(var(--c), var(--c)) left top / 10px 1px no-repeat,
+      linear-gradient(var(--c), var(--c)) left top / 1px 10px no-repeat,
+      linear-gradient(var(--c), var(--c)) right top / 10px 1px no-repeat,
+      linear-gradient(var(--c), var(--c)) right top / 1px 10px no-repeat,
+      linear-gradient(var(--c), var(--c)) left bottom / 10px 1px no-repeat,
+      linear-gradient(var(--c), var(--c)) left bottom / 1px 10px no-repeat,
+      linear-gradient(var(--c), var(--c)) right bottom / 10px 1px no-repeat,
+      linear-gradient(var(--c), var(--c)) right bottom / 1px 10px no-repeat,
+      linear-gradient(180deg, rgba(120, 150, 190, 0.07), transparent 160px) var(--fc-panel-bg, rgb(var(--ops-panel) / 0.97));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 10px 30px rgba(0, 0, 0, 0.35);
   }
+  /* The heading plate across the top of a panel. */
   .panel-title {
-    @apply flex items-center justify-between gap-2 border-b border-ops-line px-3 py-2 font-sans text-[13px] font-semibold uppercase tracking-[0.14em] text-ops-cyan;
+    @apply flex items-center justify-between gap-2 border-b border-ops-line px-3 py-2 font-sans text-[15px] font-bold uppercase leading-none tracking-[0.12em] text-white;
+    background: linear-gradient(90deg, rgb(var(--ops-amber) / 0.12), rgb(var(--ops-amber) / 0.02) 55%, transparent);
+    box-shadow: inset 3px 0 0 rgb(var(--ops-amber) / 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   }
   .label {
-    @apply text-[10px] uppercase tracking-[0.14em] text-ops-dim;
+    @apply font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-ops-dim;
   }
+  /* A bevelled control. */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ops-line bg-ops-panel2 px-2.5 py-1 text-[11px] uppercase tracking-wider text-ops-text transition-colors hover:border-ops-cyan/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ops-line;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-[2px] border border-ops-line px-2.5 py-[3px] font-sans text-[13px] font-semibold uppercase leading-[18px] tracking-[0.08em] text-ops-text;
+    background: linear-gradient(180deg, rgb(var(--ops-panel2)), rgb(var(--ops-panel)));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 0 rgba(0, 0, 0, 0.55);
   }
+  .btn:hover:not(:disabled) {
+    @apply border-ops-amber/60 text-white;
+    background: linear-gradient(180deg, rgb(32 42 58), rgb(var(--ops-panel2)));
+  }
+  .btn:disabled { @apply cursor-not-allowed opacity-40; }
+  /* The command button: a gilded plate. */
   .btn-primary {
-    @apply border-ops-cyan/50 bg-ops-cyan/10 text-ops-cyan hover:bg-ops-cyan/20;
+    @apply border-ops-amber/70 text-[#ffd894];
+    background: linear-gradient(180deg, rgb(var(--ops-amber) / 0.30), rgb(var(--ops-amber) / 0.12));
+    box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.25), 0 1px 0 rgba(0, 0, 0, 0.55), 0 0 12px rgb(var(--ops-amber) / 0.12);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply border-ops-amber text-white;
+    background: linear-gradient(180deg, rgb(var(--ops-amber) / 0.42), rgb(var(--ops-amber) / 0.18));
   }
   .btn-danger {
-    @apply border-ops-red/50 bg-ops-red/10 text-ops-red hover:bg-ops-red/20;
+    @apply border-ops-red/60 text-ops-red;
+    background: linear-gradient(180deg, rgb(var(--ops-red) / 0.20), rgb(var(--ops-red) / 0.08));
   }
-  .btn-active {
-    @apply border-ops-cyan bg-ops-cyan/20 text-white;
+  .btn-danger:hover:not(:disabled) { @apply border-ops-red text-white; background: linear-gradient(180deg, rgb(var(--ops-red) / 0.32), rgb(var(--ops-red) / 0.14)); }
+  /* A toggle that is on: lit cyan, pressed in. */
+  .btn-active,
+  .btn-active:hover:not(:disabled) {
+    @apply border-ops-cyan/80 text-white;
+    background: linear-gradient(180deg, rgb(var(--ops-cyan) / 0.16), rgb(var(--ops-cyan) / 0.28));
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 10px rgb(var(--ops-cyan) / 0.15);
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded-sm border px-1.5 py-[1px] text-[10px] font-medium uppercase tracking-wider;
+    @apply inline-flex items-center gap-1 rounded-[2px] border px-1.5 py-[1px] font-sans text-[11px] font-semibold uppercase tracking-wider;
   }
   .input {
-    @apply rounded border border-ops-line bg-ops-bg px-2 py-1 text-ops-text outline-none focus:border-ops-cyan;
+    @apply rounded-[2px] border border-ops-line bg-ops-bg px-2 py-1 text-ops-text outline-none focus:border-ops-cyan;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
   }
   .table-ops th {
-    @apply border-b border-ops-line px-2 py-1.5 text-left text-[10px] font-normal uppercase tracking-[0.12em] text-ops-dim;
+    @apply border-b border-ops-line px-2 py-1.5 text-left font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-ops-dim;
   }
   .table-ops td {
     @apply border-b border-ops-line/50 px-2 py-1.5 align-middle;
@@ -75,23 +131,12 @@ body {
 }
 
 input[type='number']::-webkit-inner-spin-button { opacity: 0.4; }
-.bar { @apply h-1.5 overflow-hidden rounded-sm bg-ops-line/70; }
-.bar > span { @apply block h-full; }
+.bar { @apply h-1.5 overflow-hidden rounded-[1px] bg-black/40; box-shadow: inset 0 0 0 1px rgb(var(--ops-line) / 0.8); }
+.bar > span { @apply block h-full; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
 
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 .ticker { animation: ticker linear infinite; }
 @media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
-
-/* Touch screens: every button and tab is at least 44px tall, the size a fingertip can hit reliably. */
-@media (pointer: coarse) {
-  .btn,
-  nav[aria-label='Panel groups'] button,
-  nav[aria-label='Panels'] button,
-  [role='group'][aria-label='Map layers'] button {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
 
 html.rm *, html.rm *::before, html.rm *::after { animation: none !important; transition: none !important; }
 
@@ -335,3 +380,151 @@ select option { background: rgb(var(--ops-panel)); color: rgb(var(--ops-text)); 
   .fc-stat { padding-left: 1rem; border-left: 1px solid rgb(var(--ops-line) / 0.7); }
 }
 .fc-stat > div:last-child { font-size: 13px; font-weight: 500; }
+
+/* ---------- Command bar ---------- */
+
+.fc-cmdbar {
+  position: relative;
+  min-height: 52px;
+  border: 1px solid rgb(var(--ops-line));
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(150, 175, 210, 0.09), rgba(150, 175, 210, 0) 55%),
+    linear-gradient(180deg, rgb(24 32 46), rgb(11 16 25));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    0 2px 0 rgb(var(--fc-bronze) / 0.35),
+    0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.fc-divider { width: 1px; align-self: stretch; margin: 4px 2px; background: linear-gradient(180deg, transparent, rgb(var(--fc-bronze) / 0.55), transparent); }
+
+/* A readout well: recessed into the bar. */
+.fc-res {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 5px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.fc-crisis {
+  padding: 4px 10px;
+  border-radius: 2px;
+  border: 1px solid rgb(var(--ops-amber) / 0.5);
+  background: rgb(var(--ops-amber) / 0.1);
+  color: rgb(var(--ops-amber));
+}
+.fc-crisis-active { border-color: rgb(var(--ops-red) / 0.6); background: rgb(var(--ops-red) / 0.12); color: rgb(var(--ops-red)); animation: fc-alarm 2.4s ease-in-out infinite; }
+@keyframes fc-alarm { 50% { box-shadow: 0 0 14px rgb(var(--ops-red) / 0.35); } }
+
+/* The clock: date, pause, speed pips and step buttons in one bronze-trimmed plate. */
+.fc-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid rgb(var(--fc-bronze) / 0.55);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.15));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.fc-clock-pause {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgb(var(--fc-bronze) / 0.7);
+  color: rgb(var(--ops-text));
+  background: radial-gradient(circle at 50% 35%, rgb(40 52 70), rgb(14 20 30));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 0 rgba(0, 0, 0, 0.6);
+  transition: color 120ms, border-color 120ms, box-shadow 120ms;
+}
+.fc-clock-pause:hover { color: #fff; border-color: rgb(var(--ops-amber)); }
+.fc-clock-pause.is-paused { color: rgb(var(--ops-amber)); border-color: rgb(var(--ops-amber)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 12px rgb(var(--ops-amber) / 0.35); }
+.fc-pip { display: flex; align-items: flex-end; justify-content: center; width: 12px; height: 100%; padding: 0 2px; }
+.fc-pip > span {
+  display: block;
+  width: 6px;
+  height: var(--h);
+  border-radius: 1px;
+  background: rgb(var(--ops-dim) / 0.35);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+  transition: background-color 120ms, box-shadow 120ms;
+}
+.fc-pip:hover > span { background: rgb(var(--ops-dim)); }
+.fc-pip.is-on > span { background: linear-gradient(180deg, #ffd98a, rgb(var(--ops-amber))); box-shadow: 0 0 6px rgb(var(--ops-amber) / 0.6); }
+.fc-step {
+  padding: 0 6px;
+  height: 15px;
+  border-radius: 2px;
+  border: 1px solid rgb(var(--ops-line));
+  font: 600 10px/13px theme('fontFamily.sans');
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--ops-dim));
+  background: rgb(var(--ops-panel));
+}
+.fc-step:hover:not(:disabled) { color: #fff; border-color: rgb(var(--ops-amber) / 0.6); }
+.fc-step:disabled { opacity: 0.35; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .fc-crisis-active { animation: none; } }
+html.rm .fc-crisis-active { animation: none; }
+
+/* ---------- Panel tabs ---------- */
+
+.fc-gtabs { background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1)); }
+.fc-gtab {
+  position: relative;
+  white-space: nowrap;
+  padding: 9px 11px 7px;
+  font: 700 14px/1 theme('fontFamily.sans');
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(var(--ops-dim));
+  transition: color 120ms;
+}
+.fc-gtab:hover { color: rgb(var(--ops-text)); }
+.fc-gtab.is-on {
+  color: #fff;
+  background: linear-gradient(0deg, rgb(var(--ops-amber) / 0.16), transparent 85%);
+  text-shadow: 0 0 10px rgb(var(--ops-amber) / 0.35);
+}
+.fc-gtab.is-on::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -1px;
+  height: 2px;
+  background: rgb(var(--ops-amber));
+  box-shadow: 0 0 8px rgb(var(--ops-amber) / 0.7);
+}
+.fc-ptab {
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  font: 600 13px/1.1 theme('fontFamily.sans');
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--ops-dim));
+}
+.fc-ptab:hover { color: rgb(var(--ops-text)); }
+.fc-ptab.is-on { color: #fff; border-color: rgb(var(--ops-cyan) / 0.45); background: rgb(var(--ops-cyan) / 0.12); }
+
+/* ---------- Map frame: a recessed bezel around the chart ---------- */
+
+.fc-mapframe > div:has(> div[role='region']) { padding: 4px; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
+.fc-mapframe div[role='region'] { box-shadow: 0 0 0 1px rgb(var(--fc-bronze) / 0.45), 0 0 0 3px rgba(0, 0, 0, 0.6); }
+
+/* Title key art: smoke drifts, aircraft-warning beacons blink. */
+@keyframes fc-smoke { 0% { transform: translate(0, 0); opacity: 0.9; } 100% { transform: translate(26px, -22px); opacity: 0.5; } }
+.fc-smoke > g { animation: fc-smoke 7s ease-in-out infinite alternate; transform-box: fill-box; }
+@keyframes fc-beacon { 0%, 60%, 100% { opacity: 0.25; } 70%, 85% { opacity: 1; } }
+.fc-beacon > circle { animation: fc-beacon 2.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .fc-smoke > g, .fc-beacon > circle { animation: none; } }
+html.rm .fc-smoke > g, html.rm .fc-beacon > circle { animation: none; }

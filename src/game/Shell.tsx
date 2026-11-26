@@ -1,5 +1,5 @@
 // The 2.0 game screen: the map at the centre, a command panel beside it, and the clock on top.
-import { Suspense, useCallback, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { lazyPart } from '../ui/lazyPart';
 import { PanelBoundary } from '../ui/ErrorBoundary';
 import { monthOfYear, seasonOf } from '../sim/living';
@@ -21,7 +21,7 @@ import { downloadSave, saveSlot } from './saves';
 import { isFounded } from '../sim/industry';
 import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
-import { tr } from '../sim/worldgen';
+import { countryTitle, tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
 import { sfx, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
 import { loadAudioPrefs, moodFor, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
@@ -35,7 +35,7 @@ import { readiness } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { MATERIALS, RECIPES, ROUTES, ROUTE_KEY, SITE_BY_ID, type MaterialId } from '../sim/world';
 import { Btn, Flash } from '../ui/kit';
-import { Icon } from '../ui/icons';
+import { Icon, Insignia, type IconName } from '../ui/icons';
 import { money, pct, textToneFor } from '../ui/format';
 import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
@@ -165,18 +165,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     return () => window.removeEventListener('keydown', onKey);
   }, [speed, setSpeed, setPanel]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
-  // The map key starts open on a wide screen and folded away on a phone, where it would push the panels far down.
-  // The key starts closed: on a phone it would push the panels down, and on a wide screen it would take the map's height.
+  // The map key starts closed, so the map keeps its height.
   const [legendOpen, setLegendOpen] = useState(false);
-  // On a wide screen the game fills the window exactly, with no page scroll: the map takes the height that is left.
-  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1280px)').matches === true);
-  useEffect(() => {
-    const mq = window.matchMedia?.('(min-width: 1280px)');
-    if (!mq) return;
-    const on = () => setWide(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
   const [help, setHelp] = useState<SettingsTab | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -407,109 +397,128 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   }, [toast]);
 
   return (
-    <div className={`flex min-h-screen flex-col gap-2 p-2 xl:h-[100dvh] xl:min-h-0 xl:overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
+    <div className={`flex h-[100dvh] min-w-[1280px] flex-col gap-2 overflow-hidden p-2 ${speed === 0 ? 'fc-paused' : ''}`}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announce}
       </div>
       <a href="#panels" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-ops-panel focus:px-2 focus:py-1">Skip to panels</a>
-      <header className="fc-zoom panel flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 sm:gap-x-5 sm:gap-y-2">
-        <button type="button" className="fc-title-word font-sans text-base font-bold tracking-[0.2em] sm:text-lg" onClick={() => onMenu(state)} title="Main menu">
-          FORGE COMMAND
+      <header className="fc-zoom fc-cmdbar flex items-center gap-3 px-3 py-1.5">
+        <button type="button" className="flex shrink-0 items-center gap-2.5 pr-1 text-left" onClick={() => onMenu(state)} title="Main menu">
+          <Insignia size={34} />
+          <span className="leading-none">
+            <span className="fc-title-word block font-sans text-[19px] font-bold tracking-[0.18em]">FORGE COMMAND</span>
+            <span className="mt-1 block max-w-[190px] truncate font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-ops-dim">{countryTitle()}</span>
+          </span>
         </button>
         {state.mode === 'sandbox' && (
-          <button type="button" onClick={() => setPanel('sandbox')} className="rounded border border-ops-amber/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ops-amber">
+          <button type="button" onClick={() => setPanel('sandbox')} className="chip shrink-0 border-ops-amber/60 text-ops-amber">
             Sandbox
           </button>
         )}
-        <div className="fc-stat">
-          <div className="label">Date</div>
-          <div className="text-white">{dateLabel(state.day)}</div>
-        </div>
-        <HotseatChip state={state} />
-        <div className="fc-stat hidden sm:block">
-          <div className="label">Season</div>
-          <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
-            <Explain title="Season and prices" lines={() => seasonWhy(state)}>
-              {seasonOf(state.day)[0].toUpperCase() + seasonOf(state.day).slice(1)} <span className="text-ops-dim">· prices +{Math.round((state.priceIndex - 1) * 100)}%</span>
-            </Explain>
-          </div>
-        </div>
-        <div className="fc-stat">
-          <div className="label">Treasury</div>
-          <div className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>
-            <Explain title="Treasury" lines={() => treasuryWhy(state)}>
-              {money(state.treasury)}
-            </Explain>
-          </div>
-        </div>
-        <div className="fc-stat">
-          <div className="label">Readiness</div>
-          <div className={textToneFor(ready)}>
-            <Flash value={Math.round(ready * 100)}>
-              <Explain title="Readiness" lines={() => readinessWhy(state)}>
-                {pct(ready)}
+        <div className="fc-divider" aria-hidden="true" />
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Resource icon="coin" label="Treasury" tone={state.treasury < 0 ? 'red' : 'amber'}>
+            <span className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>
+              <Explain title="Treasury" lines={() => treasuryWhy(state)}>
+                {money(state.treasury)}
               </Explain>
-            </Flash>
-          </div>
-        </div>
-        <div className="fc-stat">
-          <div className="label">Confidence</div>
-          <div className={textToneFor(state.confidence / 70)}>
-            <Flash value={Math.round(state.confidence)}>
-              <Explain title="Confidence" lines={() => confidenceWhy(state)}>
-                {Math.round(state.confidence)}
+            </span>
+          </Resource>
+          <Resource icon="shield" label="Readiness" tone={ready >= 0.9 ? 'green' : ready >= 0.6 ? 'amber' : 'red'}>
+            <span className={textToneFor(ready)}>
+              <Flash value={Math.round(ready * 100)}>
+                <Explain title="Readiness" lines={() => readinessWhy(state)}>
+                  {pct(ready)}
+                </Explain>
+              </Flash>
+            </span>
+          </Resource>
+          <Resource icon="star" label="Confidence" tone={state.confidence >= 63 ? 'green' : state.confidence >= 42 ? 'amber' : 'red'}>
+            <span className={textToneFor(state.confidence / 70)}>
+              <Flash value={Math.round(state.confidence)}>
+                <Explain title="Confidence" lines={() => confidenceWhy(state)}>
+                  {Math.round(state.confidence)}
+                </Explain>
+              </Flash>
+            </span>
+          </Resource>
+          <Resource icon={seasonOf(state.day)} label={seasonOf(state.day)} tone="cyan">
+            <span className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
+              <Explain title="Season and prices" lines={() => seasonWhy(state)}>
+                +{Math.round((state.priceIndex - 1) * 100)}%
               </Explain>
-            </Flash>
-          </div>
+            </span>
+          </Resource>
+          <HotseatChip state={state} />
         </div>
         {state.crisis && (
-          <div className={state.crisis.phase === 'active' ? 'text-ops-red' : 'text-ops-amber'}>
-            <div className="label">{state.crisis.phase === 'active' ? 'Crisis' : 'Warning'}</div>
-            <div className="max-w-[220px] truncate">{state.crisis.name}</div>
+          <div className={`fc-crisis flex min-w-0 shrink items-center gap-2 ${state.crisis.phase === 'active' ? 'fc-crisis-active' : ''}`} title={state.crisis.name}>
+            <Icon name="alert" size={16} />
+            <span className="min-w-0 leading-tight">
+              <span className="label block !text-current">{state.crisis.phase === 'active' ? 'Crisis' : 'Warning'}</span>
+              <span className="hidden max-w-[200px] truncate font-sans text-[14px] font-semibold min-[1440px]:block">{state.crisis.name}</span>
+            </span>
           </div>
         )}
-        <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
-          <div className="seg" role="group" aria-label="Game speed">
-            {SPEEDS.map((sp) => (
-              <Btn key={sp} pressed={speed === sp} onClick={() => setSpeed(sp)} ariaLabel={sp === 0 ? 'Pause' : `Speed ${sp}×`} title={sp === 0 ? 'Pause (space)' : `${sp} day${sp > 1 ? 's' : ''} a second`}>
-                {sp === 0 ? <Icon name="pause" /> : (
-                  <>
-                    <Icon name="play" size={10} />
-                    {sp}×
-                  </>
-                )}
-              </Btn>
-            ))}
-          </div>
-          <div className="seg" role="group" aria-label="Step">
-            <Btn onClick={() => step(1)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one day">
-              +1d
-            </Btn>
-            <Btn onClick={() => step(7)} why={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : null} title="Advance one week">
-              +7d
-            </Btn>
-          </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {state.over && reportClosed && (
-            <Btn kind="warn" onClick={() => setReportClosed(false)} title="Your grade, the term in charts, and the next term">
+            <Btn kind="primary" onClick={() => setReportClosed(false)} title="Your grade, the term in charts, and the next term">
               <Icon name="report" />
               Term report
             </Btn>
           )}
+          <div className="fc-clock">
+            <div className="min-w-[132px] px-1 leading-none">
+              <div className="font-sans text-[19px] font-bold uppercase tracking-[0.06em] text-white">{dateLabel(state.day)}</div>
+              <div className={`mt-1 font-sans text-[11px] font-semibold uppercase tracking-[0.16em] ${speed === 0 ? 'text-ops-amber' : 'text-ops-dim'}`}>
+                {speed === 0 ? 'Paused' : `${speed} day${speed > 1 ? 's' : ''} a second`}
+              </div>
+            </div>
+            <button
+              type="button"
+              className={`fc-clock-pause ${speed === 0 ? 'is-paused' : ''}`}
+              aria-pressed={speed === 0}
+              aria-label={speed === 0 ? 'Resume' : 'Pause'}
+              title={speed === 0 ? 'Resume (space)' : 'Pause (space)'}
+              onClick={() => setSpeed(speed === 0 ? lastSpeed.current || 1 : 0)}
+            >
+              <Icon name={speed === 0 ? 'play' : 'pause'} size={15} />
+            </button>
+            <div className="flex items-end gap-[3px] self-stretch py-1" role="group" aria-label="Game speed">
+              {SPEEDS.filter((sp) => sp > 0).map((sp, i) => (
+                <button
+                  key={sp}
+                  type="button"
+                  className={`fc-pip ${speed >= sp ? 'is-on' : ''}`}
+                  style={{ ['--h' as string]: `${7 + i * 4}px` }}
+                  aria-pressed={speed === sp}
+                  aria-label={`Speed ${sp}×`}
+                  title={`${sp} day${sp > 1 ? 's' : ''} a second`}
+                  onClick={() => setSpeed(sp)}
+                >
+                  <span />
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-[3px]" role="group" aria-label="Step">
+              <button type="button" className="fc-step" disabled={held || speed !== 0} onClick={() => step(1)} title={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : 'Advance one day'}>
+                +1d
+              </button>
+              <button type="button" className="fc-step" disabled={held || speed !== 0} onClick={() => step(7)} title={held ? 'Deal with the open screen first' : speed !== 0 ? 'Pause first' : 'Advance one week'}>
+                +7d
+              </button>
+            </div>
+          </div>
           <div className="seg" role="group" aria-label="Game">
             <Btn onClick={() => setSaving(saving === null ? `Day ${state.day + 1}` : null)} title="Save this game under a name" ariaLabel="Save" pressed={saving !== null}>
               <Icon name="save" />
-              <span className="hidden xl:inline">Save</span>
             </Btn>
             <Btn onClick={() => setPalette(true)} title="Go to any tab, site, material or town, or run a command (Ctrl K or /)" ariaLabel="Search">
               <Icon name="search" />
-              <span className="hidden xl:inline">Search</span>
             </Btn>
             <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)" ariaLabel="Settings">
               <Icon name="settings" />
-              <span className="hidden xl:inline">Settings</span>
             </Btn>
-          </div>
-          <div className="seg" role="group" aria-label="Audio">
             <Btn pressed={audioPrefs.sfx} onClick={() => setAudio({ sfx: !audioPrefs.sfx })} title="Sound effects" ariaLabel="Sound effects">
               <Icon name={audioPrefs.sfx ? 'sound' : 'mute'} />
             </Btn>
@@ -585,12 +594,12 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </div>
       )}
 
-      <div className="grid flex-1 gap-2 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_460px]">
-        <div className="panel min-w-0 overflow-hidden xl:flex xl:flex-col">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_470px] gap-2">
+        <div className="panel fc-mapframe flex min-w-0 flex-col overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ops-line/60 px-2 py-1">
             <MapLayerToggles layers={layers} onChange={setLayers} />
           </div>
-          <div className="xl:min-h-0 xl:flex-1">
+          <div className="min-h-0 flex-1">
           <MapView
             key={state.world ?? 'classic'}
             markers={markers}
@@ -600,7 +609,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             selected={selected}
             onSelect={select}
             layers={layers}
-            height={wide ? '100%' : 'min(calc(100dvh - 220px), max(370px, 78vw))'}
+            height="100%"
             network={network}
             showPlans={panel === 'build'}
             highlight={highlight}
@@ -634,13 +643,13 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
           </div>
-          <details className="group border-t border-ops-line/60 px-2 py-1 xl:max-h-44 xl:shrink-0 xl:overflow-y-auto" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
+          <details className="group max-h-44 shrink-0 overflow-y-auto border-t border-ops-line/60 px-2 py-1" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
             <summary className="label cursor-pointer select-none py-1 hover:text-ops-text">Map key</summary>
             <MapLegend />
           </details>
         </div>
-        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:min-h-0">
-          <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 pt-1" aria-label="Panel groups">
+        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <nav className="fc-gtabs flex overflow-x-auto border-b border-ops-line px-1" aria-label="Panel groups">
             {GROUPS.map((g) => {
               const on = group === g.id;
               const b = groupBadge(state, badges, g);
@@ -649,7 +658,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                   key={g.id}
                   type="button"
                   data-group={g.id}
-                  className={`whitespace-nowrap rounded-t border-b-2 px-2 py-1 font-sans text-[12px] font-semibold uppercase tracking-wider ${on ? 'border-ops-cyan text-white' : 'border-transparent text-ops-dim hover:text-ops-text'}`}
+                  className={`fc-gtab ${on ? 'is-on' : ''}`}
                   aria-current={on ? 'true' : undefined}
                   onClick={() => setPanel(on ? panel : (lastIn[g.id] ?? panelsFor(state, g)[0]))}
                 >
@@ -663,7 +672,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               );
             })}
           </nav>
-          <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 px-2 py-1" aria-label="Panels">
+          <nav className="flex gap-1 overflow-x-auto border-b border-ops-line/60 bg-black/20 px-2 py-1.5" aria-label="Panels">
             {panelsFor(state, GROUPS.find((g) => g.id === group)!).map((id) => {
               const b = badges[id];
               return (
@@ -671,7 +680,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                   key={id}
                   type="button"
                   data-panel={id}
-                  className={`whitespace-nowrap rounded px-2 py-1 font-sans text-[12px] font-semibold uppercase tracking-wider ${panel === id ? 'bg-ops-cyan/15 text-ops-cyan' : 'text-ops-dim hover:text-ops-text'}`}
+                  className={`fc-ptab ${panel === id ? 'is-on' : ''}`}
                   aria-current={panel === id ? 'page' : undefined}
                   onClick={() => setPanel(id)}
                 >
@@ -773,6 +782,28 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       )}
       {palette && <CommandPalette commands={commands} onClose={() => setPalette(false)} />}
       <span className="hidden">{Object.keys(RECIPES).length + Object.keys(MATERIALS).length}</span>
+    </div>
+  );
+}
+
+const RES_TONE = {
+  amber: 'text-ops-amber border-ops-amber/45 bg-ops-amber/10',
+  green: 'text-ops-green border-ops-green/45 bg-ops-green/10',
+  red: 'text-ops-red border-ops-red/50 bg-ops-red/10',
+  cyan: 'text-ops-cyan border-ops-cyan/45 bg-ops-cyan/10',
+} as const;
+
+/** One readout in the command bar: an icon tile, a small label and a large figure. */
+function Resource({ icon, label, tone, children }: { icon: IconName; label: string; tone: keyof typeof RES_TONE; children: ReactNode }) {
+  return (
+    <div className="fc-res">
+      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-[2px] border ${RES_TONE[tone]}`}>
+        <Icon name={icon} size={15} />
+      </span>
+      <span className="min-w-0 leading-none">
+        <span className="label block whitespace-nowrap !text-[10px]">{label}</span>
+        <span className="mt-0.5 block whitespace-nowrap font-sans text-[18px] font-bold">{children}</span>
+      </span>
     </div>
   );
 }
