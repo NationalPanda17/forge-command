@@ -1,4 +1,5 @@
 // Planning tools: forecasts of each round's stock, and the weakest links in the supply chain.
+import { mandateScore, scoreFrom } from './mandate';
 import { CRISES } from './fight';
 import { DAYS_PER_MONTH, inputRates, isLine, lotQty, nationalDailyDraw, nationalStock, processRate, reserveTarget } from './selectors';
 import { recipeInputs, recipeScrap } from './strategy';
@@ -164,6 +165,9 @@ export const siteName = (id: string | null) => (id ? SITE_BY_ID[id]?.name ?? id 
 export interface TermReport {
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
   score: number;
+  /** How well the Committee's mandate was met over the term, 0–1, and the term's average confidence. */
+  mandate: number;
+  avgConfidence: number;
   avgReadiness: number;
   minReadiness: number;
   finalConfidence: number;
@@ -189,11 +193,16 @@ export function termReport(s: SimState): TermReport {
   const income = sum((x) => x.income.appropriation + x.income.sales);
   const made = sum((x) => (FINISHED as LineId[]).reduce((a, l) => a + (x.made[l] ?? 0), 0));
   const objectives = s.strategy.objectives.filter((o) => o.status === 'done').length;
-  const score = Math.round(avg * 50 + (s.confidence / 100) * 25 + (stopped / Math.max(1, stopped + leaked)) * 15 + objectives * 2 + (s.outcome === 'dismissed' ? -30 : 0));
-  const grade = score >= 80 ? 'A' : score >= 68 ? 'B' : score >= 55 ? 'C' : score >= 42 ? 'D' : 'F';
+  // The Committee's mandate (docs/mandate.md §4): the goals met, average confidence over the term, the shield, objectives.
+  const avgConfidence = h.length ? h.reduce((a, x) => a + x.confidence, 0) / h.length : s.confidence;
+  // Nothing got through when nothing came: a perfect shield, not an empty one.
+  const parts = scoreFrom(s, mandateScore(s, h), avgConfidence, stopped + leaked > 0 ? stopped / (stopped + leaked) : 1, objectives, s.outcome === 'dismissed');
+  const { score, grade } = parts;
   return {
     grade,
     score,
+    mandate: parts.mandate,
+    avgConfidence,
     avgReadiness: avg,
     minReadiness: min,
     finalConfidence: s.confidence,

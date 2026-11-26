@@ -588,8 +588,10 @@ Effects apply to your own plants only.
   exports − retirements (half saved by surveillance while lots are still eligible).
 - **Balances:** national supply of every material (active, unbanned sites) against the demand of today's plan.
 - **Trace:** from a round down its recipe, taking the input with the lowest supply ratio at each level.
-- **Term report:** score = average readiness × 50 + confidence × 25 + interception rate × 15 + objectives × 2, less
-  30 if dismissed.
+- **Term report:** since 17.0 the term is judged on the Committee's mandate, a set of weighted goals for each scenario
+  (readiness, value for money, regional jobs, stewardship, shield). Score = (55 × mandate + 20 × trust + 15 ×
+  interception + min(5, 2 × objectives)) × the difficulty multiplier, less 30 if dismissed. Trust is average
+  confidence above 50. The full rules, numbers and balance results are in [`mandate.md`](mandate.md).
 
 ## Scenarios (`setup.ts`)
 - **Peacetime:** the standard start.

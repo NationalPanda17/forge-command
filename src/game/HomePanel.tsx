@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { validate, type SimAction } from '../sim/actions';
 import { advise, threeMonthPlan } from '../sim/advisor';
+import { GOALS, projectMandate, type GoalId } from '../sim/mandate';
 import { nationalStock, readiness, reserveTarget } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { FINISHED, MATERIALS, type LineId } from '../sim/world';
@@ -94,6 +95,7 @@ export default function HomePanel({
   const advice = useMemo(() => advise(state, 3), [state]);
   const plan = useMemo(() => threeMonthPlan(state).slice(0, 4), [state]);
   const ch = useMemo(() => changesSince(state, seen), [state, seen]);
+  const mandate = useMemo(() => projectMandate(state), [state]);
   const evKinds = Object.entries(ch.events) as [EventKind, number][];
   return (
     <div className="space-y-4 p-3 text-[11px]">
@@ -111,6 +113,8 @@ export default function HomePanel({
           </div>
         ))}
       </section>
+
+      <MandateCard m={mandate} />
 
       <section>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -227,5 +231,53 @@ export default function HomePanel({
       )}
       <p className="text-[10px] text-ops-dim">{dateLabel(state.day)}</p>
     </div>
+  );
+}
+
+const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-green', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
+
+/** The figure each goal is judged on, as a player would say it. */
+function goalFigure(id: GoalId, raw: number): string {
+  if (!Number.isFinite(raw)) return 'too early';
+  if (id === 'readiness') return `${Math.round(raw * 100)}% ready`;
+  if (id === 'value') return `${raw.toFixed(2)}× budget`;
+  if (id === 'jobs') return `${Math.round(raw * 100)}% spread`;
+  if (id === 'independence') return `${Math.round(raw * 100)}% foreign`;
+  if (id === 'stewardship') return `${(raw * 100).toFixed(1)}% waste`;
+  return `${Math.round(raw * 100)}% got through`;
+}
+
+/** The Committee's mandate: this fiscal year's goals, how each is going, and the term's projected grade. */
+function MandateCard({ m }: { m: ReturnType<typeof projectMandate> }) {
+  return (
+    <section className="rounded-[2px] border border-ops-line/60 p-2" aria-label="The Committee’s mandate">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <h3 className="label">The Committee’s mandate · year {m.year + 1}</h3>
+        {m.early ? (
+          <span className="label whitespace-nowrap" title="The Committee first takes stock after three months">
+            Projected grade from month 3
+          </span>
+        ) : (
+          <span className="whitespace-nowrap" title="If the rest of the term goes as it is going now">
+            <span className="label">Projected </span>
+            <span className={`font-sans text-[18px] font-bold ${GRADE_TONE[m.parts.grade]}`}>{m.parts.grade}</span>
+            <span className="ml-1 text-ops-dim">{m.parts.score}</span>
+          </span>
+        )}
+      </div>
+      <ul className="space-y-1">
+        {m.goals.map((g) => (
+          <li key={g.id} className="grid grid-cols-[minmax(0,1fr)_2.5rem_7.5rem_4.5rem] items-center gap-2" title={GOALS[g.id].blurb}>
+            <span className="min-w-0 truncate text-ops-text">{g.name}</span>
+            <span className="text-right text-ops-dim">{Math.round(g.weight * 100)}%</span>
+            <span className="truncate text-right text-ops-dim">{goalFigure(g.id, g.raw)}</span>
+            <span className="bar" role="meter" aria-label={`${g.name}: ${Math.round(g.score * 100)} of 100`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(g.score * 100)}>
+              <span className={g.score >= 0.75 ? 'bg-ops-green' : g.score >= 0.4 ? 'bg-ops-amber' : 'bg-ops-red'} style={{ width: `${Math.max(2, g.score * 100)}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      {m.risk && <p className="mt-1.5 text-ops-red">Dismissal risk: the Committee’s confidence is below 20.</p>}
+    </section>
   );
 }

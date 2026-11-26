@@ -54,6 +54,9 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
             <div className="label">Grade</div>
             <div className={`font-sans text-5xl font-bold leading-tight ${GRADE_TONE[r.grade]}`}>{r.grade}</div>
             <div className="text-ops-dim">score {r.score}</div>
+            <div className="text-[10px] text-ops-dim" title="How well you met the Committee's mandate, and its average confidence in you over the term">
+              mandate {Math.round(r.mandate * 100)}% · confidence {Math.round(r.avgConfidence)}
+            </div>
             {rank > 0 && <div className="text-[10px] text-ops-dim">#{rank} of your scored games</div>}
             {state.mode === 'sandbox' && <div className="text-[10px] text-ops-amber">sandbox · not scored</div>}
             {state.mode !== 'sandbox' && state.automation?.assisted && <div className="text-[10px] text-ops-dim">assisted by your staff</div>}

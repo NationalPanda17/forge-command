@@ -1,5 +1,40 @@
 # Changelog
 
+## 17.0.0: the Committee's mandate
+
+A new way to win. Every term the Defence Committee sets a mandate: three or four goals that pull against each other,
+weighted for the scenario you are playing. Full racks are still expected, but now you are judged on how you fill them.
+
+### The mandate
+- **Readiness, value for money, regional jobs, stewardship and the shield.** Peacetime weighs readiness 40%, value
+  25%, jobs 20% and stewardship 15%. War footing puts the shield first after readiness; Sanctions and Rebuild weigh
+  value, jobs and stewardship their own way, and expect less on the racks. Each goal is measured from your monthly
+  reports. Overstock and spot buying now cost you on value, idle money and waste count on stewardship, and the cheapest
+  supplier in the wrong region costs you on jobs.
+- **It tightens every year.** At each fiscal year the bar on every goal rises a step (three at most), and a second term
+  starts tighter.
+- **Empty racks earn nothing.** Thrift and tidiness only count while readiness is near its target.
+
+### Judged on it
+- **On Home, the Committee's mandate card** shows this year's goals, the figure each is judged on, how well it is going,
+  and your projected grade for the term (from the third month).
+- **The grade** now weighs the mandate (55), the Committee's trust over the whole term (20: average confidence above
+  50, not the last month's), the shield (15) and objectives (up to 5). The term report shows the mandate met and the
+  average confidence.
+- **Confidence follows the mandate,** not readiness alone, and gains slow as it nears the top. Empty racks still cost
+  confidence on their own.
+- **The budget moves less with confidence** (±8%, was ±15%), so a good start no longer snowballs and a bad one no
+  longer spirals.
+
+### Balance (5 seeds, four-year terms)
+- **The autopilot no longer wins it for you:** on Normal it averages a C (65), down from an A (89), and is never
+  dismissed; on Hard it drops to 38.
+- **Doing nothing earns a D at best** on Easy (it used to score 77).
+- **Every scenario is now winnable:** the autopilot survives War footing, Rebuild and Sanctions at least four times in
+  five (it used to be dismissed in two of five).
+- The full rules, every number and the balance results are in `docs/mandate.md`; every tuning value is in
+  `src/sim/tuning/mandate.json`.
+
 ## 16.1.0: fix and stabilise
 
 The first release from the studio-wide review: the bugs and traps it found, fixed before the bigger work begins.

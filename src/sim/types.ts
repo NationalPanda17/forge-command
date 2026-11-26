@@ -216,7 +216,7 @@ export interface MonthReport {
   priceIndex?: number;
   exported?: number;
   /** Where this month's change in confidence came from. */
-  why?: { readiness: number; leaks: number; land: number; debt: number; other: number };
+  why?: { readiness: number; leaks: number; land: number; debt: number; other: number; mandate?: number };
   /** Espionage incidents that got through. */
   incidents?: number;
   /** Cyber attacks that got through. */
@@ -238,6 +238,14 @@ export interface MonthReport {
   fightLand?: number;
   /** Decisions taken this month and what they did to confidence and the treasury. */
   decisions?: { title: string; option: string; confidence: number; treasury: number }[];
+  /** Purchases from foreign suppliers, $M (already counted in spend.purchases). For the mandate's independence goal. */
+  foreign?: number;
+  /** How evenly work is spread across the regions at month end, 0–1 (the mandate's jobs goal). */
+  jobsBalance?: number;
+  /** Mean mood of the towns with your plants at month end. */
+  townMood?: number;
+  /** Months of appropriation the treasury held at month end. */
+  cover?: number;
 }
 
 /** One finished term as Director. */

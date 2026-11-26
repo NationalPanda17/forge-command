@@ -1,0 +1,210 @@
+{
+  "$comment": "The Committee's mandate (docs/mandate.md). Every value here is a tuning knob; ranges are in the design doc. Supply independence is defined but in no mandate yet: in play foreign suppliers are about 2% of purchases, so it would score itself.",
+  "score": {
+    "mandate": 55,
+    "confidence": 20,
+    "interception": 15,
+    "objectiveEach": 2,
+    "objectiveCap": 5,
+    "dismissed": 30,
+    "confidenceFrom": 50
+  },
+  "difficultyMultiplier": {
+    "easy": 0.85,
+    "normal": 1,
+    "hard": 1
+  },
+  "grades": {
+    "A": 80,
+    "B": 68,
+    "C": 55,
+    "D": 42
+  },
+  "gateWidth": 0.15,
+  "confidence": {
+    "gain": 12,
+    "window": 3,
+    "expect": {
+      "easy": 0.45,
+      "normal": 0.4,
+      "hard": 0.22
+    },
+    "perLaterTerm": 0.02,
+    "satSpan": 40,
+    "satMin": 0.15,
+    "floor": {
+      "easy": 0.55,
+      "normal": 0.62,
+      "hard": 0.64
+    },
+    "floorGain": 10,
+    "scenarioOffset": {
+      "standard": 0,
+      "warFooting": -0.03,
+      "sanctions": -0.12,
+      "rebuild": -0.15,
+      "tutorial": 0,
+      "custom": 0
+    }
+  },
+  "budget": {
+    "base": 0.92,
+    "divisor": 625
+  },
+  "ratchetMax": 3,
+  "goals": {
+    "readiness": {
+      "zero": {
+        "easy": 0.55,
+        "normal": 0.65,
+        "hard": 0.7
+      },
+      "full": {
+        "easy": 0.85,
+        "normal": 0.95,
+        "hard": 0.95
+      },
+      "ratchet": 0.02
+    },
+    "value": {
+      "zero": {
+        "easy": 1.15,
+        "normal": 1.1,
+        "hard": 1.05
+      },
+      "full": {
+        "easy": 0.85,
+        "normal": 0.75,
+        "hard": 0.75
+      },
+      "ratchet": -0.03
+    },
+    "jobsBalance": {
+      "zero": {
+        "easy": 0.75,
+        "normal": 0.8,
+        "hard": 0.83
+      },
+      "full": {
+        "easy": 0.92,
+        "normal": 0.95,
+        "hard": 0.97
+      },
+      "ratchet": 0.01
+    },
+    "jobsMood": {
+      "zero": {
+        "easy": 40,
+        "normal": 45,
+        "hard": 50
+      },
+      "full": {
+        "easy": 60,
+        "normal": 65,
+        "hard": 70
+      },
+      "ratchet": 2
+    },
+    "independence": {
+      "zero": {
+        "easy": 0.5,
+        "normal": 0.45,
+        "hard": 0.4
+      },
+      "full": {
+        "easy": 0.25,
+        "normal": 0.2,
+        "hard": 0.15
+      },
+      "ratchet": -0.03
+    },
+    "waste": {
+      "zero": {
+        "easy": 0.12,
+        "normal": 0.1,
+        "hard": 0.08
+      },
+      "full": {
+        "easy": 0.03,
+        "normal": 0.02,
+        "hard": 0.015
+      },
+      "ratchet": -0.005
+    },
+    "cover": {
+      "zero": {
+        "easy": 0.5,
+        "normal": 1,
+        "hard": 1.5
+      },
+      "full": {
+        "easy": 3,
+        "normal": 4,
+        "hard": 5
+      },
+      "ratchet": 0.25
+    },
+    "shield": {
+      "zero": {
+        "easy": 0.35,
+        "normal": 0.3,
+        "hard": 0.27
+      },
+      "full": {
+        "easy": 0.12,
+        "normal": 0.1,
+        "hard": 0.08
+      },
+      "ratchet": -0.01
+    }
+  },
+  "mandates": {
+    "standard": {
+      "readiness": 0.4,
+      "value": 0.25,
+      "jobs": 0.2,
+      "stewardship": 0.15
+    },
+    "warFooting": {
+      "readiness": 0.35,
+      "shield": 0.3,
+      "value": 0.2,
+      "stewardship": 0.15
+    },
+    "sanctions": {
+      "readiness": 0.35,
+      "value": 0.25,
+      "jobs": 0.2,
+      "stewardship": 0.2
+    },
+    "rebuild": {
+      "readiness": 0.45,
+      "jobs": 0.25,
+      "value": 0.15,
+      "stewardship": 0.15
+    },
+    "tutorial": {
+      "readiness": 0.5,
+      "value": 0.25,
+      "jobs": 0.25
+    },
+    "custom": {
+      "readiness": 0.4,
+      "value": 0.25,
+      "jobs": 0.2,
+      "stewardship": 0.15
+    }
+  },
+  "rebuildReadinessEase": [
+    0.1,
+    0.05
+  ],
+  "scenarioReadinessEase": {
+    "standard": 0,
+    "warFooting": 0.05,
+    "sanctions": 0.1,
+    "rebuild": 0.08,
+    "tutorial": 0,
+    "custom": 0
+  }
+}

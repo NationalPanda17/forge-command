@@ -161,7 +161,9 @@ describe('decisions no other test covers', () => {
 
 describe('the Courier, lots and determinism', () => {
   it('the Courier prints one edition a month, and keeps two years', () => {
-    const s = advanceDays(start(), 30 * 30);
+    // Thirty months of a game left to run itself; confidence is held up so the Committee does not end it first.
+    let s = start();
+    for (let i = 0; i < 30; i++) s = advanceDays({ ...s, confidence: Math.max(s.confidence, 70) }, 30);
     expect(s.news.length).toBe(24);
     expect(s.news.at(-1)!.headlines.length).toBeGreaterThan(0);
   });
