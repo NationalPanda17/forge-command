@@ -1,4 +1,5 @@
 // The strategic layer on top of the network: research, key staff, Committee factions, decisions and objectives.
+import { budgetFactor } from './mandate';
 import { clamp, pick, rand } from './rng';
 import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
@@ -279,7 +280,8 @@ export function strategyMonth(s: SimState, feed: Feed, input: { readiness: numbe
   // Fiscal year: a budget review and a budget request.
   if ((s.history.length + 1) % 12 === 0) {
     // Budgets keep up with most, but not all, of inflation.
-    const next = Math.round(s.strategy.baseBudget * (1 + (s.priceIndex - 1) * 0.7) * (0.85 + s.confidence / 333));
+    // The Committee's confidence moves the budget a little either way (a narrow band: the leader is not run away with).
+    const next = Math.round(s.strategy.baseBudget * (1 + (s.priceIndex - 1) * 0.7) * budgetFactor(s.confidence));
     // The Committee's provisional figure; the hearing (see hearings.ts) settles the final one.
     s.appropriation = next;
     void f;

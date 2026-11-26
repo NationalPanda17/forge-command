@@ -19,6 +19,7 @@ import {
   regionDailyDraw,
 } from './selectors';
 import { emptyMonth } from './setup';
+import { mandateConfidence, recordMandateMonth } from './mandate';
 import { economyMonth, priceNow } from './economy';
 import { legCapFactor, livingDay, livingMonth, plantSeasonFactor } from './living';
 import { buildDay } from './build';
@@ -328,6 +329,7 @@ function dispatch(s: SimState, from: string, to: string, m: MaterialId, qty: num
       const price = (k ? k.price * (k.fraud ? 1 + FRAUD_MARKUP : 1) : spot * SPOT_PREMIUM) * skill * doctrinePrice(s, SITE_BY_ID[from].owner === 'foreign');
       s.treasury -= qty * price;
       s.month.spend.purchases += qty * price;
+      if (SITE_BY_ID[from].owner === 'foreign') s.month.foreign = (s.month.foreign ?? 0) + qty * price;
       if (!k) addWaste(s, 'spot', qty * spot * (SPOT_PREMIUM - 1) * skill);
       else if (k.fraud) {
         const extra = qty * k.price * FRAUD_MARKUP * skill;
@@ -702,16 +704,20 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   if ((s.history.length + 1) % 12 === 0 && (s.settings.endless || s.day < s.days)) openHearing(s, s.appropriation, feed);
   // The Committee expects three-quarters of a year's reserve, and judges leakers beyond the usual handful.
   // Each later term, the Committee expects a little more.
-  const expect = { easy: 0.62, normal: 0.7, hard: 0.72 }[s.difficulty] + 0.02 * Math.min(3, (s.term ?? 1) - 1);
+  // The Committee judges the whole mandate now, not readiness alone (docs/mandate.md §5); empty racks still cost
+  // confidence on their own, through the readiness floor.
+  recordMandateMonth(s);
+  const judged = mandateConfidence(s, ready);
   const parts = {
-    readiness: (ready - expect) * 8,
+    readiness: judged.floor,
+    mandate: judged.mandate,
     leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5),
     // landShort sums each day's shortfall fraction: average it over the month.
     land: -Math.min(8, (fightTotals.landShort / DAYS_PER_MONTH) * 4),
     debt: s.treasury < 0 ? -(1 + -s.treasury / 400) : 0,
     other: 0,
   };
-  const dc = parts.readiness + parts.leaks + parts.land + parts.debt;
+  const dc = parts.readiness + parts.mandate + parts.leaks + parts.land + parts.debt;
   // Everything else this month: factions, objectives, decisions, events.
   parts.other = s.confidence - before;
   s.confidence = clamp(s.confidence + dc);
