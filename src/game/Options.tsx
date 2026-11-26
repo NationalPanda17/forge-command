@@ -148,9 +148,16 @@ export function SettingsDialog({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg/85 p-3" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={onClose}>
       <DialogFocus labelledBy="settings-title" />
       <div className="fc-zoom panel mx-auto mt-[8vh] max-w-lg p-4 text-[12px]" onClick={(e) => e.stopPropagation()}>
-        <h2 id="settings-title" className="mb-2 font-sans text-[18px] font-semibold text-white">
-          Settings
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 id="settings-title" className="font-sans text-[20px] font-bold uppercase tracking-[0.12em] text-white">
+            Settings
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Close settings" title="Close (Esc)" className="grid h-7 w-7 place-items-center rounded text-ops-dim transition-colors hover:bg-ops-panel2 hover:text-white">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
         <div className="mb-3">
           <Segmented<SettingsTab> label="Settings section" value={tab} onChange={setTab} options={tabs} />
         </div>

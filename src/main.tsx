@@ -12,8 +12,10 @@ import '@fontsource/rajdhani/latin-600.css';
 import '@fontsource/rajdhani/latin-700.css';
 import './index.css';
 import { registerOfflineSupport } from './ui/pwa';
+import { installTooltips } from './ui/tooltip';
 
 applyPrefs(loadPrefs());
+installTooltips();
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

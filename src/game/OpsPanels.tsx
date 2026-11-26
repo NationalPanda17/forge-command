@@ -8,7 +8,7 @@ import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
 import { Bar, Btn, COLORS, LineChart, Segmented } from '../ui/kit';
 import { tr } from '../sim/worldgen';
-import { messageTone, money, pct, qty } from '../ui/format';
+import { messageDot, messageTone, money, pct, qty } from '../ui/format';
 import { dateLabel, monthLabel2 } from './useSim';
 
 const linesOf = (s: SimState) => FINISHED.filter((l) => s.lines[l as LineId].unlocked) as LineId[];
@@ -343,18 +343,21 @@ export function MoneyPanel({ state, act }: { state: SimState; act: (a: SimAction
 export function Feed({ state, onSite, limit = 40 }: { state: SimState; onSite: (id: string) => void; limit?: number }) {
   const items = state.feed.slice(-limit).reverse();
   return (
-    <ul className="space-y-1 p-3 text-[11px] leading-snug">
+    <ul className="space-y-0.5 px-3 py-2 text-[11px] leading-snug">
       {items.length === 0 && <li className="text-ops-dim">Nothing yet.</li>}
       {items.map((f, i) => (
-        <li key={`${f.day}-${i}`} className={messageTone[f.tone]}>
-          <span className="mr-1 text-ops-dim">{dateLabel(f.day).split(' · ')[0]}</span>
-          {f.site ? (
-            <button type="button" className="text-left hover:underline" onClick={() => onSite(f.site!)}>
-              {tr(f.text)}
-            </button>
-          ) : (
-            tr(f.text)
-          )}
+        <li key={`${f.day}-${i}`} className="grid grid-cols-[3.25rem_6px_minmax(0,1fr)] items-baseline gap-x-2 rounded px-1 py-px hover:bg-ops-cyan/5">
+          <span className="whitespace-nowrap text-ops-dim">{dateLabel(f.day).split(' · ')[0]}</span>
+          <span className={`h-1.5 w-1.5 -translate-y-px self-center rounded-full ${messageDot[f.tone]}`} aria-hidden="true" />
+          <span className={`min-w-0 ${messageTone[f.tone]}`}>
+            {f.site ? (
+              <button type="button" className="text-left hover:underline" onClick={() => onSite(f.site!)}>
+                {tr(f.text)}
+              </button>
+            ) : (
+              tr(f.text)
+            )}
+          </span>
         </li>
       ))}
     </ul>

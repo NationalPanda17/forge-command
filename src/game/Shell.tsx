@@ -421,12 +421,12 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             Sandbox
           </button>
         )}
-        <div>
+        <div className="fc-stat">
           <div className="label">Date</div>
           <div className="text-white">{dateLabel(state.day)}</div>
         </div>
         <HotseatChip state={state} />
-        <div className="hidden sm:block">
+        <div className="fc-stat hidden sm:block">
           <div className="label">Season</div>
           <div className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
             <Explain title="Season and prices" lines={() => seasonWhy(state)}>
@@ -434,7 +434,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             </Explain>
           </div>
         </div>
-        <div>
+        <div className="fc-stat">
           <div className="label">Treasury</div>
           <div className={state.treasury < 0 ? 'text-ops-red' : 'text-white'}>
             <Explain title="Treasury" lines={() => treasuryWhy(state)}>
@@ -442,7 +442,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             </Explain>
           </div>
         </div>
-        <div>
+        <div className="fc-stat">
           <div className="label">Readiness</div>
           <div className={textToneFor(ready)}>
             <Flash value={Math.round(ready * 100)}>
@@ -452,7 +452,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             </Flash>
           </div>
         </div>
-        <div>
+        <div className="fc-stat">
           <div className="label">Confidence</div>
           <div className={textToneFor(state.confidence / 70)}>
             <Flash value={Math.round(state.confidence)}>
