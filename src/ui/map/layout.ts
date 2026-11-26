@@ -10,7 +10,7 @@ export type Anchor = 'start' | 'middle' | 'end';
 export interface Placed { x: number; y: number; anchor: Anchor; /** Draw a leader back to the marker. */ lead?: boolean }
 
 export const FONT_MONO = '"JetBrains Mono", ui-monospace, monospace';
-export const FONT_HEAD = '"Rajdhani", "Inter", system-ui, sans-serif';
+export const FONT_HEAD = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif';
 
 const hit = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 const shift = (b: Box, dx: number, dy: number): Box => ({ x0: b.x0 + dx, y0: b.y0 + dy, x1: b.x1 + dx, y1: b.y1 + dy });

@@ -1,6 +1,7 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Icon, type IconName } from '../ui/icons';
+import { Icon, Insignia, type IconName } from '../ui/icons';
+import Skyline from './Skyline';
 import { lazyPart } from '../ui/lazyPart';
 import { SANDBOX_SETTINGS, SCENARIOS, migrate, newSim } from '../sim/setup';
 import { KIND_NAME, bests, loadScores, loadTotals } from './scores';
@@ -68,6 +69,8 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const autos = PRESETS[pilot];
   const [slots, setSlots] = useState(listSlots);
   const [screen, setScreen] = useState<Screen>('menu');
+  // The game is built for desktop and laptop screens.
+  const [narrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
   const screenHeading = useRef<HTMLHeadingElement>(null);
   // A new page moves the keyboard (and a screen reader) to its heading; back on the menu, to the page's own entry.
   const lastScreen = useRef<Screen>('menu');
@@ -576,13 +579,21 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       <Backdrop />
       <main className="fc-zoom relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
         <header className="fc-rise mb-8 text-center">
-          <p className="label mb-3 tracking-[0.4em] text-ops-cyan/80">Munitions Production Board</p>
-          <h1 className="font-sans text-[44px] font-bold leading-[0.95] tracking-[0.18em] sm:text-[60px]">
+          <div className="mb-3 flex justify-center">
+            <Insignia size={64} />
+          </div>
+          <p className="label mb-3 tracking-[0.4em] text-[#d8b070]">Munitions Production Board</p>
+          <h1 className="font-sans text-[72px] font-bold leading-[0.9] tracking-[0.16em]">
             <span className="fc-title-word block">FORGE</span>
             <span className="fc-title-word block">COMMAND</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xs text-balance text-[12px] text-ops-dim">From the mine to the launcher to the burning pit. Run a nation's munitions industry, in real time.</p>
         </header>
+        {narrow && (
+          <p className="panel fc-rise mb-3 px-3 py-2 text-[12px] text-ops-amber" role="note">
+            Forge Command is made for a computer screen at least 1280 pixels wide. On a smaller window the game scrolls sideways.
+          </p>
+        )}
         <nav aria-label="Main menu" className="space-y-2">
           {items.map((it, i) => (
             <button
@@ -629,7 +640,7 @@ function Backdrop() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
       <div className="fc-hero-glow absolute inset-0" />
-      <svg className="absolute inset-0 h-full w-full opacity-[0.07]" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600">
+      <svg className="absolute inset-0 h-full w-full opacity-[0.035]" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600">
         <g fill="none" stroke="#38d6f5" strokeWidth="1">
           {[0, 1, 2, 3, 4, 5, 6].map((k) => (
             <ellipse key={k} cx="560" cy="380" rx={60 + k * 55} ry={34 + k * 32} transform={`rotate(-14 560 380)`} />
@@ -648,7 +659,8 @@ function Backdrop() {
         />
       ))}
       </div>
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-ops-bg/80 to-transparent" />
+      <Skyline className="absolute inset-x-0 bottom-0 h-[42vh] w-full" />
+      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ops-bg/90 to-transparent" />
     </div>
   );
 }

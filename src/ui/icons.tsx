@@ -17,6 +17,14 @@ const PATHS = {
   folder: 'M2 4h4.5l1.5 1.5H14V13H2z',
   trophy: 'M5 2.5h6v3a3 3 0 0 1-6 0zM5 3.5H2.5a2.5 2.5 0 0 0 2.6 2.6M11 3.5h2.5a2.5 2.5 0 0 1-2.6 2.6M8 8.5v3M5.5 13.5h5M6.5 11.5h3',
   back: 'M12.5 8h-9M7 4.5L3.5 8 7 11.5',
+  coin: 'M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM9.8 5.6C9.4 5 8.8 4.8 8 4.8c-1.1 0-1.9.6-1.9 1.4 0 1.9 3.8 1 3.8 3 0 .9-.8 1.5-1.9 1.5-.8 0-1.5-.3-1.9-.9M8 3.6v1.2M8 11.2v1.2',
+  shield: 'M8 1.8l5 1.9v3.9c0 3.1-2.1 5.6-5 6.6-2.9-1-5-3.5-5-6.6V3.7zM5.6 7.9l1.7 1.7 3.2-3.4',
+  star: 'M8 1.8l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.2l-3.7 2.1.8-4.2L2 6.2l4.2-.5z',
+  winter: 'M8 1.5v13M2.4 4.8l11.2 6.4M2.4 11.2l11.2-6.4M6.3 2.6L8 4.2l1.7-1.6M6.3 13.4L8 11.8l1.7 1.6',
+  spring: 'M8 14.5V7M8 7C8 4.5 6 2.5 3 2.5c0 2.8 2 4.5 5 4.5zM8 9c0-2.3 1.8-4 4.8-4 0 2.6-1.8 4-4.8 4z',
+  summer: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1',
+  autumn: 'M3 13c0-5.5 3.5-9.5 10-10.5C12.5 9 8.5 13 3 13zM3 13l5-5',
+  alert: 'M8 2l6.5 11.5h-13zM8 6.5v3.2M8 11.6v.1',
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -38,6 +46,29 @@ export function Icon({ name, size = 14, className = '' }: { name: IconName; size
       className={`shrink-0 ${className}`}
     >
       <path d={PATHS[name]} fill={name === 'play' || name === 'step' ? 'currentColor' : 'none'} />
+    </svg>
+  );
+}
+
+/** The Board's insignia: a bronze hexagon with a forge flame over two rank chevrons. */
+export function Insignia({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false" className="shrink-0">
+      <defs>
+        <linearGradient id="fc-ins-bronze" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f3d28c" />
+          <stop offset="0.5" stopColor="#c08a43" />
+          <stop offset="1" stopColor="#7a5226" />
+        </linearGradient>
+        <linearGradient id="fc-ins-flame" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#ff8a2a" />
+          <stop offset="1" stopColor="#ffd98a" />
+        </linearGradient>
+      </defs>
+      <path d="M16 1.5l12.6 7.25v14.5L16 30.5 3.4 23.25V8.75z" fill="#0d131d" stroke="url(#fc-ins-bronze)" strokeWidth="1.6" />
+      <path d="M16 4.6l9.9 5.7v11.4L16 27.4 6.1 21.7V10.3z" fill="none" stroke="#c08a43" strokeOpacity="0.35" strokeWidth="0.8" />
+      <path d="M16 6.8c1.9 2.6 3.6 4.4 3.6 6.9 0 2.2-1.6 3.8-3.6 3.8s-3.6-1.6-3.6-3.8c0-1.4.7-2.5 1.6-3.4-.1 1.3.4 2.2 1.2 2.6-.4-2.1.1-4 .8-6.1z" fill="url(#fc-ins-flame)" />
+      <path d="M9.5 20l6.5 3.6 6.5-3.6M9.5 23.2l6.5 3.6 6.5-3.6" fill="none" stroke="url(#fc-ins-bronze)" strokeWidth="1.6" strokeLinejoin="round" />
     </svg>
   );
 }

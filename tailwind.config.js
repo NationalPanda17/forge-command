@@ -21,7 +21,10 @@ export default {
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-        sans: ['"Rajdhani"', '"Inter"', 'system-ui', 'sans-serif'],
+        // Display: headings, buttons, tabs and labels.
+        sans: ['"Barlow Condensed"', '"Arial Narrow"', 'system-ui', 'sans-serif'],
+        // Reading text.
+        body: ['"Inter"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
     },
   },
