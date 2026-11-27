@@ -1,8 +1,8 @@
 # Playtest brief (19.3)
 
 The last check before the itch.io launch (20.0): can a new player find their feet, and does a term feel fair? This
-brief is for whoever runs a session and for the testers themselves. The questions here are the same ones the game's
-feedback form asks, so every tester's answers line up.
+brief is for whoever runs a session and for the testers themselves. Every tester answers the same questions, so the
+answers line up.
 
 ## The build
 
@@ -52,8 +52,7 @@ If the tester is on their own, ask them to think aloud and record their screen i
 
 ## The questions
 
-At the end of the session the tester opens the feedback form: the speech-bubble button at the top right, or "Tell
-us how this term went" on the end-of-term report. It asks:
+At the end of the session, give the tester these questions to answer in writing:
 
 1. How clear was it what to do next? (1 lost, to 5 always clear)
 2. How fair did the game feel? (1 unfair, to 5 fair)
@@ -63,9 +62,8 @@ us how this term went" on the end-of-term report. It asks:
 6. What did you enjoy most?
 7. Did anything look broken or wrong?
 
-The form adds where the tester is in the game (version, mode, date, the headline numbers and the window size) unless
-they untick it. It sends nothing: the tester copies the report or saves it as a file and passes it to whoever runs
-the playtest, by whatever channel the invitation names.
+Ask them to add the game's version (on the title screen), the mode and scenario, and the in-game date they reached,
+and to send their answers to whoever runs the playtest, by whatever channel the invitation names.
 
 ## Reading the results
 

@@ -13,6 +13,8 @@ The game is ready to put on itch.io. Nothing has been uploaded: that is the owne
 - **Store images:** a 630×500 cover and six 1920×1080 screenshots, in `production/launch/itch/`.
   `scripts/store-shots.ts` takes them again from the running game, so they can be redone after any change.
 - **Fix:** the advisor said "in 1 months"; it now says "in 1 month".
+- **The in-game feedback form from 19.3.5 is removed.** The playtest brief keeps its questions; testers answer them
+  in writing.
 
 ## 19.3.5: ready for playtesters
 
