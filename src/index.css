@@ -588,11 +588,8 @@ html.rm .fc-smoke > g, html.rm .fc-beacon > circle { animation: none; }
 /* The outliner down the left edge of the map (17.1), clear of the map's title card above and scale bar below. */
 .fc-outliner {
   position: absolute;
-  left: 16px;
-  top: 88px;
   z-index: 15;
   width: 236px;
-  max-height: calc(100% - 170px);
   display: flex;
   flex-direction: column;
   border: 1px solid rgb(var(--ops-line));
@@ -661,3 +658,40 @@ html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber))
   color: #fff;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
+
+/* ---------- The full-window map's overlays (18.3) ---------- */
+
+/* The tab that brings the folded panels back. */
+.fc-panel-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 32px;
+  padding: 10px 0;
+  border: 1px solid rgb(var(--ops-line));
+  border-top-color: rgb(var(--fc-bronze) / 0.75);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgb(var(--ops-panel2)), rgb(var(--ops-panel)));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  color: rgb(var(--ops-text));
+  font: 700 12px/1 theme('fontFamily.sans');
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.fc-panel-tab > span { writing-mode: vertical-rl; transform: rotate(180deg); }
+.fc-panel-tab:hover { color: #fff; border-color: rgb(var(--ops-amber) / 0.6); }
+/* The tab that folds the panels away, on their outer edge. */
+.fc-panel-fold {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 40px;
+  border: 1px solid rgb(var(--ops-line));
+  border-right: 0;
+  border-radius: 2px 0 0 2px;
+  background: linear-gradient(180deg, rgb(var(--ops-panel2)), rgb(var(--ops-panel)));
+  color: rgb(var(--ops-dim));
+  box-shadow: -4px 4px 12px rgba(0, 0, 0, 0.35);
+}
+.fc-panel-fold:hover { color: #fff; border-color: rgb(var(--ops-amber) / 0.6); }

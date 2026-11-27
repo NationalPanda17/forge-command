@@ -56,6 +56,8 @@ export const SHORTCUTS: [string, string][] = [
   ['Shift 1 – 6', 'Command, Production, Supply, People, Treasury, Rival'],
   ['H', 'Home'],
   ['.', 'The next alert'],
+  ['P', 'Fold the panels away, or bring them back'],
+  ['F', 'The map alone on screen; F again brings everything back'],
   ['M', 'Go to the map'],
   ['Arrows, + and −, 0', 'On the map: pan, zoom, reset'],
   ['Tab', 'On the map: step between sites; Enter opens one'],

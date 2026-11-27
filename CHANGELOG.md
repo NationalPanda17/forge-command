@@ -1,5 +1,22 @@
 # Changelog
 
+## 18.3.0: the map fills the window
+
+The map is now the whole screen, in the tradition of the grand strategy games, with the command bar, the status bar
+and the panels floating over it.
+
+- **A full-window map.** The country runs to the edges of the window. The command bar, the status bar, the map's
+  layer bar and the panels are plates over it.
+- **The map keeps clear of them.** It fits itself, and places its rulers, title, zoom buttons, minimap and scale, in
+  the part of the window the overlays leave free. You can pan any corner of the country into view.
+- **Fold the panels away.** Press P, or use the tab on the panels' edge, and the map takes the room. The game
+  remembers your choice. **Press F** for the map alone, without the layer bar or the outliner; press it again for
+  everything back.
+- **Your selection stays in sight.** If the site you have selected would end up under the panels when they open, the
+  map glides to bring it back into view.
+- **The map key** opens from a Key button on the layer bar, and the strip of recent events along the bottom is gone:
+  the Log has every line.
+
 ## 18.2.0: port baseline, part three
 
 The last of the groundwork before the Unreal port: a faster simulation late in long games, a warning before saves
