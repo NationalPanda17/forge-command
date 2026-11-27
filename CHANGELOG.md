@@ -1,5 +1,11 @@
 # Changelog
 
+## 20.0.1: the header fits the window
+
+- **The top bar no longer runs off the right edge.** A leftover style moved it 8 pixels right instead of insetting it,
+  so its right end and border were cut off at every window size. It now sits 8 pixels in from both edges and lines up
+  with the panels below it.
+
 ## 20.0.0: ready for itch.io
 
 The game is ready to put on itch.io. Nothing has been uploaded: that is the owner's call.
