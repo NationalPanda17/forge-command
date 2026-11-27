@@ -120,6 +120,7 @@ export default function HomePanel({
         ))}
       </section>
 
+      {state.probation && <ProbationCard state={state} />}
       {state.war && <FrontCard state={state} />}
 
       <MandateCard m={mandate} />
@@ -228,6 +229,30 @@ function goalFigure(id: GoalId, raw: number): string {
   if (id === 'independence') return `${Math.round(raw * 100)}% foreign`;
   if (id === 'stewardship') return `${(raw * 100).toFixed(1)}% waste`;
   return `${Math.round(raw * 100)}% got through`;
+}
+
+/** Probation (19.1): the Committee's readiness target, where you stand, and how long is left. */
+function ProbationCard({ state }: { state: SimState }) {
+  const p = state.probation!;
+  const ready = readiness(state);
+  const left = Math.max(0, p.until - state.history.length);
+  const pctOf = Math.min(1, ready / p.target);
+  return (
+    <section className="rounded-[2px] border border-ops-red/60 p-2" aria-label="Probation">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="label text-ops-red">On probation</h3>
+        <span className="text-ops-text">
+          {left} month{left === 1 ? '' : 's'} left
+        </span>
+      </div>
+      <div className="relative mt-1.5 h-2 rounded-sm bg-ops-line/40" role="meter" aria-valuemin={0} aria-valuemax={Math.round(p.target * 100)} aria-valuenow={Math.round(ready * 100)} aria-label="Readiness against the Committee's target">
+        <span className="absolute inset-y-0 left-0 rounded-sm bg-ops-amber/80" style={{ width: `${pctOf * 100}%` }} aria-hidden="true" />
+      </div>
+      <p className="mt-1.5 text-ops-dim">
+        The Committee wants readiness at {Math.round(p.target * 100)}% by the end of probation; it stands at {Math.round(ready * 100)}%. Until then it holds its judgment. Miss the target and you are dismissed.
+      </p>
+    </section>
+  );
 }
 
 /** War footing (19.0c): where the front in the Marches stands, what moves it, and any air surge under way. */

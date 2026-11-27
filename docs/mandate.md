@@ -153,3 +153,27 @@ each goal's thresholds by difficulty, each scenario's weights and readiness ease
 6. Foreign purchases never exceed purchases, and the term's spend is unchanged.
 7. Home's projection equals the term report's mandate score at the end of a full term.
 8. A screenshot of Home at 1280 wide shows the Mandate card with no overlapping text.
+
+## Probation (19.0.3)
+
+The first time in a term that confidence falls to `probation.warnAt` (25), the Committee puts the director on probation instead of letting the slide run on to dismissal. The rules are in `src/sim/probation.ts`, and the tuning is `mandate.json` → `probation`.
+
+- **The target.** Readiness of `clamp(readiness + targetGain 0.08, targetMin 0.5, targetMax 0.85)`, within `months` 6 months.
+- **Held judgment.** While probation runs, confidence cannot fall below `confidence` (25). Only the target decides the outcome.
+- **Meeting the target** at any month's close ends probation, with `recoverBonus` (+5) confidence.
+- **Missing the deadline** dismisses the director.
+- **Once a term.** After probation has been used, an empty confidence dismisses at once, as before.
+- **Unchanged:** sandbox games and others with `settings.dismissal` off never reach it.
+- **Home** shows a probation card with the target, current readiness and months left.
+- **The chief of staff, while on probation,** spends its reserve, courts the best ally with trade missions, and co-produces the two scarcest lines once relations allow.
+
+**Why.** Autopilot games that were dismissed went down in a slow spiral, starting in year three. Supplier ceilings (chips, then fuzes and guidance, then GMLRS and 155 mm shells) dragged readiness and confidence down together. Dismissal at zero came only when readiness was already near 35%, too late to do anything.
+
+**Balance.** 40 seeds, full autopilot, Normal:
+
+| Map | Before | After |
+|---|---|---|
+| Classic | 59.4, 4/40 dismissed | 59.8, 3/40 dismissed |
+| Generated | 52.5, 11/40 dismissed | 54.2, 8/40 dismissed |
+
+The underlying spiral remains. The autopilot can't turn money into readiness fast enough once supplier ceilings bind. That needs a smarter chief of staff, which is a separate piece of work.

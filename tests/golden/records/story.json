@@ -237,10 +237,10 @@
    "month": 22,
    "day": 660,
    "treasury": 1808.74,
-   "confidence": 23.67,
+   "confidence": 25,
    "readiness": 0.56,
    "stock": 16937,
-   "feed": 106,
+   "feed": 107,
    "rng": 3239616540,
    "over": false
   },
@@ -248,24 +248,24 @@
    "month": 23,
    "day": 690,
    "treasury": 1802.52,
-   "confidence": 16.43,
+   "confidence": 25,
    "readiness": 0.52,
    "stock": 16734,
-   "feed": 108,
+   "feed": 109,
    "rng": 1949557476,
    "over": false
   },
   {
    "month": 24,
    "day": 720,
-   "treasury": 1786.45,
-   "confidence": 5.15,
+   "treasury": 1789.45,
+   "confidence": 20.5,
    "readiness": 0.53,
    "stock": 16475,
-   "feed": 117,
+   "feed": 118,
    "rng": 3562911974,
    "over": false
   }
  ],
- "finalHash": "8d641aabf78c2aa3a983be4ef7803102469c3d9f8022ead97b0c9d8a5ab95c5a"
+ "finalHash": "41e40580d2f05e3155beb87b34e23524def7c3e180c2b7c0d6dbfea4cb9733cc"
 }

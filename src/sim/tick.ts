@@ -34,6 +34,7 @@ import { storyDay } from './story';
 import { applyWorld } from './worldgen';
 import { threatShare } from './features';
 import { pressure, scenarioDay, scenarioMonth } from './scenarios';
+import { judge } from './probation';
 import { resolveSecurity, securityMonth } from './security';
 import { townsDay, townsMonth } from './towns';
 import { accepted, resolveTesting, testingDay, testingMonth } from './testing';
@@ -754,7 +755,8 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   s.treasury += s.appropriation;
   s.month.income.appropriation = s.appropriation;
   s.contracts = s.contracts.filter((c) => c.endDay > s.day);
-  if (s.confidence <= 0 && s.settings.dismissal) {
+  // An empty confidence first brings probation (19.1); a second loss, or a missed target, ends the term.
+  if (s.settings.dismissal && judge(s, feed)) {
     s.over = true;
     s.outcome = 'dismissed';
     feed(s, 'bad', 'The Defence Committee has lost confidence in you. You are dismissed.', undefined, true);

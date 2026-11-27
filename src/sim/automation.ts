@@ -8,7 +8,7 @@ import DEPTH from './tuning/depth.json';
 import { bottleneck, monthsTo } from './analytics';
 import { routeByKey, routeCap } from './build';
 import { CYBER_AREA_IDS } from './cyber';
-import { supplierNations } from './diplomacy';
+import { COPROD_NEEDS, supplierNations } from './diplomacy';
 import { GRID_REGIONS, contractPrice, regionPlants } from './energy';
 import { requestOdds } from './hearings';
 import { FOUNDABLE } from './industry';
@@ -96,6 +96,7 @@ const has = (s: SimState, reserve: number, stance: Stance, amount: number) => s.
 
 /** The option the advisor recommends for a decision card, and why. */
 export function recommend(s: SimState, d: Decision, stance: Stance = s.automation?.stance ?? 'balanced', reserve = s.automation?.reserve ?? 0): { option: string; why: string } {
+  if (s.probation) reserve = 0;
   const ready = readiness(s);
   const rich = s.treasury > 400 + reserve;
   /** Can a paid option be afforded while keeping the reserve? */
@@ -186,6 +187,8 @@ export function hearingPlan(s: SimState): SimAction[] {
 export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.reserve ?? 0, stance: Stance = s.automation?.stance ?? 'balanced'): SimAction[] {
   const acts: SimAction[] = [];
   const t = TUNE[stance];
+  // On probation (19.1) the chief of staff spends the reserve: there is no later to save it for.
+  if (s.probation) reserve = 0;
   const money = (amount: number) => has(s, reserve, stance, amount);
   const arsenals = SITES.filter((x) => x.kind === 'arsenal' && s.sites[x.id].processes.length && !s.sites[x.id].mothballed);
   switch (area) {
@@ -302,6 +305,15 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
       for (const n of supplierNations()) {
         const banned = s.scenario === 'sanctions' && SITES.some((d) => d.nation === n && s.sites[d.id].embargoDays > 0);
         if (banned ? money(300) && s.diplomacy.nations[n] < 60 : money(900) && s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
+      }
+      // On probation (19.1): rounds from allies are the quickest way back, so court them and co-produce the scarcest lines.
+      if (s.probation) {
+        const best = (['merrow', 'calder'] as const).slice().sort((a, b) => s.allies[b] - s.allies[a])[0];
+        const low = (Object.keys(s.lines) as LineId[])
+          .filter((l) => s.lines[l].unlocked && reserveTarget(s, l) > 0 && nationalStock(s, l) < reserveTarget(s, l) * 0.8 && !s.diplomacy.coprod.some((c) => c.line === l))
+          .sort((a, b) => nationalStock(s, a) / reserveTarget(s, a) - nationalStock(s, b) / reserveTarget(s, b));
+        if (s.allies[best] >= COPROD_NEEDS) for (const line of low.slice(0, 2)) acts.push({ type: 'coproduce', ally: best, line });
+        else if (low.length) acts.push({ type: 'tradeMission', who: best });
       }
       // Rebuild (19.0c): replace the worst plants, refurbish the rest.
       if (s.rebuild)
