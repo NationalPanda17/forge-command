@@ -1,10 +1,35 @@
-# Forge Command 15.0: design
+# Forge Command 18.0: design
 
 A real-time management game about a nation's munitions industry, from the mine to the launcher to the demilitarization
 pit. You are Director of the Munitions Production Board of the Commonwealth of Aldmere, a fictional country.
 
 Designations and makers of the finished rounds are real. Every site, company, nation, person and event is fictional.
 Physical figures follow public reference data where it exists, and are best guesses elsewhere.
+
+The system-by-system sections below were written for 15.0 and still hold, except where this summary says otherwise.
+
+## Since 15.0
+
+- **Platform (16.0).** Desktop only, at least 1280 pixels wide. The game fills the window, with no page scroll.
+- **The Committee's mandate (17.0).** Each term is judged on 3–4 competing goals weighted by scenario: readiness, value
+  for money, regional jobs, stewardship and the shield. They are measured from the monthly reports and tighten each
+  fiscal year. The mandate drives the grade and the Committee's monthly confidence. Rules, numbers and balance:
+  [`mandate.md`](mandate.md).
+- **Safe advice (16.1).** It is what the chief of staff would do now in every area, within a $300M reserve.
+- **The command screen (17.1).**
+  - Six tab groups: Command, Production, Supply, People, Treasury and Rival. Watch is folded into Home, and Feed into
+    the Log.
+  - A fixed status bar holds one notice at a time beside the alert chips, which clear themselves.
+  - An outliner of everything under way sits on the map.
+  - Every action gets a note at the pointer.
+  - The tutorial rings the control each step is about.
+- **The look and sound ("Industrial Command", 16.0 and 17.2).** Steel plates with bronze brackets; amber for command,
+  cyan for state; Barlow Condensed and Inter; plated site counters on a framed map; one mixer with struck-metal sounds
+  and music that varies and follows the game. See [`art-bible.md`](art-bible.md).
+- **Saves and the port (18.0).**
+  - Saves carry a schema number and are migrated step by step.
+  - Golden-master games pin the simulation's behaviour.
+  - The contract for the Unreal port is in [`port/`](port/README.md).
 
 ## Time
 - Pausable real time: 1, 2, 4 or 8 days a second, or step a day or a week.

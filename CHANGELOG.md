@@ -1,5 +1,25 @@
 # Changelog
 
+## 18.0.0: port baseline, part one
+
+The groundwork for rebuilding Forge Command in Unreal Engine. Nothing changes in play; this release makes sure that
+stays true, and writes down what the new version must reproduce.
+
+- **Golden masters.** Eight fixed games covering peacetime, Hard, War footing, Sanctions, a generated country, the
+  story, an endless sandbox and an empty desk. Each is played for two years, and every month's figures and the final
+  state are recorded. They run with the tests, and every later change to the code must leave them as they are. The
+  Unreal version is checked against the same records.
+- **Versioned saves.** Every save now carries a schema number. Loading fills in anything a save lacks, from any
+  earlier version, and repairs a damaged one. Numbered steps convert older saves when the format changes. Saves made
+  before this release load as before.
+- **The port contract (`docs/port/`):**
+  - the random numbers, rounding and order of play the new version must match;
+  - the golden masters and their tolerances;
+  - the save format;
+  - where every table and tuning value lives, and what each becomes in Unreal.
+
+  The design document opens with what changed since 15.0.
+
 ## 17.2.0: Industrial Command II
 
 The art and sound pass from the art and audio directors' review: the look finished, the map dressed, and a sound that

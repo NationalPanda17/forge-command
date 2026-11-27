@@ -1,0 +1,271 @@
+{
+ "name": "war-footing",
+ "covers": "an active crisis from day one, the shield goal",
+ "months": [
+  {
+   "month": 1,
+   "day": 30,
+   "treasury": 1050.36,
+   "confidence": 61.84,
+   "readiness": 0.95,
+   "stock": 188499,
+   "feed": 20,
+   "rng": 3445835320,
+   "over": false
+  },
+  {
+   "month": 2,
+   "day": 60,
+   "treasury": 836.96,
+   "confidence": 67.73,
+   "readiness": 0.89,
+   "stock": 193220,
+   "feed": 40,
+   "rng": 3578549896,
+   "over": false
+  },
+  {
+   "month": 3,
+   "day": 90,
+   "treasury": 801.6,
+   "confidence": 71.86,
+   "readiness": 0.85,
+   "stock": 197990,
+   "feed": 62,
+   "rng": 4263091639,
+   "over": false
+  },
+  {
+   "month": 4,
+   "day": 120,
+   "treasury": 812.41,
+   "confidence": 74.82,
+   "readiness": 0.83,
+   "stock": 205506,
+   "feed": 73,
+   "rng": 445689895,
+   "over": false
+  },
+  {
+   "month": 5,
+   "day": 150,
+   "treasury": 905.38,
+   "confidence": 76.15,
+   "readiness": 0.82,
+   "stock": 209809,
+   "feed": 86,
+   "rng": 69290986,
+   "over": false
+  },
+  {
+   "month": 6,
+   "day": 180,
+   "treasury": 737.68,
+   "confidence": 77.48,
+   "readiness": 0.75,
+   "stock": 208163,
+   "feed": 102,
+   "rng": 2724188033,
+   "over": false
+  },
+  {
+   "month": 7,
+   "day": 210,
+   "treasury": 745.57,
+   "confidence": 77.96,
+   "readiness": 0.71,
+   "stock": 214432,
+   "feed": 113,
+   "rng": 884717893,
+   "over": false
+  },
+  {
+   "month": 8,
+   "day": 240,
+   "treasury": 763.79,
+   "confidence": 77.63,
+   "readiness": 0.65,
+   "stock": 219841,
+   "feed": 147,
+   "rng": 2132908606,
+   "over": false
+  },
+  {
+   "month": 9,
+   "day": 270,
+   "treasury": 953.86,
+   "confidence": 77.12,
+   "readiness": 0.69,
+   "stock": 222903,
+   "feed": 159,
+   "rng": 564355854,
+   "over": false
+  },
+  {
+   "month": 10,
+   "day": 300,
+   "treasury": 759.83,
+   "confidence": 77.16,
+   "readiness": 0.76,
+   "stock": 226411,
+   "feed": 173,
+   "rng": 3019853010,
+   "over": false
+  },
+  {
+   "month": 11,
+   "day": 330,
+   "treasury": 718.12,
+   "confidence": 77.98,
+   "readiness": 0.83,
+   "stock": 229794,
+   "feed": 187,
+   "rng": 44593924,
+   "over": false
+  },
+  {
+   "month": 12,
+   "day": 360,
+   "treasury": 798.53,
+   "confidence": 80.55,
+   "readiness": 0.85,
+   "stock": 233139,
+   "feed": 201,
+   "rng": 3564362529,
+   "over": false
+  },
+  {
+   "month": 13,
+   "day": 390,
+   "treasury": 906.43,
+   "confidence": 82.3,
+   "readiness": 0.89,
+   "stock": 236273,
+   "feed": 206,
+   "rng": 1469127601,
+   "over": false
+  },
+  {
+   "month": 14,
+   "day": 420,
+   "treasury": 841.77,
+   "confidence": 83.34,
+   "readiness": 0.9,
+   "stock": 239827,
+   "feed": 224,
+   "rng": 878176201,
+   "over": false
+  },
+  {
+   "month": 15,
+   "day": 450,
+   "treasury": 873.74,
+   "confidence": 84.31,
+   "readiness": 0.9,
+   "stock": 243108,
+   "feed": 234,
+   "rng": 2566378993,
+   "over": false
+  },
+  {
+   "month": 16,
+   "day": 480,
+   "treasury": 980.17,
+   "confidence": 84.27,
+   "readiness": 0.89,
+   "stock": 246399,
+   "feed": 246,
+   "rng": 4190640588,
+   "over": false
+  },
+  {
+   "month": 17,
+   "day": 510,
+   "treasury": 1093.74,
+   "confidence": 84.56,
+   "readiness": 0.9,
+   "stock": 234402,
+   "feed": 255,
+   "rng": 2599358936,
+   "over": false
+  },
+  {
+   "month": 18,
+   "day": 540,
+   "treasury": 967.63,
+   "confidence": 87.23,
+   "readiness": 0.9,
+   "stock": 236113,
+   "feed": 269,
+   "rng": 496547708,
+   "over": false
+  },
+  {
+   "month": 19,
+   "day": 570,
+   "treasury": 1075.59,
+   "confidence": 86.56,
+   "readiness": 0.89,
+   "stock": 239361,
+   "feed": 281,
+   "rng": 4008740013,
+   "over": false
+  },
+  {
+   "month": 20,
+   "day": 600,
+   "treasury": 1078.93,
+   "confidence": 86.95,
+   "readiness": 0.9,
+   "stock": 242982,
+   "feed": 295,
+   "rng": 4136294380,
+   "over": false
+  },
+  {
+   "month": 21,
+   "day": 630,
+   "treasury": 1112.91,
+   "confidence": 84.92,
+   "readiness": 0.89,
+   "stock": 246639,
+   "feed": 300,
+   "rng": 3688377974,
+   "over": false
+  },
+  {
+   "month": 22,
+   "day": 660,
+   "treasury": 1142.05,
+   "confidence": 84.65,
+   "readiness": 0.79,
+   "stock": 249727,
+   "feed": 300,
+   "rng": 2601049598,
+   "over": false
+  },
+  {
+   "month": 23,
+   "day": 690,
+   "treasury": 1135.3,
+   "confidence": 84.07,
+   "readiness": 0.82,
+   "stock": 252915,
+   "feed": 300,
+   "rng": 1867063204,
+   "over": false
+  },
+  {
+   "month": 24,
+   "day": 720,
+   "treasury": 1153.17,
+   "confidence": 83.29,
+   "readiness": 0.91,
+   "stock": 247382,
+   "feed": 300,
+   "rng": 2708877835,
+   "over": false
+  }
+ ],
+ "finalHash": "bead6bacc88e4b746e16271e509a568a691b8159de1eff1fe33b2d9b90ef1404"
+}
