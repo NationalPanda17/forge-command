@@ -8,6 +8,8 @@ import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
 import type { MaterialId } from '../sim/world';
 import { Btn } from '../ui/kit';
+import { Icon } from '../ui/icons';
+import { adviceIcon } from '../ui/kinds';
 
 const TONE = { bad: 'border-ops-red/50', warn: 'border-ops-amber/50', info: 'border-ops-line/60' } as const;
 
@@ -125,7 +127,10 @@ export default function AdvisorCard({
             {first && (
               <div className={`mb-1.5 rounded border p-3 ${TONE[first.tone]}`} style={{ boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' }}>
                 <div className="label mb-1 !text-ops-amber">Next step</div>
-                <div className="text-[13px] font-semibold text-white">{first.title}</div>
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-[13px] font-semibold text-white">
+                  <Icon name={adviceIcon(first.id)} size={16} className="text-ops-amber" />
+                  <span className="min-w-0">{first.title}</span>
+                </div>
                 <div className="mt-0.5 text-ops-dim">{first.why}</div>
                 {first.tradeoff && <div className="mt-0.5 text-ops-amber/90">{first.tradeoff}</div>}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -144,7 +149,8 @@ export default function AdvisorCard({
             )}
             <ol className="space-y-1.5">
               {shown.map((a) => (
-                <li key={a.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded border p-2 ${TONE[a.tone]}`}>
+                <li key={a.id} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 rounded border p-2 ${TONE[a.tone]}`}>
+                  <Icon name={adviceIcon(a.id)} className={`mt-0.5 ${a.tone === 'bad' ? 'text-ops-red' : a.tone === 'warn' ? 'text-ops-amber' : 'text-ops-dim'}`} />
                   <span className="min-w-0">
                     <span className="text-white">{a.title}</span>
                     <span className="block text-[10px] text-ops-dim">{a.why}</span>

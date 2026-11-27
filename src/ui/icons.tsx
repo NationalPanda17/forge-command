@@ -3,6 +3,8 @@
 const PATHS = {
   pause: 'M6 4v8M10 4v8',
   play: 'M5.5 3.5l7 4.5-7 4.5z',
+  check: 'M3.5 8.5l3 3 6-7',
+  house: 'M2.5 7.5L8 3l5.5 4.5M4 6.5V13h8V6.5M6.8 13V9.8h2.4V13',
   lock: 'M4.5 7.5h7v6h-7zM6 7.5V5.5a2 2 0 0 1 4 0v2',
   step: 'M4 3.5l6 4.5-6 4.5zM12 3.5v9',
   save: 'M3 3h8l2 2v8H3zM5.5 3v3h5V3M5 13V9h6v4',

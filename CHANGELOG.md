@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.3.3: clearer screens, part four
+
+- **What you just did stays in view.** After each action the status bar shows "Done" (or "Not done" and why), with the
+  cost, for about nine seconds, and a link to the log. The note beside the pointer still appears as before.
+- **Icons on the advice.** Each suggestion carries a small drawn icon for its kind: money, power, people, housing,
+  research, threats, logistics, security or production. The words still say the same thing.
+- **The term report's moments are a timeline:** a line down the left, a marker in each moment's colour with an icon
+  for its kind, and the date above each entry.
+
 ## 19.3.2: clearer screens, part three
 
 - **The map reads from the important sites down.** Arsenals are full size with a bronze ring. Plants, depots and bases

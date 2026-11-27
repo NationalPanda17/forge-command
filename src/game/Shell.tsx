@@ -116,6 +116,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   // Feedback where you clicked (17.1): each action shows what it did and what it cost, or why it could not be done,
   // beside the pointer. Several actions at once (the safe advice) are summed into one note.
   const [actNote, setActNote] = useState<ActNote | null>(null);
+  // The same result stays in the status bar a while longer (19.3.3), for a player who looked away from the pointer.
+  const [lastDone, setLastDone] = useState<ActNote | null>(null);
   const pointer = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
   useEffect(() => {
     const onDown = (e: PointerEvent) => (pointer.current = { x: e.clientX, y: e.clientY, t: performance.now() });
@@ -137,7 +139,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         const next = { before: p?.before ?? liveState.current, after, n: (p?.n ?? 0) + (why ? 0 : 1), why: why ?? p?.why ?? null, timer: 0 };
         next.timer = window.setTimeout(() => {
           pending.current = null;
-          setActNote(noteFor(next.before, next.after, next.n, next.why, pointer.current));
+          const note = noteFor(next.before, next.after, next.n, next.why, pointer.current);
+          setActNote(note);
+          setLastDone(note);
         }, 40);
         pending.current = next;
       }
@@ -150,6 +154,11 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     const t = window.setTimeout(() => setActNote(null), actNote.tone === 'bad' ? 3200 : 2400);
     return () => window.clearTimeout(t);
   }, [actNote]);
+  useEffect(() => {
+    if (!lastDone) return;
+    const t = window.setTimeout(() => setLastDone(null), 9000);
+    return () => window.clearTimeout(t);
+  }, [lastDone]);
   // A generated country opens with its brief (19.0b), read before the clock first runs.
   const [briefOpen, setBriefOpen] = useState(() => wantsBrief(state));
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
@@ -705,6 +714,20 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                 <span className="text-white">{toast[0].title}</span> <span className="text-ops-dim">· {toast[0].text}</span>
                 {toast.length > 1 && <span className="text-ops-dim"> · and {toast.length - 1} more</span>}
               </span>
+            </div>
+          ) : lastDone ? (
+            <div key={lastDone.key} className={`fc-drop flex min-w-0 items-center gap-2 ${lastDone.tone === 'bad' ? 'text-ops-amber' : 'text-ops-green'}`}>
+              <Icon name={lastDone.tone === 'bad' ? 'alert' : 'check'} />
+              <span className="label shrink-0">{lastDone.tone === 'bad' ? 'Not done' : 'Done'}</span>
+              {lastDone.text !== 'Done.' && (
+                <span className="min-w-0 truncate text-ops-text" title={lastDone.text}>
+                  {lastDone.text}
+                </span>
+              )}
+              {lastDone.money && <span className={`shrink-0 font-sans font-bold ${lastDone.money.startsWith('−') ? 'text-ops-amber' : 'text-ops-green'}`}>{lastDone.money}</span>}
+              <button type="button" className="shrink-0 text-ops-dim underline decoration-dotted underline-offset-2 hover:text-ops-text" onClick={() => setPanel('inbox')}>
+                Log
+              </button>
             </div>
           ) : saveNote ? (
             <div role="status" className="fc-drop flex min-w-0 items-center gap-2 text-ops-green">
