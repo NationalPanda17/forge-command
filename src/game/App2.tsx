@@ -71,7 +71,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [slots, setSlots] = useState(listSlots);
   const [screen, setScreen] = useState<Screen>('menu');
   // The game is built for desktop and laptop screens.
-  const [narrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
+  const [narrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1100);
   const screenHeading = useRef<HTMLHeadingElement>(null);
   // A new page moves the keyboard (and a screen reader) to its heading; back on the menu, to the page's own entry.
   const lastScreen = useRef<Screen>('menu');
@@ -595,7 +595,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </header>
         {narrow && (
           <p className="panel fc-rise mb-3 px-3 py-2 text-[12px] text-ops-amber" role="note">
-            Forge Command is made for a computer screen at least 1280 pixels wide. On a smaller window the game scrolls sideways.
+            Forge Command is made for a computer screen at least 1100 pixels wide. On a smaller window the game scrolls sideways.
           </p>
         )}
         <nav aria-label="Main menu" className="space-y-2">

@@ -522,7 +522,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   }, [toast]);
 
   return (
-    <div className={`relative h-[100dvh] min-w-[1280px] overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
+    <div className={`relative h-[100dvh] min-w-[1100px] overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announce}
       </div>
@@ -567,7 +567,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               </Flash>
             </span>
           </Resource>
-          <Resource icon={seasonOf(state.day)} label={seasonOf(state.day)} tone="cyan">
+          {/* On a narrower window the season gives way; its effects show in the weather layer and the alerts. */}
+          <Resource icon={seasonOf(state.day)} label={seasonOf(state.day)} tone="cyan" className="max-[1199px]:hidden">
             <span className="text-white" title={`Prices are ${Math.round((state.priceIndex - 1) * 100)}% above normal.`}>
               <Explain title="Season and prices" lines={() => seasonWhy(state)}>
                 +{Math.round((state.priceIndex - 1) * 100)}%
@@ -935,9 +936,9 @@ const RES_TONE = {
 } as const;
 
 /** One readout in the command bar: an icon tile, a small label and a large figure. */
-function Resource({ icon, label, tone, children }: { icon: IconName; label: string; tone: keyof typeof RES_TONE; children: ReactNode }) {
+function Resource({ icon, label, tone, children, className = '' }: { icon: IconName; label: string; tone: keyof typeof RES_TONE; children: ReactNode; className?: string }) {
   return (
-    <div className="fc-res">
+    <div className={`fc-res ${className}`}>
       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-[2px] border ${RES_TONE[tone]}`}>
         <Icon name={icon} size={15} />
       </span>
