@@ -1,0 +1,25 @@
+{
+  "$comment": "Core tuning (18.1): values that were named constants in the simulation. The source for the Unreal tuning assets (docs/port/data.md). Changing one changes the game: re-record the golden masters on purpose.",
+  "economy": {
+    "wagePerMonth": 0.0095,
+    "spotPremium": 1.3,
+    "stateBufferDays": 12,
+    "privateBufferDays": 8,
+    "maxOutputDays": 20,
+    "demilTonnesPerDay": 40
+  },
+  "difficulty": {
+    "world": {
+      "easy": { "events": 0.5, "crisis": 0.7, "ramp": 1.5 },
+      "normal": { "events": 1, "crisis": 1, "ramp": 1 },
+      "hard": { "events": 1.6, "crisis": 1.35, "ramp": 0.7 }
+    },
+    "money": {
+      "easy": { "treasury": 900, "appropriation": 240 },
+      "normal": { "treasury": 700, "appropriation": 215 },
+      "hard": { "treasury": 550, "appropriation": 205 }
+    }
+  },
+  "baseMinimumRounds": { "pac3": 8, "sm6": 4, "tamir": 20, "irist": 6, "stinger": 8, "apkws": 30, "coyote": 6, "gmlrs": 30, "shell155": 2000, "javelin": 12 },
+  "reserve": { "days": 365, "stockpileLawDays": 450, "graceDays": 360 }
+}

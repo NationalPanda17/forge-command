@@ -1,4 +1,5 @@
 // A new campaign: every site, its stock, legacy rounds of mixed ages in the depots and bases, and the starting contracts.
+import CORE from './tuning/core.json';
 import { BASE_LINES, CRISES } from './fight';
 import { MIN_BASE_ROUNDS } from './tick';
 import { OBJECTIVES, makeCandidates } from './strategy';
@@ -153,11 +154,7 @@ function fillDefaults(s: SimState): void {
   s.month.spend.energy ??= 0;
 }
 
-export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = {
-  easy: { treasury: 900, appropriation: 240 },
-  normal: { treasury: 700, appropriation: 215 },
-  hard: { treasury: 550, appropriation: 205 },
-};
+export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = CORE.difficulty.money;
 
 export const emptyMonth = (month: number): MonthReport => ({
   month,

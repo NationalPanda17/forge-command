@@ -1,0 +1,492 @@
+{
+ "ironOre": {
+  "id": "ironOre",
+  "name": "Iron ore",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0001,
+  "shelfDays": 0,
+  "blurb": "Hematite from open pits in the Brennock hills."
+ },
+ "coal": {
+  "id": "coal",
+  "name": "Coking coal",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.00015,
+  "shelfDays": 0,
+  "blurb": "Metallurgical coal for the blast furnaces."
+ },
+ "bauxite": {
+  "id": "bauxite",
+  "name": "Bauxite",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.00005,
+  "shelfDays": 0,
+  "blurb": "Aluminium ore. Its refining liquor also yields gallium."
+ },
+ "zincOre": {
+  "id": "zincOre",
+  "name": "Zinc concentrate",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0002,
+  "shelfDays": 0,
+  "blurb": "Zinc ore concentrate. Germanium is recovered from the smelter residues."
+ },
+ "copperOre": {
+  "id": "copperOre",
+  "name": "Copper ore",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.00003,
+  "shelfDays": 0,
+  "blurb": "Low-grade porphyry ore: a hundred tonnes for one of copper."
+ },
+ "rareEarthOre": {
+  "id": "rareEarthOre",
+  "name": "Rare-earth ore",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0001,
+  "shelfDays": 0,
+  "blurb": "Monazite-bearing sands rich in neodymium."
+ },
+ "silica": {
+  "id": "silica",
+  "name": "High-purity quartz",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0001,
+  "shelfDays": 0,
+  "blurb": "Quartz for silicon refining."
+ },
+ "brine": {
+  "id": "brine",
+  "name": "Salt brine",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.00002,
+  "shelfDays": 0,
+  "blurb": "Sodium chloride brine for electrochemical oxidizers."
+ },
+ "natGas": {
+  "id": "natGas",
+  "name": "Natural gas",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0003,
+  "shelfDays": 0,
+  "blurb": "Feedstock for ammonia and polymer binders."
+ },
+ "cellulose": {
+  "id": "cellulose",
+  "name": "Cellulose pulp",
+  "tier": "raw",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0006,
+  "shelfDays": 0,
+  "blurb": "Purified wood pulp for nitrocellulose."
+ },
+ "steel": {
+  "id": "steel",
+  "name": "Steel",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0008,
+  "shelfDays": 0,
+  "blurb": "Forging-grade steel bar and plate."
+ },
+ "aluminium": {
+  "id": "aluminium",
+  "name": "Aluminium",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0025,
+  "shelfDays": 0,
+  "blurb": "Primary aluminium for airframes and propellant powder."
+ },
+ "copper": {
+  "id": "copper",
+  "name": "Copper",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.009,
+  "shelfDays": 0,
+  "blurb": "Refined copper cathode."
+ },
+ "gallium": {
+  "id": "gallium",
+  "name": "Gallium",
+  "tier": "processed",
+  "unit": "kg",
+  "weight": 0.001,
+  "price": 0.0004,
+  "shelfDays": 0,
+  "blurb": "Recovered from alumina liquor. Essential for GaN radar chips."
+ },
+ "germanium": {
+  "id": "germanium",
+  "name": "Germanium",
+  "tier": "processed",
+  "unit": "kg",
+  "weight": 0.001,
+  "price": 0.0015,
+  "shelfDays": 0,
+  "blurb": "Recovered from zinc residues. Infrared windows and lenses."
+ },
+ "reOxide": {
+  "id": "reOxide",
+  "name": "Rare-earth oxide",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.06,
+  "shelfDays": 0,
+  "blurb": "Separated neodymium-praseodymium oxide."
+ },
+ "polysilicon": {
+  "id": "polysilicon",
+  "name": "Polysilicon",
+  "tier": "processed",
+  "unit": "kg",
+  "weight": 0.001,
+  "price": 0.00003,
+  "shelfDays": 0,
+  "blurb": "Electronic-grade silicon."
+ },
+ "ammonia": {
+  "id": "ammonia",
+  "name": "Ammonia",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0005,
+  "shelfDays": 0,
+  "blurb": "Haber-Bosch ammonia, the root of most explosives."
+ },
+ "nitricAcid": {
+  "id": "nitricAcid",
+  "name": "Nitric acid",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.0004,
+  "shelfDays": 0,
+  "blurb": "Concentrated acid for nitration."
+ },
+ "perchlorate": {
+  "id": "perchlorate",
+  "name": "Ammonium perchlorate",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.004,
+  "shelfDays": 0,
+  "blurb": "The oxidizer in composite rocket propellant."
+ },
+ "htpb": {
+  "id": "htpb",
+  "name": "HTPB binder",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.006,
+  "shelfDays": 0,
+  "blurb": "Rubbery polymer that binds propellant grains."
+ },
+ "nitrocellulose": {
+  "id": "nitrocellulose",
+  "name": "Nitrocellulose",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.008,
+  "shelfDays": 3650,
+  "blurb": "Base of gun propellant charges."
+ },
+ "highExplosive": {
+  "id": "highExplosive",
+  "name": "High explosive",
+  "tier": "processed",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.015,
+  "shelfDays": 0,
+  "blurb": "RDX and TNT-based fills."
+ },
+ "propellant": {
+  "id": "propellant",
+  "name": "Composite propellant",
+  "tier": "intermediate",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.02,
+  "shelfDays": 2920,
+  "blurb": "Perchlorate, aluminium powder and binder, mixed and cast."
+ },
+ "wafers": {
+  "id": "wafers",
+  "name": "Silicon wafers",
+  "tier": "intermediate",
+  "unit": "wafer",
+  "weight": 0.0003,
+  "price": 0.003,
+  "shelfDays": 0,
+  "blurb": "Polished wafers ready for the fab."
+ },
+ "siChips": {
+  "id": "siChips",
+  "name": "Silicon chip sets",
+  "tier": "intermediate",
+  "unit": "set",
+  "weight": 0.0002,
+  "price": 0.0005,
+  "shelfDays": 0,
+  "blurb": "Processors, memory and logic for one board."
+ },
+ "ganChips": {
+  "id": "ganChips",
+  "name": "GaN radar chips",
+  "tier": "intermediate",
+  "unit": "set",
+  "weight": 0.0001,
+  "price": 0.005,
+  "shelfDays": 0,
+  "blurb": "Gallium-nitride amplifier chips for radar seekers."
+ },
+ "magnets": {
+  "id": "magnets",
+  "name": "NdFeB magnets",
+  "tier": "intermediate",
+  "unit": "kg",
+  "weight": 0.001,
+  "price": 0.0001,
+  "shelfDays": 0,
+  "blurb": "Permanent magnets for motors and gyros."
+ },
+ "geOptics": {
+  "id": "geOptics",
+  "name": "Germanium optics",
+  "tier": "intermediate",
+  "unit": "set",
+  "weight": 0.002,
+  "price": 0.01,
+  "shelfDays": 0,
+  "blurb": "Infrared domes and lenses."
+ },
+ "rocketMotor": {
+  "id": "rocketMotor",
+  "name": "Rocket motors",
+  "tier": "component",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.6,
+  "shelfDays": 3650,
+  "blurb": "Loaded solid rocket motors, measured by mass."
+ },
+ "warhead": {
+  "id": "warhead",
+  "name": "Warheads",
+  "tier": "component",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.05,
+  "shelfDays": 0,
+  "blurb": "Fragmentation and blast warheads, measured by mass."
+ },
+ "seekerRF": {
+  "id": "seekerRF",
+  "name": "Radar seekers",
+  "tier": "component",
+  "unit": "seeker-eq",
+  "weight": 0.02,
+  "price": 0.7,
+  "shelfDays": 0,
+  "blurb": "Active radar seekers. One unit is one PAC-3-class seeker."
+ },
+ "seekerIR": {
+  "id": "seekerIR",
+  "name": "Infrared seekers",
+  "tier": "component",
+  "unit": "seeker-eq",
+  "weight": 0.01,
+  "price": 0.3,
+  "shelfDays": 0,
+  "blurb": "Imaging infrared seekers. One unit is one IRIS-T-class seeker."
+ },
+ "guidance": {
+  "id": "guidance",
+  "name": "Guidance sections",
+  "tier": "component",
+  "unit": "unit-eq",
+  "weight": 0.015,
+  "price": 0.3,
+  "shelfDays": 0,
+  "blurb": "Inertial units, flight computers and datalinks."
+ },
+ "actuators": {
+  "id": "actuators",
+  "name": "Control actuators",
+  "tier": "component",
+  "unit": "unit-eq",
+  "weight": 0.012,
+  "price": 0.1,
+  "shelfDays": 0,
+  "blurb": "Fin actuators and thrust-vector control."
+ },
+ "airframe": {
+  "id": "airframe",
+  "name": "Airframes",
+  "tier": "component",
+  "unit": "t",
+  "weight": 1,
+  "price": 0.05,
+  "shelfDays": 0,
+  "blurb": "Bodies, wings and fins, measured by mass."
+ },
+ "fuze": {
+  "id": "fuze",
+  "name": "Fuzes",
+  "tier": "component",
+  "unit": "unit-eq",
+  "weight": 0.002,
+  "price": 0.02,
+  "shelfDays": 0,
+  "blurb": "Proximity and impact fuzes. One unit is one missile fuze."
+ },
+ "shellBody": {
+  "id": "shellBody",
+  "name": "Shell bodies",
+  "tier": "component",
+  "unit": "body",
+  "weight": 0.043,
+  "price": 0.0012,
+  "shelfDays": 0,
+  "blurb": "Forged and machined 155mm projectile bodies."
+ },
+ "propCharge": {
+  "id": "propCharge",
+  "name": "Propellant charges",
+  "tier": "component",
+  "unit": "charge",
+  "weight": 0.0026,
+  "price": 0.0003,
+  "shelfDays": 3650,
+  "blurb": "Modular artillery charges."
+ },
+ "pac3": {
+  "id": "pac3",
+  "name": "PAC-3 MSE",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.312,
+  "price": 4.1,
+  "shelfDays": 3650,
+  "blurb": "Lockheed Martin. Hit-to-kill against ballistic and cruise missiles."
+ },
+ "sm6": {
+  "id": "sm6",
+  "name": "SM-6",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 1.5,
+  "price": 4.3,
+  "shelfDays": 3650,
+  "blurb": "RTX. Long range, against aircraft, cruise and ballistic missiles."
+ },
+ "tamir": {
+  "id": "tamir",
+  "name": "Tamir",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.09,
+  "price": 0.06,
+  "shelfDays": 3650,
+  "blurb": "Rafael. Short range, against rockets and drones."
+ },
+ "irist": {
+  "id": "irist",
+  "name": "IRIS-T",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.087,
+  "price": 0.45,
+  "shelfDays": 3650,
+  "blurb": "Diehl Defence. Medium range, against cruise missiles, drones and aircraft."
+ },
+ "stinger": {
+  "id": "stinger",
+  "name": "Stinger",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.016,
+  "price": 0.48,
+  "shelfDays": 3650,
+  "blurb": "RTX. Shoulder-fired, against drones and helicopters."
+ },
+ "gmlrs": {
+  "id": "gmlrs",
+  "name": "GMLRS",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.3,
+  "price": 0.16,
+  "shelfDays": 3650,
+  "blurb": "Lockheed Martin. Guided rocket artillery."
+ },
+ "shell155": {
+  "id": "shell155",
+  "name": "155mm shells",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.055,
+  "price": 0.0035,
+  "shelfDays": 7300,
+  "blurb": "General Dynamics OTS. Tube artillery, with charges."
+ },
+ "apkws": {
+  "id": "apkws",
+  "name": "APKWS",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.015,
+  "price": 0.03,
+  "shelfDays": 3650,
+  "blurb": "BAE Systems. Laser-guided rocket for counter-drone work."
+ },
+ "coyote": {
+  "id": "coyote",
+  "name": "Coyote Block 2",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.06,
+  "price": 0.11,
+  "shelfDays": 3650,
+  "blurb": "RTX. Interceptor drone against drones."
+ },
+ "javelin": {
+  "id": "javelin",
+  "name": "Javelin",
+  "tier": "finished",
+  "unit": "round",
+  "weight": 0.022,
+  "price": 0.2,
+  "shelfDays": 3650,
+  "blurb": "Javelin Joint Venture (Lockheed Martin, RTX). Anti-armor missile."
+ }
+}

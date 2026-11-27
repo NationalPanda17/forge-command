@@ -1,0 +1,530 @@
+[
+ {
+  "a": "depotCentral",
+  "b": "corranWorks",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotCentral",
+  "b": "lindellFuze",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotCentral",
+  "b": "varnCellulose",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "varnCellulose",
+  "b": "ironmoor",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "ironmoor",
+  "b": "kestrel",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "kestrel",
+  "b": "ashfordComplex",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "ashfordComplex",
+  "b": "ashfordCharges",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "ashfordComplex",
+  "b": "corvidRefinery",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "corvidRefinery",
+  "b": "corvidCopper",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "corvidRefinery",
+  "b": "depotEast",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotEast",
+  "b": "marchesSector",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotEast",
+  "b": "eastCorps",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "ashfordComplex",
+  "b": "greystone",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "greystone",
+  "b": "brennockSteel",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "brennockSteel",
+  "b": "brennockMine",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "brennockSteel",
+  "b": "hollinColliery",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "brennockSteel",
+  "b": "northgateCenter",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "northgateCenter",
+  "b": "cinderFlats",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "cinderFlats",
+  "b": "mericBrine",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "cinderFlats",
+  "b": "depotNorth",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotNorth",
+  "b": "portMeric",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotNorth",
+  "b": "mericSector",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "northgateCenter",
+  "b": "riverlineBrigade",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "corranWorks",
+  "b": "northgateCenter",
+  "mode": "rail",
+  "cap": 1200
+ },
+ {
+  "a": "corranWorks",
+  "b": "vantor",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "vantor",
+  "b": "haldenMicrowave",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "haldenMicrowave",
+  "b": "depotCoast",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotCoast",
+  "b": "portHalvard",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "portHalvard",
+  "b": "halvardChem",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "halvardChem",
+  "b": "halvardPolymers",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotCoast",
+  "b": "halvardAirBase",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "halvardChem",
+  "b": "coastSector",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "varnCellulose",
+  "b": "varnPulp",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "varnPulp",
+  "b": "haldenMicrowave",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "varnCellulose",
+  "b": "pellucid",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "pellucid",
+  "b": "aldmereAero",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "aldmereAero",
+  "b": "redmarlSmelter",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "redmarlSmelter",
+  "b": "redmarlBauxite",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "redmarlSmelter",
+  "b": "trustedFoundry",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "trustedFoundry",
+  "b": "pellucid",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "redmarlSmelter",
+  "b": "whitesandSilicon",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "whitesandSilicon",
+  "b": "whitesand",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "whitesandSilicon",
+  "b": "portLowmouth",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "redmarlSmelter",
+  "b": "portLowmouth",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "kestrel",
+  "b": "mercerControls",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "mercerControls",
+  "b": "tarnSmelter",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "tarnSmelter",
+  "b": "tarnFell",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "tarnSmelter",
+  "b": "velmSector",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "mercerControls",
+  "b": "skellMagnetics",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "skellMagnetics",
+  "b": "skellSeparation",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "skellSeparation",
+  "b": "skellSands",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "mercerControls",
+  "b": "karrowDemil",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "karrowDemil",
+  "b": "karrowRange",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "halvardChem",
+  "b": "saltmereRange",
+  "mode": "rail",
+  "cap": 600
+ },
+ {
+  "a": "ironmoor",
+  "b": "mercerControls",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "lindellFuze",
+  "b": "ironmoor",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "depotCentral",
+  "b": "corranAirHub",
+  "mode": "rail",
+  "cap": 1500
+ },
+ {
+  "a": "halvardChem",
+  "b": "ironmoor",
+  "mode": "rail",
+  "cap": 1000
+ },
+ {
+  "a": "depotCentral",
+  "b": "depotNorth",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "depotCentral",
+  "b": "depotCoast",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "depotCentral",
+  "b": "depotEast",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "depotCentral",
+  "b": "ashfordComplex",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "depotEast",
+  "b": "velmSector",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "ashfordComplex",
+  "b": "tarnSmelter",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "saltmereRange",
+  "b": "coastSector",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "portLowmouth",
+  "b": "trustedFoundry",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "riverlineBrigade",
+  "b": "brennockMine",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "eastCorps",
+  "b": "corvidCopper",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "aldmereAero",
+  "b": "corranWorks",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "lindellFuze",
+  "b": "corranWorks",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "karrowRange",
+  "b": "skellSands",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "greystone",
+  "b": "hollinColliery",
+  "mode": "road",
+  "cap": 400
+ },
+ {
+  "a": "portHalvard",
+  "b": "portSkerry",
+  "mode": "sea",
+  "cap": 600
+ },
+ {
+  "a": "portLowmouth",
+  "b": "portSkerry",
+  "mode": "sea",
+  "cap": 600
+ },
+ {
+  "a": "portSkerry",
+  "b": "depotIsles",
+  "mode": "sea",
+  "cap": 600
+ },
+ {
+  "a": "depotIsles",
+  "b": "skerryBase",
+  "mode": "sea",
+  "cap": 600
+ },
+ {
+  "a": "portMeric",
+  "b": "karskMetals",
+  "mode": "sea",
+  "cap": 3000
+ },
+ {
+  "a": "portLowmouth",
+  "b": "sableCircuits",
+  "mode": "sea",
+  "cap": 3000
+ },
+ {
+  "a": "portLowmouth",
+  "b": "lyreSensors",
+  "mode": "sea",
+  "cap": 3000
+ },
+ {
+  "a": "portHalvard",
+  "b": "brightwater",
+  "mode": "sea",
+  "cap": 3000
+ },
+ {
+  "a": "portHalvard",
+  "b": "northwind",
+  "mode": "sea",
+  "cap": 3000
+ },
+ {
+  "a": "portHalvard",
+  "b": "halvardGas",
+  "mode": "sea",
+  "cap": 2000
+ },
+ {
+  "a": "portMeric",
+  "b": "portHalvard",
+  "mode": "sea",
+  "cap": 2000
+ },
+ {
+  "a": "portHalvard",
+  "b": "portLowmouth",
+  "mode": "sea",
+  "cap": 2000
+ },
+ {
+  "a": "corranAirHub",
+  "b": "skerryBase",
+  "mode": "air",
+  "cap": 30
+ },
+ {
+  "a": "corranAirHub",
+  "b": "halvardAirBase",
+  "mode": "air",
+  "cap": 40
+ },
+ {
+  "a": "corranAirHub",
+  "b": "marchesSector",
+  "mode": "air",
+  "cap": 40
+ },
+ {
+  "a": "corranAirHub",
+  "b": "mericSector",
+  "mode": "air",
+  "cap": 40
+ }
+]

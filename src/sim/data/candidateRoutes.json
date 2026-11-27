@@ -1,0 +1,101 @@
+[
+ {
+  "a": "corranWorks",
+  "b": "depotCoast",
+  "mode": "rail",
+  "cap": 1200,
+  "id": "westline",
+  "name": "Westline",
+  "blurb": "A direct line from Corran to Halvard, bypassing the Halden valley."
+ },
+ {
+  "a": "depotCentral",
+  "b": "redmarlSmelter",
+  "mode": "rail",
+  "cap": 1200,
+  "id": "southMain",
+  "name": "Southern main line",
+  "blurb": "Corran to Redmarl and on to Lowmouth: a second way south."
+ },
+ {
+  "a": "depotEast",
+  "b": "greystone",
+  "mode": "rail",
+  "cap": 1000,
+  "id": "marchesLink",
+  "name": "Marches link",
+  "blurb": "Ties the eastern depot to the northern forges without going through Ashford."
+ },
+ {
+  "a": "kestrel",
+  "b": "tarnSmelter",
+  "mode": "rail",
+  "cap": 900,
+  "id": "tarnCutoff",
+  "name": "Tarn cut-off",
+  "blurb": "A short line from the motor works to the Tarn smelter."
+ },
+ {
+  "a": "depotNorth",
+  "b": "riverlineBrigade",
+  "mode": "road",
+  "cap": 500,
+  "id": "riverRoad",
+  "name": "Riverline military road",
+  "blurb": "An all-weather road from Meric Depot to the Riverline guns."
+ },
+ {
+  "a": "lindellFuze",
+  "b": "ashfordComplex",
+  "mode": "rail",
+  "cap": 1200,
+  "id": "ashfordDirect",
+  "name": "Corran–Ashford direct",
+  "blurb": "Doubles the busiest corridor in the country."
+ },
+ {
+  "a": "plotHalden",
+  "b": "haldenMicrowave",
+  "mode": "rail",
+  "cap": 800,
+  "id": "plot-plotHalden",
+  "name": "Halden Vale spur",
+  "blurb": "Serves a new plant in the Halden vale."
+ },
+ {
+  "a": "plotNorthgate",
+  "b": "northgateCenter",
+  "mode": "rail",
+  "cap": 800,
+  "id": "plot-plotNorthgate",
+  "name": "Northgate Heath spur",
+  "blurb": "Serves a new plant on Northgate Heath."
+ },
+ {
+  "a": "plotAshford",
+  "b": "kestrel",
+  "mode": "rail",
+  "cap": 800,
+  "id": "plot-plotAshford",
+  "name": "Ashford Fields spur",
+  "blurb": "Serves a new plant on Ashford Fields."
+ },
+ {
+  "a": "plotRedmarl",
+  "b": "redmarlSmelter",
+  "mode": "rail",
+  "cap": 800,
+  "id": "plot-plotRedmarl",
+  "name": "Redmarl Downs spur",
+  "blurb": "Serves a new plant on Redmarl Downs."
+ },
+ {
+  "a": "plotMarches",
+  "b": "depotEast",
+  "mode": "rail",
+  "cap": 800,
+  "id": "plot-plotMarches",
+  "name": "Marches Ridge spur",
+  "blurb": "Serves a new plant on Marches Ridge."
+ }
+]

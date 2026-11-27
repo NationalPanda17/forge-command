@@ -1,37 +1,42 @@
 # Data and tuning
 
-Where the game's tables and tuning values live, and what each one becomes in Unreal. The next step of the port
-baseline (18.1) moves the tables still written as TypeScript into data files with a schema, plus a test that the
-loaded tables match.
+Where the game's tables and tuning values live, and what each one becomes in Unreal. Since 18.1 the tables are data
+files: TypeScript loads them, `tests/sim/data.test.ts` checks every key and reference in them, and the golden masters
+prove that moving them changed nothing.
 
-## Tables
+## Tables (`src/sim/data/`)
 
-| Table | Where | Becomes |
+| File | What | Becomes |
 |---|---|---|
-| Materials (name, kind, unit, price, mass, shelf life, blurb) | `MATERIALS`, `src/sim/world.ts` | DataTable `DT_Materials` |
-| Recipes (inputs per unit, scrap) | `RECIPES`, `world.ts` | DataTable `DT_Recipes` |
-| Sites (classic map: position, region, owner, processes, crew) | `SITES`, `world.ts` | DataTable `DT_Sites` |
-| Cities and routes | `CITIES`, `ROUTES`, `world.ts` | DataTables |
-| Line rates | `LINE_RATE`, `world.ts` | DataTable |
-| Threats and their interceptors | `THREATS`, `src/sim/fight.ts` | DataTable `DT_Threats` |
-| Difficulty | `DIFF` (`tick.ts`), `DIFFICULTY_MONEY` (`setup.ts`) | PrimaryDataAsset `PDA_Difficulty` |
-| Scenarios | `SCENARIOS`, `setup.ts`; `docs/mandate.md` | PrimaryDataAsset per scenario |
-| Research, doctrine forks, policies, operations | `strategy.ts`, `doctrine.ts`, `commitments.ts`, `intelops.ts` | DataTables |
-| **The mandate** | **`src/sim/tuning/mandate.json`** (already data) | PrimaryDataAsset `PDA_Mandate` |
+| `materials.json` | id, name, tier, unit, weight (t a unit), price ($M), shelf life (days), blurb | DataTable `DT_Materials` |
+| `recipes.json` | id, name, output, yield, inputs per unit, scrap, extra outputs | DataTable `DT_Recipes` |
+| `sites.json` | the classic map's sites: position, region, owner, processes and shares, crew, qualification, nation, blurb | DataTable `DT_Sites` |
+| `cities.json`, `regions.json` | cities, and regions with their threat and land shares and depots | DataTables |
+| `routes.json`, `candidateRoutes.json`, `modes.json` | the network, the links you can build, and each mode's speed, cost and detour | DataTables |
+| `lineRate.json`, `publicRate.json` | each line's starting rate a day, and the public reference figure it is scaled from | DataTable `DT_Lines` |
+| `threats.json` | each threat: cost, shots, severity, calm-month arrivals, and the interceptors that answer it with their kill probabilities | DataTable `DT_Threats` |
 
-## Tuning written into the logic
+Generated maps (`src/sim/worldgen.ts`) start from these tables and rename, move and connect the sites by seed.
 
-These are named constants or bare numbers inside the systems. They move to tuning files in 18.1, starting with:
-- `tick.ts`: wages, the spot premium, buffer days, `MIN_BASE_ROUNDS`, the 80% refund, scrap factors, reorder
-  thresholds, the random spreads in the fight, the 0.97 kill-probability cap, wear for each run level;
+## Tuning (`src/sim/tuning/`)
+
+| File | What | Becomes |
+|---|---|---|
+| `core.json` | wages, spot premium, stock buffers, output cap, demil rate; difficulty (events, crises, ramp-up, starting money); base minimum rounds; reserve days, the stockpile law, grace for new lines | PrimaryDataAsset `PDA_Core` |
+| `mandate.json` | the Committee's mandate: goals, thresholds, scenario weights, confidence, score, grade bands (`docs/mandate.md`) | PrimaryDataAsset `PDA_Mandate` |
+
+## Tuning still written into the logic
+
+Bare numbers inside the systems, left for the port, where each becomes a named field as its system is rewritten:
+- `tick.ts`: the 80% refund, scrap factors, reorder thresholds, the random spreads in the fight, the 0.97
+  kill-probability cap, wear for each run level;
 - `strategy.ts`: the budget formula's inflation share and the objective rewards;
 - `hearings.ts`: requests and their odds;
 - `automation.ts`: the chief of staff's thresholds and money gates;
-- `selectors.ts`: reserve days and the 450-day stockpile law;
 - `setup.ts`: legacy stock and starting contracts.
 
-Count of decimal numbers written into each file, as a rough guide to the work: world 134, tick 49, strategy 31,
-fight 28.
+Count of decimal numbers still written into each file, as a rough guide to the work: tick about 45, strategy 31,
+fight about 10 (the threat table itself is now data).
 
 ## Text
 

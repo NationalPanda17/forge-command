@@ -1,5 +1,20 @@
 # Changelog
 
+## 18.1.0: port baseline, part two
+
+The game's tables and core tuning now live in data files instead of in the code. Nothing changes in play: the golden
+masters, every month and every final state, are exactly as they were.
+
+- **Tables as data (`src/sim/data/`).** Materials, recipes, sites, cities, regions, routes, links you can build,
+  transport modes, line rates and threats. These become the Unreal DataTables.
+- **Core tuning as data (`src/sim/tuning/core.json`).** Wages, the premium for buying without a contract, stock
+  buffers, the output cap, the demilitarization rate, difficulty (events, crises, ramp-up, starting money), each
+  base's minimum rounds, reserve days, the stockpile law and the grace given to new lines. It sits beside the mandate's
+  tuning.
+- **A check on the data.** Since the tables are no longer TypeScript, a test checks every key and reference in them:
+  recipes use only known materials, sites run only known recipes, routes join only known sites, and threats are
+  answered only by rounds that exist.
+
 ## 18.0.0: port baseline, part one
 
 The groundwork for rebuilding Forge Command in Unreal Engine. Nothing changes in play; this release makes sure that

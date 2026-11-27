@@ -1,4 +1,5 @@
 // The fight, abstracted: fictional threats arrive in each region every day and the bases there fire at them.
+import threatsData from './data/threats.json';
 import type { LineId, RegionId, SiteKind } from './world';
 import type { ThreatId } from './types';
 
@@ -15,54 +16,7 @@ export interface ThreatDef {
   assign: { line: LineId; weight: number; pk: number }[];
 }
 
-export const THREATS: Record<ThreatId, ThreatDef> = {
-  drone: {
-    id: 'drone', name: 'One-way attack drone', estCost: 0.035, shots: 1.2, severity: 0.15, calmMonthly: 14,
-    assign: [
-      { line: 'apkws', weight: 0.5, pk: 0.8 },
-      { line: 'coyote', weight: 0.2, pk: 0.9 },
-      { line: 'stinger', weight: 0.55, pk: 0.75 },
-      { line: 'tamir', weight: 0.35, pk: 0.85 },
-      { line: 'irist', weight: 0.1, pk: 0.9 },
-      { line: 'sm6', weight: 0, pk: 0.9 },
-      { line: 'pac3', weight: 0, pk: 0.85 },
-    ],
-  },
-  rocket: {
-    id: 'rocket', name: 'Short-range rocket', estCost: 0.008, shots: 1, severity: 0.05, calmMonthly: 26,
-    assign: [
-      { line: 'tamir', weight: 1, pk: 0.9 },
-      { line: 'irist', weight: 0, pk: 0.7 },
-      { line: 'pac3', weight: 0, pk: 0.8 },
-    ],
-  },
-  cruise: {
-    id: 'cruise', name: 'Cruise missile', estCost: 1.5, shots: 1.5, severity: 1, calmMonthly: 5,
-    assign: [
-      { line: 'irist', weight: 0.5, pk: 0.85 },
-      { line: 'coyote', weight: 0.15, pk: 0.7 },
-      { line: 'sm6', weight: 0.25, pk: 0.9 },
-      { line: 'pac3', weight: 0.25, pk: 0.85 },
-      { line: 'tamir', weight: 0, pk: 0.6 },
-    ],
-  },
-  ballistic: {
-    id: 'ballistic', name: 'Short-range ballistic missile', estCost: 3, shots: 2, severity: 2, calmMonthly: 3,
-    assign: [
-      { line: 'pac3', weight: 0.85, pk: 0.9 },
-      { line: 'sm6', weight: 0.15, pk: 0.8 },
-    ],
-  },
-  aircraft: {
-    id: 'aircraft', name: 'Combat aircraft', estCost: 30, shots: 1.5, severity: 1.5, calmMonthly: 1,
-    assign: [
-      { line: 'irist', weight: 0.4, pk: 0.75 },
-      { line: 'sm6', weight: 0.3, pk: 0.9 },
-      { line: 'pac3', weight: 0.3, pk: 0.85 },
-      { line: 'stinger', weight: 0, pk: 0.4 },
-    ],
-  },
-};
+export const THREATS: Record<ThreatId, ThreatDef> = threatsData as unknown as Record<ThreatId, ThreatDef>;
 export const THREAT_IDS = Object.keys(THREATS) as ThreatId[];
 export const PREMIUM: LineId[] = ['pac3', 'sm6'];
 export const CHEAP: ThreatId[] = ['drone', 'rocket'];

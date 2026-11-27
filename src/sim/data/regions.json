@@ -1,0 +1,32 @@
+{
+ "north": {
+  "name": "Northern Ports",
+  "threatShare": 0.25,
+  "landShare": 0.4,
+  "depot": "depotNorth"
+ },
+ "coast": {
+  "name": "Halvard Coast",
+  "threatShare": 0.3,
+  "landShare": 0,
+  "depot": "depotCoast"
+ },
+ "east": {
+  "name": "Eastern Marches",
+  "threatShare": 0.3,
+  "landShare": 0.6,
+  "depot": "depotEast"
+ },
+ "isles": {
+  "name": "Skerry Isles",
+  "threatShare": 0.15,
+  "landShare": 0,
+  "depot": "depotIsles"
+ },
+ "central": {
+  "name": "Heartland",
+  "threatShare": 0,
+  "landShare": 0,
+  "depot": "depotCentral"
+ }
+}
