@@ -1,3 +1,4 @@
+import { mixer, setAudioHidden } from './mixer';
 // Generated background music that follows the situation: no audio files. Slow pad chords, a sparse melody above them,
 // and a low pulse and soft percussion when there is trouble. Six moods: calm, uneasy (a crisis is coming), tense
 // (a crisis is on), hearing (the Committee sits), triumph (a term well served) and sombre (dismissed).
@@ -56,27 +57,40 @@ const MELODY: Record<Mood, number[]> = {
   somber: [-1, -1, 1, -1, -1, 0, -1, -1],
 };
 
+/** Other melodic phrases for each mood: the base phrase, sung backwards, and thinned out (17.2: less repetition). */
+const PHRASES: Record<Mood, number[][]> = Object.fromEntries(
+  (Object.keys(MELODY) as Mood[]).map((m) => {
+    const base = MELODY[m];
+    const back = [...base].reverse();
+    const thin = base.map((d, i) => (i % 3 === 1 ? -1 : d));
+    return [m, [base, back, thin]];
+  }),
+) as Record<Mood, number[][]>;
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let timer: number | null = null;
 let step = 0;
+let chordAt = 0;
 let mood: Mood = 'calm';
-let volume = 0.5;
-let pulse: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode } | null = null;
+let volume = 0.35;
+let pulse: { oscs: OscillatorNode[]; lfo: OscillatorNode; gain: GainNode } | null = null;
+let bed: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+let hammerAt = 0;
 let hidden = false;
 
 function audio(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    ctx ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (ctx.state === 'suspended' && !hidden) void ctx.resume();
-    return ctx;
-  } catch {
-    return null;
-  }
+  const m = mixer();
+  if (!m) return null;
+  ctx = m.ctx;
+  if (ctx.state === 'suspended' && !hidden) void ctx.resume();
+  return ctx;
 }
 
-function chord(a: AudioContext, out: GainNode, freqs: number[], seconds: number): void {
+// Music only, never the game: Math.random is fine here.
+const chance = (p: number) => Math.random() < p;
+
+function chord(a: AudioContext, out: GainNode, freqs: number[], seconds: number, level = 1): void {
   const t = a.currentTime;
   const filter = a.createBiquadFilter();
   filter.type = 'lowpass';
@@ -91,8 +105,8 @@ function chord(a: AudioContext, out: GainNode, freqs: number[], seconds: number)
       o.frequency.value = f;
       o.detune.value = detune;
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.02 / (i + 1), t + Math.min(3, seconds / 3));
-      g.gain.linearRampToValueAtTime(0.016 / (i + 1), t + seconds - 1);
+      g.gain.linearRampToValueAtTime((0.02 * level) / (i + 1), t + Math.min(3, seconds / 3));
+      g.gain.linearRampToValueAtTime((0.016 * level) / (i + 1), t + seconds - 1);
       g.gain.linearRampToValueAtTime(0, t + seconds + 2.5);
       o.connect(g).connect(filter);
       o.start(t);
@@ -101,71 +115,166 @@ function chord(a: AudioContext, out: GainNode, freqs: number[], seconds: number)
   });
 }
 
-/** A soft bell-like note: the melody. */
+/** A struck note for the melody: a little bronze in it, not a pure bell. */
 function note(a: AudioContext, out: GainNode, freq: number, at: number, length: number): void {
-  const o = a.createOscillator();
-  const o2 = a.createOscillator();
-  const g = a.createGain();
-  o.type = 'sine';
-  o2.type = 'sine';
-  o.frequency.value = freq;
-  o2.frequency.value = freq * 2.01;
   const t = a.currentTime + at;
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(mood === 'somber' ? 0.012 : 0.016, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + length);
-  const g2 = a.createGain();
-  g2.gain.value = 0.25;
-  o.connect(g).connect(out);
-  o2.connect(g2).connect(g);
-  o.start(t);
-  o2.start(t);
-  o.stop(t + length + 0.05);
-  o2.stop(t + length + 0.05);
+  const peak = mood === 'somber' ? 0.012 : 0.016;
+  for (const [ratio, level] of [[1, 1], [2.01, 0.25], [2.76, 0.1]] as const) {
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq * ratio;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak * level, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + length / (ratio > 2.5 ? 2 : 1));
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + length + 0.05);
+  }
 }
 
-/** A muted drum: tension's heartbeat. */
-function thud(a: AudioContext, out: GainNode, at: number): void {
+/** A muted drum: tension's heartbeat. With `far`, a distant drop forge in the works across the valley. */
+function thud(a: AudioContext, out: GainNode, at: number, far = false): void {
   const o = a.createOscillator();
   const g = a.createGain();
+  const f = a.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = far ? 260 : 900;
   o.type = 'sine';
   const t = a.currentTime + at;
-  o.frequency.setValueAtTime(90, t);
-  o.frequency.exponentialRampToValueAtTime(40, t + 0.25);
-  g.gain.setValueAtTime(0.06, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-  o.connect(g).connect(out);
+  o.frequency.setValueAtTime(far ? 70 : 90, t);
+  o.frequency.exponentialRampToValueAtTime(far ? 32 : 40, t + 0.25);
+  g.gain.setValueAtTime(far ? 0.035 : 0.06, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (far ? 0.6 : 0.3));
+  o.connect(f).connect(g).connect(out);
   o.start(t);
-  o.stop(t + 0.35);
+  o.stop(t + 0.7);
 }
 
 /** The scale above a chord's root: minor for dark moods, major for bright ones. */
 const SCALE = (m: Mood) => (m === 'triumph' || m === 'hearing' ? [0, 2, 4, 5, 7, 9, 11, 12] : [0, 2, 3, 5, 7, 8, 10, 12]);
 
+/** Tension's low pulse, at 110 Hz with an octave above it so laptop speakers can carry it. */
 function setPulse(a: AudioContext, out: GainNode, on: boolean): void {
   if (on && !pulse) {
-    const osc = a.createOscillator();
     const gain = a.createGain();
     const lfo = a.createOscillator();
     const depth = a.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 55;
-    gain.gain.value = 0.018;
+    gain.gain.value = 0.014;
     lfo.frequency.value = 1.1;
-    depth.gain.value = 0.018;
+    depth.gain.value = 0.014;
     lfo.connect(depth).connect(gain.gain);
-    osc.connect(gain).connect(out);
-    osc.start();
+    const oscs = [110, 220].map((f, i) => {
+      const o = a.createOscillator();
+      const g = a.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.value = i ? 0.35 : 1;
+      o.connect(g).connect(gain);
+      o.start();
+      return o;
+    });
+    gain.connect(out);
     lfo.start();
-    pulse = { osc, lfo, gain };
+    pulse = { oscs, lfo, gain };
   } else if (!on && pulse) {
     const t = a.currentTime;
     pulse.gain.gain.cancelScheduledValues(t);
     pulse.gain.gain.linearRampToValueAtTime(0, t + 2);
-    pulse.osc.stop(t + 2.1);
+    for (const o of pulse.oscs) o.stop(t + 2.1);
     pulse.lfo.stop(t + 2.1);
     pulse = null;
   }
+}
+
+/** The bed under everything: the low roar of furnaces far off, breathing slowly. */
+function startBed(a: AudioContext, out: GainNode): void {
+  if (bed) return;
+  const len = a.sampleRate * 4;
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const data = buf.getChannelData(0);
+  // Brown noise: each sample a small step from the last.
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    last = (last + (Math.random() * 2 - 1) * 0.02) / 1.02;
+    data[i] = last * 3.5;
+  }
+  const src = a.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const f = a.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 220;
+  const gain = a.createGain();
+  gain.gain.value = 0;
+  gain.gain.linearRampToValueAtTime(0.05, a.currentTime + 4);
+  const lfo = a.createOscillator();
+  const depth = a.createGain();
+  lfo.frequency.value = 0.07;
+  depth.gain.value = 0.02;
+  lfo.connect(depth).connect(gain.gain);
+  src.connect(f).connect(gain).connect(out);
+  src.start();
+  lfo.start();
+  bed = { src, gain };
+}
+function stopBed(a: AudioContext): void {
+  if (!bed) return;
+  const t = a.currentTime;
+  bed.gain.gain.cancelScheduledValues(t);
+  bed.gain.gain.linearRampToValueAtTime(0, t + 2);
+  bed.src.stop(t + 2.1);
+  bed = null;
+}
+
+/** A short cue as the mood changes, so the change is heard at once. */
+function stinger(a: AudioContext, out: GainNode, m: Mood): void {
+  const t = a.currentTime;
+  const horn = (f: number, at: number, dur: number, g = 0.03) => {
+    for (const d of [0, 1.006]) {
+      const o = a.createOscillator();
+      const gn = a.createGain();
+      const lp = a.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 800;
+      o.type = 'sawtooth';
+      o.frequency.value = f * (d || 1);
+      gn.gain.setValueAtTime(0, t + at);
+      gn.gain.linearRampToValueAtTime(g * (d ? 0.6 : 1), t + at + 0.25);
+      gn.gain.linearRampToValueAtTime(0, t + at + dur);
+      o.connect(lp).connect(gn).connect(out);
+      o.start(t + at);
+      o.stop(t + at + dur + 0.1);
+    }
+  };
+  if (m === 'tense') {
+    horn(73.4, 0, 1.6, 0.04);
+    horn(77.8, 0.5, 1.4, 0.03);
+    thud(a, out, 0);
+    thud(a, out, 0.5);
+  } else if (m === 'uneasy') {
+    horn(146.8, 0, 0.9);
+    horn(138.6, 0.6, 1.2);
+  } else if (m === 'hearing') {
+    horn(130.8, 0, 1.2);
+    horn(196, 0.35, 1.4);
+  } else if (m === 'triumph') {
+    horn(146.8, 0, 0.7);
+    horn(185, 0.25, 0.7);
+    horn(220, 0.5, 1.6, 0.035);
+  } else if (m === 'somber') {
+    horn(110, 0, 2.2, 0.03);
+    horn(87.3, 0.8, 2.4, 0.025);
+  } else {
+    note(a, out, 293.7, 0, 1.6);
+  }
+}
+
+/** The next chord: mostly the next in the set, sometimes a step back or a jump, so the progression never loops. */
+function nextChord(n: number): number {
+  if (chance(0.55)) return (chordAt + 1) % n;
+  if (chance(0.5)) return (chordAt + n - 1) % n;
+  return Math.floor(Math.random() * n);
 }
 
 function tick(): void {
@@ -178,18 +287,28 @@ function tick(): void {
   }
   const set = CHORDS[mood];
   const seconds = PACE[mood];
-  const freqs = set[step % set.length];
-  chord(a, master, freqs, seconds);
-  // Melody: half of the chord's beats, from its root, an octave up.
-  const beat = seconds / 4;
-  const scale = SCALE(mood);
-  const half = step % 2;
-  for (let i = 0; i < 4; i++) {
-    const d = MELODY[mood][half * 4 + i];
-    if (d >= 0) note(a, master, freqs[0] * 2 * Math.pow(2, scale[d % scale.length] / 12), i * beat + 0.2, beat * 1.6);
+  chordAt = step === 0 ? 0 : nextChord(set.length);
+  const freqs = set[chordAt];
+  // Now and then the music takes a breath: the pad alone, softer, with no melody.
+  const breath = step > 3 && chance(0.14);
+  chord(a, master, freqs, seconds, breath ? 0.6 : 1);
+  if (!breath) {
+    const beat = seconds / 4;
+    const scale = SCALE(mood);
+    const phrase = PHRASES[mood][Math.floor(Math.random() * PHRASES[mood].length)];
+    const half = step % 2;
+    for (let i = 0; i < 4; i++) {
+      const d = phrase[half * 4 + i];
+      if (d >= 0) note(a, master, freqs[0] * 2 * Math.pow(2, scale[d % scale.length] / 12), i * beat + 0.2, beat * 1.6);
+    }
+    if (mood === 'tense') for (let i = 0; i < 4; i++) thud(a, master, i * beat);
+    if (mood === 'uneasy') thud(a, master, 0);
   }
-  if (mood === 'tense') for (let i = 0; i < 4; i++) thud(a, master, i * beat);
-  if (mood === 'uneasy') thud(a, master, 0);
+  // In quiet times, a drop forge somewhere across the valley.
+  if ((mood === 'calm' || mood === 'uneasy') && a.currentTime > hammerAt) {
+    thud(a, master, 1 + Math.random() * seconds * 0.6, true);
+    hammerAt = a.currentTime + 7 + Math.random() * 9;
+  }
   step++;
   // Each chord schedules the next, so a change of mood changes the pace too.
   timer = window.setTimeout(tick, seconds * 1000);
@@ -204,10 +323,12 @@ export const music = {
   },
   start(): void {
     const a = audio();
-    if (!a || timer !== null) return;
+    const m = mixer();
+    if (!a || !m || timer !== null) return;
     master = a.createGain();
     master.gain.value = volume;
-    master.connect(a.destination);
+    master.connect(m.music);
+    startBed(a, master);
     tick();
     setPulse(a, master, mood === 'tense' || mood === 'uneasy');
   },
@@ -217,6 +338,7 @@ export const music = {
     const a = ctx;
     if (a && master) {
       setPulse(a, master, false);
+      stopBed(a);
       const m = master;
       m.gain.linearRampToValueAtTime(0, a.currentTime + 1.5);
       window.setTimeout(() => m.disconnect(), 1800);
@@ -227,7 +349,13 @@ export const music = {
     if (next === mood) return;
     mood = next;
     step = 0;
-    if (ctx && master) setPulse(ctx, master, mood === 'tense' || mood === 'uneasy');
+    if (ctx && master) {
+      setPulse(ctx, master, mood === 'tense' || mood === 'uneasy');
+      // A cue at once, and the new mood's music a moment later rather than at the end of the old chord.
+      stinger(ctx, master, mood);
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(tick, 1400);
+    }
   },
   setVolume(v: number): void {
     volume = Math.max(0, Math.min(1, v));
@@ -236,9 +364,7 @@ export const music = {
   /** Silence while the game's tab is hidden; carry on when it comes back. */
   setHidden(h: boolean): void {
     hidden = h;
-    if (!ctx) return;
-    if (h) void ctx.suspend();
-    else void ctx.resume();
+    setAudioHidden(h);
   },
 };
 
@@ -251,9 +377,14 @@ export interface AudioPrefs {
   volume: number;
   /** Sound effects volume, 0..1. */
   sfxVolume: number;
+  /** Everything, 0..1 (older saved settings lack it: 1). */
+  master?: number;
+  /** At 4× and 8×, leave routine news to the log (older saved settings lack it: on). */
+  quietAtSpeed?: boolean;
 }
 const KEY = 'forge-command-audio';
-const DEFAULTS: AudioPrefs = { sfx: true, music: false, volume: 0.5, sfxVolume: 0.7 };
+// Music is on for new players since 17.2, at a level that sits under the sounds.
+const DEFAULTS: AudioPrefs = { sfx: true, music: true, volume: 0.35, sfxVolume: 0.7, master: 1, quietAtSpeed: true };
 export function loadAudioPrefs(): AudioPrefs {
   try {
     return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {}) };

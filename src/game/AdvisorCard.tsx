@@ -52,7 +52,7 @@ export default function AdvisorCard({
   return (
     <section className="border-b border-ops-line/60 p-3 text-[11px]" aria-label="Advisor">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="label text-ops-cyan">Advisor · next best moves</h3>
+        <h3 className="label !text-ops-amber">Advisor · next best moves</h3>
         <span className="flex flex-wrap gap-1">
           <Btn
             kind="primary"

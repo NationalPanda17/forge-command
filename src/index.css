@@ -166,7 +166,7 @@ h2[tabindex='-1']:focus {
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--ops-line)) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgb(var(--ops-line)); border: 3px solid transparent; border-radius: 8px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: rgb(var(--ops-line)); border: 3px solid transparent; border-radius: 2px; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--ops-dim) / 0.6); }
 ::-webkit-scrollbar-corner { background: transparent; }
 
@@ -264,7 +264,7 @@ input[type='radio'] {
   place-content: center;
   border: 1px solid rgb(var(--ops-dim) / 0.7);
   background: rgb(var(--ops-bg));
-  border-radius: 3px;
+  border-radius: 2px;
   cursor: pointer;
   vertical-align: middle;
   transition: background-color 120ms, border-color 120ms;
@@ -348,8 +348,6 @@ select option { background: rgb(var(--ops-panel)); color: rgb(var(--ops-text)); 
   box-shadow: inset 0 1px 0 rgb(var(--ops-amber) / 0.25), 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
-/* Panel headings carry a short accent mark. */
-.panel-title { box-shadow: inset 2px 0 0 rgb(var(--ops-cyan) / 0.75); }
 
 /* ---------- Tooltips (see ui/tooltip.ts) ---------- */
 
@@ -359,10 +357,11 @@ select option { background: rgb(var(--ops-panel)); color: rgb(var(--ops-text)); 
   max-width: 280px;
   padding: 5px 8px;
   border: 1px solid rgb(var(--ops-line));
-  border-radius: 4px;
+  border-radius: 2px;
+  border-top-color: rgb(var(--fc-bronze) / 0.8);
   background: rgb(var(--ops-panel2));
   color: rgb(var(--ops-text));
-  font: 11px/1.4 'JetBrains Mono', ui-monospace, monospace;
+  font: 11.5px/1.45 theme('fontFamily.body');
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   white-space: pre-line;
@@ -624,3 +623,41 @@ html.rm .fc-smoke > g, html.rm .fc-beacon > circle { animation: none; }
 .fc-coach { position: relative; z-index: 5; border-radius: 3px; animation: fc-coach 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber)); } }
 html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber)); }
+
+/* ---------- 17.2: coach cards, portraits, map plates ---------- */
+
+/* The tutorial and field-note cards: a plate with the amber command edge. */
+.fc-coach-card {
+  border-bottom: 1px solid rgb(var(--ops-line));
+  background: linear-gradient(90deg, rgb(var(--ops-amber) / 0.1), rgb(var(--ops-amber) / 0.02) 70%, transparent);
+  box-shadow: inset 3px 0 0 rgb(var(--ops-amber) / 0.85);
+}
+/* A character's portrait frame: a bronze hexagon, like the Board's insignia. */
+.fc-portrait {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 48px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(180deg, #f3d28c, #c08a43 50%, #7a5226);
+  font: 700 15px/1 theme('fontFamily.sans');
+  color: #1a1208;
+  letter-spacing: 0.04em;
+}
+/* An overlay on the map (title card, minimap, readouts, hover cards, menus): a small plate with a bronze top edge. */
+.fc-hud {
+  border: 1px solid rgb(var(--ops-line));
+  border-top-color: rgb(var(--fc-bronze) / 0.75);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgb(var(--ops-panel2) / 0.96), rgb(var(--ops-panel) / 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+/* Every dialog's heading: one size and style (an amber kicker label sits above it). */
+.fc-dialog-title {
+  font: 700 26px/1.05 theme('fontFamily.sans');
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}

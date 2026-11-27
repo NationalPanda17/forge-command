@@ -89,9 +89,9 @@ export function TutorialCard({ state, onStep }: { state: SimState; onStep: (step
   useCoachRing(finished || step >= TUTORIAL_DONE ? undefined : st.ring);
   if (step >= TUTORIAL_DONE) return null;
   return (
-    <section className="border-b border-ops-cyan/40 bg-ops-cyan/5 px-3 py-2 text-[11px]" aria-live="polite">
+    <section className="fc-coach-card px-3 py-2 text-[11px]" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="label text-ops-cyan">{finished ? 'Tutorial complete' : `Tutorial · step ${step + 1} of ${STEPS.length}`}</span>
+        <span className="label !text-ops-amber">{finished ? 'Tutorial complete' : `Tutorial · step ${step + 1} of ${STEPS.length}`}</span>
         <Btn onClick={() => onStep(finished ? TUTORIAL_DONE : TUTORIAL_SKIPPED)}>{finished ? 'Close' : 'Skip tutorial'}</Btn>
       </div>
       {finished ? (

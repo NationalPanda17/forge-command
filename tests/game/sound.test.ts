@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { play, resetSounds } from '../../src/ui/sound';
+import { play, resetSounds, setGameSpeed, setQuietAtSpeed, soundFor } from '../../src/ui/sound';
 
 describe('16.1 sound gate', () => {
   beforeEach(() => resetSounds());
@@ -30,5 +30,27 @@ describe('16.1 sound gate', () => {
     expect(play('click', 100)).toBe(true);
     expect(play('click', 120)).toBe(false); // the click's own 40 ms debounce
     expect(play('click', 200)).toBe(true);
+  });
+
+  it('leaves routine news to the log at 4× and 8×, but never an emergency', () => {
+    // Arrange
+    setQuietAtSpeed(true);
+    setGameSpeed(8);
+    // Act and assert
+    expect(play('month', 0)).toBe(false);
+    expect(play('done', 10)).toBe(false);
+    expect(play('alarm', 20)).toBe(true);
+    // At normal speed the month is heard again.
+    setGameSpeed(1);
+    expect(play('month', 30000)).toBe(true);
+  });
+
+  it('gives the silent moments a sound: a crisis, its end, a refused budget, a finished build', () => {
+    // Act and assert
+    expect(soundFor('Crisis: the Northern Ports crisis has begun.', 'bad')).toBe('alarm');
+    expect(soundFor('The Northern Ports crisis has wound down.', 'good')).toBe('success');
+    expect(soundFor('The Committee votes your request down and sets the budget at $200M a month.', 'bad')).toBe('failure');
+    expect(soundFor('Corran Spur opens to traffic.', 'good')).toBe('done');
+    expect(soundFor('A quiet month at the Board.', 'info')).toBeNull();
   });
 });

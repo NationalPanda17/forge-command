@@ -33,8 +33,8 @@ export default function IntelOpsSection({ state, act }: { state: SimState; act: 
             <span className="text-ops-cyan">Under way: {OPS[it.active.kind].name.toLowerCase()}</span>
             <span className="text-ops-dim">{Math.ceil(it.active.days / 7)} weeks left</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded bg-ops-line/60">
-            <div className="h-full bg-ops-cyan" style={{ width: `${Math.round((1 - it.active.days / it.active.total) * 100)}%` }} />
+          <div className="bar mt-1">
+            <span className="bg-ops-cyan" style={{ width: `${Math.round((1 - it.active.days / it.active.total) * 100)}%` }} />
           </div>
         </div>
       )}

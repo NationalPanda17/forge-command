@@ -17,11 +17,11 @@ export function Briefing({ state, act }: { state: SimState; act: (a: SimAction) 
         <div className="label text-ops-amber">
           Chapter {i + 1} of {CHAPTERS.length}
         </div>
-        <h2 id="brief-title" className="font-sans text-2xl font-bold tracking-[0.1em] text-white">
+        <h2 id="brief-title" className="fc-dialog-title">
           {ch.title}
         </h2>
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ops-cyan/60 font-sans text-[14px] font-bold text-ops-cyan" aria-hidden="true">
+          <span className="fc-portrait" aria-hidden="true">
             {who.name
               .split(' ')
               .filter((w) => /^[A-Z]/.test(w) && !['Dame', 'Colonel', 'General'].includes(w))

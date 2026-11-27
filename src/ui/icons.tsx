@@ -31,6 +31,9 @@ const PATHS = {
   bolt: 'M9 1.5L3.5 9h4L7 14.5 12.5 7h-4z',
   flask: 'M6.2 2h3.6M6.8 2v4.2L3 12.6c-.4.7.1 1.4.9 1.4h8.2c.8 0 1.3-.7.9-1.4L9.2 6.2V2M4.8 10h6.4',
   crosshair: 'M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM8 1v3M8 12v3M1 8h3M12 8h3',
+  zoomIn: 'M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.6 10.6L14 14M7 4.8v4.4M4.8 7h4.4',
+  zoomOut: 'M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.6 10.6L14 14M4.8 7h4.4',
+  recenter: 'M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

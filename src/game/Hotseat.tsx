@@ -12,8 +12,8 @@ export function Handover({ state, act }: { state: SimState; act: (a: SimAction) 
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ops-bg p-3" role="dialog" aria-modal="true" aria-labelledby="handover-title">
       <DialogFocus labelledBy="handover-title" />
       <div className="fc-zoom panel mx-auto mt-[12vh] max-w-md space-y-4 p-5 text-center text-[12px]">
-        <div className="label">{state.history.length === 0 ? 'Two directors, one country' : 'Month over'}</div>
-        <h2 id="handover-title" className="font-sans text-2xl font-bold tracking-[0.1em] text-white">
+        <div className="label !text-ops-amber">{state.history.length === 0 ? 'Two directors, one country' : 'Month over'}</div>
+        <h2 id="handover-title" className="fc-dialog-title">
           Pass to {next.name}
         </h2>
         <p className="text-ops-text">

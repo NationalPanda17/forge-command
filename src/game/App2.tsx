@@ -582,7 +582,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           <div className="mb-3 flex justify-center">
             <Insignia size={64} />
           </div>
-          <p className="label mb-3 tracking-[0.4em] text-[#d8b070]">Munitions Production Board</p>
+          <p className="label mb-3 tracking-[0.4em] text-bronze">Munitions Production Board</p>
           <h1 className="font-sans text-[72px] font-bold leading-[0.9] tracking-[0.16em]">
             <span className="fc-title-word block">FORGE</span>
             <span className="fc-title-word block">COMMAND</span>
@@ -641,7 +641,7 @@ function Backdrop() {
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
       <div className="fc-hero-glow absolute inset-0" />
       <svg className="absolute inset-0 h-full w-full opacity-[0.035]" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600">
-        <g fill="none" stroke="#38d6f5" strokeWidth="1">
+        <g fill="none" stroke="rgb(var(--ops-cyan))" strokeWidth="1">
           {[0, 1, 2, 3, 4, 5, 6].map((k) => (
             <ellipse key={k} cx="560" cy="380" rx={60 + k * 55} ry={34 + k * 32} transform={`rotate(-14 560 380)`} />
           ))}

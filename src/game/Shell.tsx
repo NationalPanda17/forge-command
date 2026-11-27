@@ -22,7 +22,8 @@ import { isFounded } from '../sim/industry';
 import { Explain } from '../ui/Explain';
 import { countryTitle, tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
-import { play, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
+import { play, setGameSpeed, setQuietAtSpeed, setSoundEnabled, setSoundVolume, soundFor } from '../ui/sound';
+import { setMasterVolume } from '../ui/mixer';
 import { loadAudioPrefs, moodFor, music, saveAudioPrefs, type AudioPrefs } from '../ui/music';
 import type { MapNetwork, MapRipple } from '../ui/map/MapView';
 import PlanPanel from './PlanPanel';
@@ -146,6 +147,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   // The speed when the last control was pressed, so a press can tell pause from resume from a speed change.
   const speedRef = useRef(speed);
   speedRef.current = speed;
+  // The sounds thin out at 4× and 8× (Settings, Sound).
+  useEffect(() => setGameSpeed(speed), [speed]);
   // Every button in the game gives a quiet tick (the clock's own controls have their own sounds).
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -295,6 +298,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   useEffect(() => {
     setSoundEnabled(audioPrefs.sfx);
     setSoundVolume(audioPrefs.sfxVolume);
+    setMasterVolume(audioPrefs.master ?? 1);
+    setQuietAtSpeed(audioPrefs.quietAtSpeed ?? true);
     music.setVolume(audioPrefs.volume);
     if (audioPrefs.music) music.start();
     else music.stop();
@@ -327,6 +332,13 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     // The event's own sound already says it.
     if (state.alert && performance.now() - soundAt.current > 250) play('alert');
   }, [state.alert]);
+  // The treasury going into debt is heard, once each time it happens.
+  const inDebt = state.treasury < 0;
+  const wasInDebt = useRef(inDebt);
+  useEffect(() => {
+    if (inDebt && !wasInDebt.current) play('failure');
+    wasInDebt.current = inDebt;
+  }, [inDebt]);
   const months = useRef(state.history.length);
   useEffect(() => {
     if (state.history.length > months.current) play('month');
@@ -741,7 +753,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                 >
                   {g.label}
                   {b.count > 0 && (
-                    <span className={`ml-1.5 rounded-full px-1.5 text-[10px] ${b.bad ? 'bg-ops-red/20 text-ops-red' : 'bg-ops-amber/20 text-ops-amber'}`} aria-label={`${b.count} need${b.count === 1 ? 's' : ''} you`}>
+                    <span className={`ml-1.5 rounded-[2px] px-1.5 font-sans text-[11px] font-bold ${b.bad ? 'bg-ops-red/20 text-ops-red' : 'bg-ops-amber/20 text-ops-amber'}`} aria-label={`${b.count} need${b.count === 1 ? 's' : ''} you`}>
                       {b.count}
                     </span>
                   )}

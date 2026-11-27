@@ -47,8 +47,8 @@ export default function DoctrinePanel({ state, act }: { state: SimState; act: (a
             <span className="text-ops-cyan">Bedding in: {doctrineDef(active.fork, active.side).name}</span>
             <span className="text-ops-dim">{Math.ceil(active.days / 30)} month{Math.ceil(active.days / 30) === 1 ? '' : 's'} left</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded bg-ops-line/60">
-            <div className="h-full bg-ops-cyan" style={{ width: `${Math.round((1 - active.days / active.total) * 100)}%` }} />
+          <div className="bar mt-1">
+            <span className="bg-ops-cyan" style={{ width: `${Math.round((1 - active.days / active.total) * 100)}%` }} />
           </div>
         </div>
       )}

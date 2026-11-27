@@ -18,7 +18,7 @@ export function Hearing({ state, act }: { state: SimState; act: (a: SimAction) =
       <DialogFocus labelledBy="hearing-title" />
       <div className="fc-zoom panel mx-auto mt-[4vh] max-w-2xl space-y-3 p-4 text-[12px]">
         <div className="label text-ops-amber">Defence Committee · fiscal year review</div>
-        <h2 id="hearing-title" className="font-sans text-2xl font-bold tracking-[0.1em] text-white">
+        <h2 id="hearing-title" className="fc-dialog-title">
           Budget hearing
         </h2>
         <p className="text-ops-text">

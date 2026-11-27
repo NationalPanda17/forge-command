@@ -66,7 +66,7 @@ export const SHORTCUTS: [string, string][] = [
 
 /** Volume for the music and the sound effects. */
 export function AudioOptions({ prefs, set }: { prefs: AudioPrefs; set: (p: Partial<AudioPrefs>) => void }) {
-  const slider = (label: string, value: number, on: boolean, key: 'volume' | 'sfxVolume') => (
+  const slider = (label: string, value: number, on: boolean, key: 'volume' | 'sfxVolume' | 'master') => (
     <label className="flex flex-wrap items-center gap-2">
       <span className="w-24 text-ops-text">{label}</span>
       <input
@@ -85,9 +85,15 @@ export function AudioOptions({ prefs, set }: { prefs: AudioPrefs; set: (p: Parti
   );
   return (
     <div className="space-y-1.5">
+      {slider('Everything', prefs.master ?? 1, prefs.music || prefs.sfx, 'master')}
       {slider('Music', prefs.volume, prefs.music, 'volume')}
       {slider('Sounds', prefs.sfxVolume, prefs.sfx, 'sfxVolume')}
-      <p className="text-[10px] text-ops-dim">The music follows the game: calm, uneasy before a crisis, tense during one, stately at a hearing.</p>
+      <label className="flex items-center gap-2 pt-1">
+        <input type="checkbox" checked={prefs.quietAtSpeed ?? true} onChange={(e) => set({ quietAtSpeed: e.target.checked })} />
+        <span className="text-ops-text">Quieter at 4× and 8×</span>
+        <span className="text-[10px] text-ops-dim">routine news is left to the log</span>
+      </label>
+      <p className="text-[10px] text-ops-dim">The music follows the game: calm, uneasy before a crisis, tense during one, stately at a hearing. Every sound also has its line in the log.</p>
     </div>
   );
 }
@@ -152,10 +158,10 @@ export function SettingsDialog({
       <DialogFocus labelledBy="settings-title" />
       <div className="fc-zoom panel mx-auto mt-[8vh] max-w-lg p-4 text-[12px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 id="settings-title" className="font-sans text-[20px] font-bold uppercase tracking-[0.12em] text-white">
+          <h2 id="settings-title" className="fc-dialog-title">
             Settings
           </h2>
-          <button type="button" onClick={onClose} aria-label="Close settings" title="Close (Esc)" className="grid h-7 w-7 place-items-center rounded text-ops-dim transition-colors hover:bg-ops-panel2 hover:text-white">
+          <button type="button" onClick={onClose} aria-label="Close settings" title="Close (Esc)" className="btn h-7 w-7 px-0">
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>

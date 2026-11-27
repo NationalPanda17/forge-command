@@ -1,5 +1,41 @@
 # Changelog
 
+## 17.2.0: Industrial Command II
+
+The art and sound pass from the art and audio directors' review: the look finished, the map dressed, and a sound that
+belongs to a forge.
+
+### Look
+- **Plated site counters.** Every site on the map is a little steel piece now: a shadow beneath, a face lit from
+  above, the owner's rim and a bevel inside it.
+- **A framed map.** A bronze double neatline with brackets at the corners and a bronze north arrow, in place of the
+  cyan box. The map's title card, minimap, readouts, hover cards, menus and the "why" popovers are all small plates
+  with a bronze top edge, and the zoom buttons have proper icons.
+- **Colours keep to their roles.** Amber is command: titles, the advisor, the tutorial and field notes, the selection
+  on the map. Cyan is state. Regions have muted hues of their own instead of the status colours, and the story's
+  characters sit in a bronze hexagon like the Board's insignia.
+- **Site names** are set in the reading face, easier to read at map size; the monospace is kept for rulers and
+  coordinates.
+- **One shape language.** Corners are 2–3px everywhere, count badges are square, every progress bar is the same bar,
+  every dialog heading is the same size and style, and tooltips are in the reading face with a bronze edge.
+
+### Sound
+- **An industrial palette.** Struck bronze for news, a relay click for every control, a teleprinter for decisions and
+  spies, low brass when the rival fields a weapon, and a klaxon only when a crisis begins.
+- **Music that does not loop.** Chords wander, each mood has several phrases, the music breathes now and then, and the
+  distant roar of furnaces and a drop forge across the valley sit underneath. A short cue marks every change of mood,
+  and the new mood starts at once. The tension pulse is now audible on laptop speakers.
+- **A proper mix.** One mixer for everything, with a master volume and a compressor; the music steps back under
+  anything important.
+- **Music is on by default** for new players, at 35%.
+- **The silent moments have sounds:** a crisis starting and ending, a budget refused or granted, a promise kept or
+  broken, a build finished, going into debt.
+- **Settings, Sound:** a master volume, and "Quieter at 4× and 8×", which leaves routine news to the log.
+
+### For the port
+- **`docs/art-bible.md`**: the palette and its roles, type, materials, iconography, motion, sound and the asset list
+  for the Unreal version.
+
 ## 17.1.0: command clarity
 
 The game now tells you what needs you in one place, answers every action where you clicked, and keeps the map still.
