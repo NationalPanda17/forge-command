@@ -1,5 +1,16 @@
 # Changelog
 
+## 19.3.2: clearer screens, part three
+
+- **The map reads from the important sites down.** Arsenals are full size with a bronze ring. Plants, depots and bases
+  are a step smaller, and mines, wells, ranges and ports smaller still. A site you select or point at shows at full
+  size.
+- **A clear next step on Home.** The advisor's top move is a featured card with an amber edge, its reason and its
+  button. The next three moves follow as a short list, with more on request. "Show" is now a light link, so the only
+  button is the one that acts. The advice no longer repeats the decisions button.
+- **Production inputs at a glance.** Each line lists its parts in a grid, with the days of stock at the plant, shortest
+  first, and a ✓, ! or ✕ beside the colour.
+
 ## 19.3.1: clearer screens, part two
 
 - **Money reads the same everywhere:** "$128K" and "$12.8M", not "$0.1280M". This covers prices in the panels, offers,

@@ -564,6 +564,14 @@ interface SitesLayerProps {
   onPress: (id: string, e: ReactPointerEvent) => void;
 }
 
+/**
+ * How big a site's marker is (19.3): arsenals at full size, plants, depots and bases a step down, and the mines, wells,
+ * ranges and ports that feed them smallest, so the map reads from the important sites down. Never larger than full
+ * size, so the spacing that keeps markers apart (which assumes full size) still holds.
+ */
+const MINOR_KINDS = new Set<SiteKind>(['mine', 'quarry', 'well', 'forestry', 'plot', 'testRange', 'demil', 'port', 'airfield']);
+const tierScale = (kind: SiteKind) => (kind === 'arsenal' ? 1 : MINOR_KINDS.has(kind) ? 0.76 : 0.88);
+
 const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hovered, labelIds, spread, onActivate, onFocusSite, onHover, onMenu, onPress }: SitesLayerProps) {
   const k = 1 / S;
   const m = markerPx(S);
@@ -588,6 +596,9 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
         const mk = markers[s.id];
         const col = mk?.tone ? TONE_COLOR[mk.tone] : OWNER_COLOR[s.owner];
         const sel = s.id === selected;
+        const kind = mk?.kind ?? s.kind;
+        // A selected or hovered site shows at full size, whatever its rank.
+        const t = sel || hovered === s.id ? 1 : tierScale(kind);
         // A plated counter (17.2): a shadow under it, a steel face lit from above, the owner's rim, and a bevel inside it.
         const shape = (inset: number, props: Record<string, unknown>) =>
           s.owner === 'state' ? (
@@ -608,7 +619,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
           <g
             key={s.id}
             className="fcm-marker"
-            transform={`translate(${x} ${y}) scale(${k})`}
+            transform={`translate(${x} ${y}) scale(${k * t})`}
             tabIndex={0}
             role="button"
             aria-label={`${mk?.name ?? s.name}, ${KIND_LABEL[mk?.kind ?? s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${BADGE_WORDS[mk.badge] ?? mk.badge}` : ''}`}
@@ -650,6 +661,8 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
                 <circle r={h + 2.5} fill="rgba(6, 11, 20, 0.6)" />
               )}
               {body}
+              {/* An arsenal carries a bronze outer ring: the sites the whole chain feeds. */}
+              {kind === 'arsenal' && <rect x={-h - 3.5} y={-h - 3.5} width={m + 7} height={m + 7} rx={5.5} fill="none" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.85} strokeWidth={1.3} />}
             </g>
             <SiteIcon kind={mk?.kind ?? s.kind} size={m * 0.68} color={col} strokeWidth={1.9} fillOpacity={0.25} />
             {mk?.badge && (

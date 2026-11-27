@@ -17,7 +17,10 @@ export default function AdvisorCard({
   onPanel,
   onSite,
   onMaterial,
+  hideDecisions = false,
 }: {
+  /** Leave out the "answer the decisions" move where the screen has its own button for them. */
+  hideDecisions?: boolean;
   state: SimState;
   act: (a: SimAction) => void;
   onPanel: (p: AdvicePanel) => void;
@@ -45,6 +48,7 @@ export default function AdvisorCard({
   const safe = useMemo(() => safeAdvice(snap), [snap]);
   const [planOpen, setPlanOpen] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  const [allItems, setAllItems] = useState(false);
   const plan = useMemo(() => (planOpen ? threeMonthPlan(snap) : []), [snap, planOpen]);
   const diagnosis = useMemo(() => (whyOpen ? diagnose(snap) : []), [snap, whyOpen]);
 
@@ -110,25 +114,65 @@ export default function AdvisorCard({
         </div>
       )}
       {!items.length && <p className="text-ops-dim">Nothing urgent. The three-month plan shows what is coming.</p>}
-      <ol className="space-y-1.5">
-        {items.map((a) => (
-          <li key={a.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded border p-2 ${TONE[a.tone]}`}>
-            <span className="min-w-0">
-              <span className="text-white">{a.title}</span>
-              <span className="block text-[10px] text-ops-dim">{a.why}</span>
-              {a.tradeoff && <span className="block text-[10px] text-ops-amber/90">{a.tradeoff}</span>}
-            </span>
-            <span className="flex shrink-0 flex-col gap-1">
-              {a.action && (
-                <Btn kind="primary" onClick={() => act(a.action!)}>
-                  Do it
-                </Btn>
-              )}
-              {(a.panel || a.site || a.material) && <Btn onClick={() => go(a)}>Show</Btn>}
-            </span>
-          </li>
-        ))}
-      </ol>
+      {/* The first move is the featured next step; the rest are a short list, with more on request (19.3). Home already
+          has a button for the Board's decisions, so the advice does not ask a second time. */}
+      {(() => {
+        const list = hideDecisions ? items.filter((x) => x.id !== 'decisions') : items;
+        const [first, ...rest] = list;
+        const shown = allItems ? rest : rest.slice(0, 3);
+        return (
+          <>
+            {first && (
+              <div className={`mb-1.5 rounded border p-3 ${TONE[first.tone]}`} style={{ boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' }}>
+                <div className="label mb-1 !text-ops-amber">Next step</div>
+                <div className="text-[13px] font-semibold text-white">{first.title}</div>
+                <div className="mt-0.5 text-ops-dim">{first.why}</div>
+                {first.tradeoff && <div className="mt-0.5 text-ops-amber/90">{first.tradeoff}</div>}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {first.action && (
+                    <Btn kind="primary" onClick={() => act(first.action!)}>
+                      Do it
+                    </Btn>
+                  )}
+                  {(first.panel || first.site || first.material) && (
+                    <button type="button" className="text-[11px] text-ops-cyan hover:underline" onClick={() => go(first)}>
+                      Show ›
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <ol className="space-y-1.5">
+              {shown.map((a) => (
+                <li key={a.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded border p-2 ${TONE[a.tone]}`}>
+                  <span className="min-w-0">
+                    <span className="text-white">{a.title}</span>
+                    <span className="block text-[10px] text-ops-dim">{a.why}</span>
+                    {a.tradeoff && <span className="block text-[10px] text-ops-amber/90">{a.tradeoff}</span>}
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    {a.action && (
+                      <Btn kind="primary" onClick={() => act(a.action!)}>
+                        Do it
+                      </Btn>
+                    )}
+                    {(a.panel || a.site || a.material) && (
+                      <button type="button" className="text-[11px] text-ops-cyan hover:underline" onClick={() => go(a)}>
+                        Show ›
+                      </button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {rest.length > 3 && (
+              <button type="button" className="mt-1 text-[11px] text-ops-cyan hover:underline" onClick={() => setAllItems(!allItems)}>
+                {allItems ? 'Fewer suggestions' : `${rest.length - 3} more suggestion${rest.length - 3 > 1 ? 's' : ''}`}
+              </button>
+            )}
+          </>
+        );
+      })()}
     </section>
   );
 }
