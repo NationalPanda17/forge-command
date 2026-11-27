@@ -69,8 +69,28 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   custom: { name: 'Custom', blurb: 'Your own starting situation: money, reserve, prices, crises, the rival, bans. Share it as a code.' },
 };
 
-/** Fills in fields added after a save was made, so older saves keep working. */
+/**
+ * The current save schema. Raise it by one, and add a step to migrate(), whenever the shape of a save changes; the
+ * Unreal port reads browser saves through the same numbered steps (docs/port/saves.md).
+ */
+export const SAVE_SCHEMA = 2;
+
+/**
+ * Brings a save of any earlier schema up to SAVE_SCHEMA and attaches its map. First every missing field is filled with
+ * its default (this changes nothing in a complete save, so it runs on every load and also mends a damaged one); then
+ * the numbered conversion steps run for anything older than they are.
+ */
 export function migrate(s: SimState): SimState {
+  const from = s.schema ?? 1;
+  fillDefaults(s);
+  // Numbered conversions go here, oldest first, e.g. if (from < 3) toSchema3(s);
+  void from;
+  s.schema = SAVE_SCHEMA;
+  return s;
+}
+
+/** Fills in every field added since 2.0 that a save lacks (schema 2 = everything up to 18.0). */
+function fillDefaults(s: SimState): void {
   s.world ??= null;
   applyWorld(s.world);
   s.tests ??= [];
@@ -131,7 +151,6 @@ export function migrate(s: SimState): SimState {
   if (!s.cast) s.cast = newCast(s);
   s.cast.rng ??= seedFrom(`cast|${s.seed}`);
   s.month.spend.energy ??= 0;
-  return s;
 }
 
 export const DIFFICULTY_MONEY: Record<Difficulty, { treasury: number; appropriation: number }> = {
@@ -201,6 +220,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   const money = DIFFICULTY_MONEY[difficulty];
   const state: SimState = {
     version: 1,
+    schema: SAVE_SCHEMA,
     seed: seed >>> 0,
     rng: seed >>> 0,
     day: 0,

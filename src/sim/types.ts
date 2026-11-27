@@ -318,6 +318,11 @@ export interface Policy {
 
 export interface SimState {
   version: 1;
+  /**
+   * The save's schema number (18.0). A save older than SAVE_SCHEMA is brought up to date one numbered step at a time
+   * by migrate() in setup.ts; saves from before 18.0 have none and count as schema 1.
+   */
+  schema?: number;
   seed: number;
   rng: number;
   day: number;
