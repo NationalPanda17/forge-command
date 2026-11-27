@@ -1,5 +1,5 @@
 // The strategic layer on top of the network: research, key staff, Committee factions, decisions and objectives.
-import { budgetFactor } from './mandate';
+import { budgetFactor, inflationCover } from './mandate';
 import { clamp, pick, rand } from './rng';
 import type { AllyId, FeedItem, SimState } from './types';
 import { FIRST_NAMES, LAST_NAMES } from './names';
@@ -49,6 +49,9 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
 export const RESEARCH_IDS = Object.keys(RESEARCH) as ResearchId[];
 
 export const hasResearch = (s: SimState, r: ResearchId) => s.strategy.research.done.includes(r);
+
+/** The line a research project opens, if it opens one. */
+export const newLineOf = (r: ResearchId): LineId | undefined => NEW_LINE_SITE[r]?.line;
 
 const NEW_LINE_SITE: Partial<Record<ResearchId, { line: LineId; site: string; crew: number }>> = {
   apkws: { line: 'apkws', site: 'northgateCenter', crew: 260 },
@@ -281,7 +284,7 @@ export function strategyMonth(s: SimState, feed: Feed, input: { readiness: numbe
   if ((s.history.length + 1) % 12 === 0) {
     // Budgets keep up with most, but not all, of inflation.
     // The Committee's confidence moves the budget a little either way (a narrow band: the leader is not run away with).
-    const next = Math.round(s.strategy.baseBudget * (1 + (s.priceIndex - 1) * 0.7) * budgetFactor(s.confidence));
+    const next = Math.round(s.strategy.baseBudget * inflationCover(s) * budgetFactor(s.confidence));
     // The Committee's provisional figure; the hearing (see hearings.ts) settles the final one.
     s.appropriation = next;
     void f;

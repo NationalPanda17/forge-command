@@ -7,6 +7,7 @@
 // figures (see recordMandateMonth), and older saves need no migration.
 import { independenceWeight } from './features';
 import { dealReadiness, dealWeights } from './scenarios';
+import CAREER from './tuning/career.json';
 import T from './tuning/mandate.json';
 import { monthSpend, monthWaste } from './audit';
 import { communityTowns } from './communities';
@@ -43,7 +44,7 @@ export function termYears(s: SimState, months: MonthReport[] = termMonths(s)): M
 /** How many steps tighter the mandate is in fiscal year `year` (0-based) of this term. */
 export function ratchetFor(s: SimState, year: number): number {
   if (s.scenario === 'tutorial') return 0;
-  return Math.min(T.ratchetMax, year) + Math.min(T.ratchetMax, (s.term ?? 1) - 1);
+  return Math.min(T.ratchetMax, year) + Math.min(CAREER.termRatchetMax, (s.term ?? 1) - 1);
 }
 
 const hasForeign = () => SITES.some((d) => d.owner === 'foreign');
@@ -78,7 +79,11 @@ function band(s: SimState, b: Band, year: number): [number, number] {
   // The hawks' budget (19.0c) buys a year of fuller racks.
   if (b === 'readiness') ease -= dealReadiness(s, year);
   if (b === 'readiness') ease += ((T.scenarioReadinessEase as Record<string, number>)[s.scenario] ?? 0) + (s.scenario === 'rebuild' ? (T.rebuildReadinessEase[year] ?? 0) : 0);
-  return [g.zero[d] + r - ease, g.full[d] + r - ease];
+  // A full mark nobody can reach is no goal (19.2): readiness is capped at 100% per line, so its mark is too.
+  const ceiling = (CAREER.bandCeiling as Record<string, number>)[b];
+  if (ceiling === undefined) return [g.zero[d] + r - ease, g.full[d] + r - ease];
+  const full = Math.min(ceiling, g.full[d] + r - ease);
+  return [Math.min(g.zero[d] + r - ease, full - 0.05), full];
 }
 
 const sum = (ms: MonthReport[], f: (m: MonthReport) => number) => ms.reduce((a, m) => a + f(m), 0);
@@ -203,6 +208,9 @@ export const fightScale = (s: SimState) => (T.confidence.fightScale as Record<st
 
 /** Next year's budget factor from the Committee's confidence (a narrow band, so the leader is not run away with). */
 export const budgetFactor = (confidence: number) => T.budget.base + confidence / T.budget.divisor;
+
+/** How far budgets follow prices: the base budget is in starting money, and this share of inflation is passed on. */
+export const inflationCover = (s: SimState) => 1 + (s.priceIndex - 1) * T.budget.inflationPass;
 
 export interface ScoreParts {
   mandate: number;

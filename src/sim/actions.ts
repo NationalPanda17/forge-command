@@ -33,8 +33,9 @@ import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
 import { REPLACE_DAYS, replaceCost } from './scenarios';
+import { canReappoint } from './career';
 import { HF, unionShift } from './homefront';
-import { MAX_POLICIES, POLICIES, REVOKE_COST, canSecondTerm, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
+import { MAX_POLICIES, POLICIES, REVOKE_COST, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
 import type { RegionId } from './world';
 export { CONTRACT_DISCOUNT };
 
@@ -138,7 +139,7 @@ export const refurbishCost = (line: LineId, qty: number) => qty * MATERIALS[line
 const funds = (s: SimState, cost: number) => (s.treasury >= cost ? null : `Not enough money (needs $${Math.round(cost)}M).`);
 
 export function validate(s: SimState, a: SimAction): string | null {
-  if (a.type === 'secondTerm') return canSecondTerm(s) ?? (a.boon && !boonsFor(s).includes(a.boon) ? 'That legacy was not earned this term.' : null);
+  if (a.type === 'secondTerm') return canReappoint(s) ?? (a.boon && !boonsFor(s).includes(a.boon) ? 'That legacy was not earned this term.' : null);
   if (s.over) return 'The campaign is over.';
   // Hot-seat: each player runs only their own half of the country.
   if (a.type !== 'handover') {

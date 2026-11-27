@@ -1,5 +1,28 @@
 # Changelog
 
+## 19.2.0: Career
+
+- **Career mode.** Serve term after term in one country, with the plants, people and reserve you built. A career lasts
+  until you are dismissed, the Committee declines to reappoint you after a failing term, or you retire.
+- **The Committee's letter.** At the end of each term it tells you:
+  - whether you are reappointed;
+  - your rank and the grade next term that would reach the next one;
+  - what opens next;
+  - the work you would leave unfinished.
+
+  Then you serve on, or retire with honour.
+- **Ranks and unlocks.** Six ranks, from Acting Director to Architect of the Arsenal. Postings open as your career
+  record grows: War footing, postings abroad in a new country, Sanctions, Rebuild and Hard. Prefer not to wait? Open
+  them all; ranks are still awarded.
+- **A career record** in this browser, listing every career you have served.
+- **A sounder late game, for every mode:**
+  - when you are reappointed, the new budget covers the industry you hand on;
+  - the chief of staff saves a supplier that is the country's only home source of a part, feeds the lines that are
+    starving first, and opens a new line only when it can be supplied;
+  - the readiness mark never rises above 100%.
+
+  On autopilot, careers now reach a third term about 6 times in 10, up from almost never, and most single-term
+  scenarios score higher.
 ## 19.1.1: the map fits smaller windows
 
 - **The game now fits windows down to 1100 pixels wide,** down from 1280. On a narrower window the map still fills the

@@ -148,8 +148,11 @@
     "byScenario": {
       "sanctions": {
         "links": 1,
-        "investRatio": 0.8
+        "investRatio": 0.8,
+        "newLineSupply": 0
       }
-    }
+    },
+    "criticalBelow": 0.3,
+    "newLineSupply": 0.7
   }
 }

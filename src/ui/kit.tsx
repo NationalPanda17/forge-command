@@ -88,7 +88,7 @@ export function Btn({
   );
 }
 
-export function Segmented<T extends string>({ value, options, onChange, label, tones }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; label: string; tones?: Partial<Record<T, string>> }) {
+export function Segmented<T extends string>({ value, options, onChange, label, tones }: { value: T; options: { id: T; label: string; disabled?: boolean }[]; onChange: (v: T) => void; label: string; tones?: Partial<Record<T, string>> }) {
   return (
     <div className="seg" role="group" aria-label={label}>
       {options.map((o) => (
@@ -97,6 +97,7 @@ export function Segmented<T extends string>({ value, options, onChange, label, t
           type="button"
           className={`btn min-w-[24px] px-1.5 ${value === o.id ? (tones?.[o.id] ?? 'btn-active') : ''}`}
           aria-pressed={value === o.id}
+          disabled={o.disabled}
           onClick={() => onChange(o.id)}
         >
           {o.label}

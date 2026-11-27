@@ -1,4 +1,6 @@
 // Choices that last: multi-year procurement programmes, standing policies, and a second term.
+import CAREER from './tuning/career.json';
+import { inflationCover } from './mandate';
 import { termReport } from './analytics';
 import { applyBoon, grudges, termStats, type BoonId } from './legacy';
 import { clamp } from './rng';
@@ -133,11 +135,18 @@ export function startSecondTerm(s: SimState, feed: Feed, boon?: BoonId): void {
   s.term = (s.term ?? 1) + 1;
   s.termMonth = s.history.length;
   s.days = s.day + TERM_MONTHS * DAYS_PER_MONTH;
-  s.confidence = clamp(45 + (r.score - 50) * 0.4, 30, 75);
+  const RC = CAREER.reappointConfidence;
+  s.confidence = clamp(RC.base + (r.score - 50) * RC.perPoint, RC.min, RC.max);
   // Your reputation sets the new budget; this term's objectives are behind you.
   const rep = clamp(1 + (r.score - 60) / 400, 0.92, 1.08);
-  s.appropriation = Math.round(s.appropriation * rep);
-  s.strategy.baseBudget = Math.round(s.strategy.baseBudget * rep);
+  // A new budget settlement (19.2): the Committee funds at least the running costs of the industry you hand on, then
+  // scales it by your reputation. Without it, the industry a good first term builds costs more than the old budget.
+  const R = CAREER.budgetRebase;
+  const recent = s.history.slice(-R.months);
+  const running = recent.length ? recent.reduce((a, m) => a + m.spend.purchases + m.spend.operations + m.spend.transport + (m.spend.energy ?? 0), 0) / recent.length : 0;
+  s.appropriation = Math.round(Math.max(s.appropriation, running * R.cover) * rep);
+  // The base budget is kept in starting money: each year's budget is it times the inflation the Committee passes on.
+  s.strategy.baseBudget = Math.round(Math.max(s.strategy.baseBudget * rep, s.appropriation / inflationCover(s)));
   s.strategy.objectives = [];
   s.termStartDay = s.day;
   feed(

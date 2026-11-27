@@ -1,4 +1,6 @@
 // Forge Command: title screen (campaign, sandbox, tutorial) and the game.
+import { CareerRecordView } from './CareerRecord';
+import { beginCareer, loadCareers, newCareerId, scenarioUnlock, unlockText, unlocked } from './career';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, Insignia, type IconName } from '../ui/icons';
 import Skyline from './Skyline';
@@ -30,13 +32,14 @@ const DIFF: Record<Difficulty, string> = {
   hard: 'Tight money, and every mistake shows.',
 };
 
-type Mode = 'story' | 'campaign' | 'sandbox' | 'hotseat' | 'tutorial';
+type Mode = 'story' | 'campaign' | 'career' | 'sandbox' | 'hotseat' | 'tutorial';
 /** The title screen's pages: the main menu, and one page for each of its entries. */
 type Screen = 'menu' | 'new' | 'load' | 'records' | 'settings';
 
 const MODES: { id: Mode; name: string; blurb: string }[] = [
   { id: 'story', name: 'Story', blurb: 'Four chapters, a year each, with the people around you and consequences that carry forward.' },
   { id: 'campaign', name: 'Campaign', blurb: 'A scored term as Director. The Committee judges you, and you can be dismissed.' },
+  { id: 'career', name: 'Career', blurb: 'Serve term after term in one country. Goals tighten; postings and ranks unlock as you go.' },
   { id: 'sandbox', name: 'Sandbox', blurb: 'Free play. Set the rules, change them as you go, add money, start crises. No score.' },
   { id: 'hotseat', name: 'Two players', blurb: 'Hot-seat on one device: each runs half the country, sharing the money and the railways. Turns change every month.' },
   { id: 'tutorial', name: 'Tutorial', blurb: 'A guided first two years on Easy, with no crisis for the first year.' },
@@ -60,6 +63,18 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
   const [mapKind, setMapKind] = useState<'classic' | 'new'>('new');
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2']);
   const world = mapKind === 'new' ? seedFrom(seed || '0') : null;
+  // Career mode (19.2): postings, Hard and countries abroad open as your career record grows.
+  const careers = loadCareers();
+  const open = (id: ScenarioId) => {
+    const u = scenarioUnlock(id);
+    return id !== 'custom' && (!u || unlocked(u, careers));
+  };
+  const careerScenario: ScenarioId = open(scenario) ? scenario : 'standard';
+  const careerDifficulty: Difficulty = difficulty === 'hard' && !unlocked('hard', careers) ? 'normal' : difficulty;
+  const careerWorld = unlocked('world', careers) ? world : null;
+  const activeCareer = saved?.careerId && !saved.over ? saved : null;
+  /** The country the panel describes: in a career, the classic one until postings abroad open. */
+  const shownWorld = mode === 'career' ? careerWorld : world;
   const allScores = loadScores();
   const best = bests(allScores);
   const totals = loadTotals();
@@ -90,6 +105,12 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
     if (mode === 'story') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, story: true, automation: autos })));
     if (mode === 'hotseat') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, hotseat: names, custom: mine })));
     if (mode === 'sandbox') return onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, mode: 'sandbox', settings: rules, money: extra, world, custom: mine, automation: autos })));
+    if (mode === 'career') {
+      // A career (19.2): a four-year campaign with a career id; terms chain through the second-term rules.
+      const s = { ...openCampaign(newSim({ seed: seedNum, difficulty: careerDifficulty, scenario: careerScenario, months: 48, world: careerWorld, automation: autos })), careerId: newCareerId(seedNum) };
+      beginCareer(s);
+      return onStart(s);
+    }
     onStart(openCampaign(newSim({ seed: seedNum, difficulty, scenario, months: years * 12, world, custom: mine, automation: autos })));
   };
   const rule = (k: 'inflation' | 'seasons' | 'crises' | 'endless' | 'dismissal', label: string) => (
@@ -103,19 +124,24 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       <div className="label mb-1">{mode === 'sandbox' ? 'Starting situation' : 'Scenario'}</div>
       <div className="grid gap-2 sm:grid-cols-2">
         {(Object.keys(SCENARIOS) as ScenarioId[])
-          .filter((id) => id !== 'tutorial')
-          .map((id) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={scenario === id}
-              onClick={() => setScenario(id)}
-              className={`rounded border p-2 text-left ${scenario === id ? 'border-ops-cyan bg-ops-cyan/10' : 'border-ops-line hover:border-ops-dim'}`}
-            >
-              <div className={`font-sans text-[14px] font-semibold ${scenario === id ? 'text-ops-cyan' : 'text-white'}`}>{SCENARIOS[id].name}</div>
-              <div className="text-[11px] text-ops-dim">{SCENARIOS[id].blurb}</div>
-            </button>
-          ))}
+          .filter((id) => id !== 'tutorial' && !(mode === 'career' && id === 'custom'))
+          .map((id) => {
+            const locked = mode === 'career' && !open(id);
+            const picked = (mode === 'career' ? careerScenario : scenario) === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={picked}
+                disabled={locked}
+                onClick={() => setScenario(id)}
+                className={`rounded border p-2 text-left ${picked ? 'border-ops-cyan bg-ops-cyan/10' : locked ? 'border-ops-line/50 opacity-60' : 'border-ops-line hover:border-ops-dim'}`}
+              >
+                <div className={`font-sans text-[14px] font-semibold ${picked ? 'text-ops-cyan' : 'text-white'}`}>{SCENARIOS[id].name}</div>
+                <div className="text-[11px] text-ops-dim">{locked ? `Locked. ${unlockText(scenarioUnlock(id)!)}` : SCENARIOS[id].blurb}</div>
+              </button>
+            );
+          })}
       </div>
       {scenario === 'custom' && (
         <div className="mt-2">
@@ -158,7 +184,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
       </div>
 
       <section className="panel">
-        <div className="panel-title">{mode === 'story' ? 'The story' : mode === 'campaign' ? 'New campaign' : mode === 'sandbox' ? 'New sandbox' : mode === 'hotseat' ? 'Two players' : 'Tutorial'}</div>
+        <div className="panel-title">{mode === 'story' ? 'The story' : mode === 'campaign' ? 'New campaign' : mode === 'career' ? 'Your career' : mode === 'sandbox' ? 'New sandbox' : mode === 'hotseat' ? 'Two players' : 'Tutorial'}</div>
         <div className="space-y-4 p-4 text-[12px]">
           {mode === 'story' ? (
             <>
@@ -183,7 +209,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           ) : (
             <>
               <p className="text-ops-text">
-                You are Director of the Munitions Production Board of the {world !== null ? makeSpec(world).title : 'Commonwealth of Aldmere'}. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
+                You are Director of the Munitions Production Board of the {shownWorld !== null ? makeSpec(shownWorld).title : 'Commonwealth of Aldmere'}. Sixty-five sites, from iron pits and gas wells to arsenals, depots,
                 air-defense batteries and a demilitarization yard, all tied together by rail, road, sea and air. Keep the rounds flowing.
               </p>
               {mode === 'hotseat' && (
@@ -206,25 +232,25 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 <div className="flex flex-wrap items-center gap-2">
                   <Segmented<'classic' | 'new'>
                     label="Map"
-                    value={mapKind}
+                    value={mode === 'career' && careerWorld === null ? 'classic' : mapKind}
                     onChange={setMapKind}
                     options={[
-                      { id: 'new', label: 'A new country' },
+                      { id: 'new', label: mode === 'career' ? 'A posting abroad' : 'A new country', disabled: mode === 'career' && !unlocked('world', careers) },
                       { id: 'classic', label: 'Classic Aldmere' },
                     ]}
                   />
-                  {world !== null && (
+                  {shownWorld !== null && (
                     <Btn onClick={() => setSeed(String(Math.floor(Math.random() * 1e6)))} title="Draw another country">
                       Another
                     </Btn>
                   )}
                 </div>
                 <p className="mt-1 text-[11px] text-ops-dim">
-                  {world !== null ? (
+                  {shownWorld !== null ? (
                     <>
-                      You will run the industry of the <span className="text-ops-text">{makeSpec(world).title}</span>: a coastline, mountains, cities, sites and names of its own, from seed {seed || '0'}.
-                      {scenario !== 'tutorial' && featureLines(makeFeatures(world, scenario)).length > 0 && (
-                        <span className="mt-1 block text-ops-amber">{featureLines(makeFeatures(world, scenario)).map((l) => l.short).join(' · ')}</span>
+                      You will run the industry of the <span className="text-ops-text">{makeSpec(shownWorld).title}</span>: a coastline, mountains, cities, sites and names of its own, from seed {seed || '0'}.
+                      {scenario !== 'tutorial' && featureLines(makeFeatures(shownWorld, scenario)).length > 0 && (
+                        <span className="mt-1 block text-ops-amber">{featureLines(makeFeatures(shownWorld, scenario)).map((l) => l.short).join(' · ')}</span>
                       )}
                     </>
                   ) : (
@@ -238,14 +264,14 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                   <div className="label mb-1">Difficulty</div>
                   <div className="seg">
                     {(Object.keys(DIFF) as Difficulty[]).map((d) => (
-                      <Btn key={d} pressed={difficulty === d} onClick={() => setDifficulty(d)}>
+                      <Btn key={d} pressed={(mode === 'career' ? careerDifficulty : difficulty) === d} onClick={() => setDifficulty(d)} why={mode === 'career' && d === 'hard' && !unlocked('hard', careers) ? `Locked. ${unlockText('hard')}` : null}>
                         {d}
                       </Btn>
                     ))}
                   </div>
-                  <p className="mt-1 text-[10px] text-ops-dim">{DIFF[difficulty]}</p>
+                  <p className="mt-1 text-[10px] text-ops-dim">{DIFF[mode === 'career' ? careerDifficulty : difficulty]}</p>
                 </div>
-                {(mode !== 'sandbox' || !rules.endless) && (
+                {mode !== 'career' && (mode !== 'sandbox' || !rules.endless) && (
                   <div>
                     <div className="label mb-1">Term</div>
                     <div className="seg">
@@ -300,7 +326,8 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               )}
             </>
           )}
-          {(mode === 'campaign' || mode === 'story' || mode === 'sandbox') && (
+          {mode === 'career' && <CareerRecordView careers={careers} active={activeCareer} onResume={() => activeCareer && onStart(activeCareer)} />}
+          {(mode === 'campaign' || mode === 'career' || mode === 'story' || mode === 'sandbox') && (
             <div>
               <div className="label mb-1">Autopilot</div>
               <Segmented<keyof typeof PRESETS>
@@ -343,7 +370,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
           )}
           <div className="flex justify-end border-t border-ops-line/60 pt-4">
             <Btn kind="primary" className="px-6 py-2.5 font-sans text-[15px] font-bold tracking-[0.15em]" onClick={begin}>
-              {mode === 'story' ? 'Begin the story' : mode === 'campaign' ? 'Take command' : mode === 'sandbox' ? 'Start sandbox' : mode === 'hotseat' ? 'Start the game' : 'Play the tutorial'}
+              {mode === 'story' ? 'Begin the story' : mode === 'campaign' ? 'Take command' : mode === 'career' ? (activeCareer ? 'Begin a new career' : 'Begin your career') : mode === 'sandbox' ? 'Start sandbox' : mode === 'hotseat' ? 'Start the game' : 'Play the tutorial'}
               <Icon name="continue" />
             </Btn>
           </div>

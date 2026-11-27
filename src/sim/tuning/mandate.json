@@ -57,7 +57,8 @@
   },
   "budget": {
     "base": 0.92,
-    "divisor": 625
+    "divisor": 625,
+    "inflationPass": 0.7
   },
   "ratchetMax": 3,
   "goals": {

@@ -1,13 +1,15 @@
 // Automation: a chief of staff who runs the areas you hand over, every week, within a money reserve you set and in the
 // spirit of a stance you choose. The same rules recommend an answer to every decision card, answer budget hearings, and
 // drive the test player used by the balance check.
-import { applyInPlace, expandCost, investCost, refurbishCost, repairCost, validate, type SimAction } from './actions';
+import { applyInPlace, expandCost, investCost, qualifyCost, refurbishCost, repairCost, validate, type SimAction } from './actions';
 import { scoreMonths } from './mandate';
 import { replaceCost } from './scenarios';
 import DEPTH from './tuning/depth.json';
 
 /** The chief of staff's supply planning (19.0.4). */
 const AUTO = DEPTH.autopilot;
+/** The autopilot's settings for this game's scenario (some scenarios override a few). */
+const planFor = (s: SimState) => ({ ...AUTO, ...((AUTO.byScenario as Record<string, Partial<typeof AUTO>>)[s.scenario] ?? {}) });
 /** The chief of staff on the home front (19.1). */
 const HFA = HF.autopilot;
 import { bottleneck, monthsTo, weakLinks } from './analytics';
@@ -20,7 +22,7 @@ import { requestOdds } from './hearings';
 import { FOUNDABLE } from './industry';
 import { DEVELOPMENTS } from './rival';
 import { crewNeed, nationalStock, readiness, reserveTarget } from './selectors';
-import { RESEARCH_IDS, STAFF_ROLE_IDS, type Decision } from './strategy';
+import { RESEARCH_IDS, STAFF_ROLE_IDS, newLineOf, type Decision } from './strategy';
 import { hireRoom, townIndex, townOf } from './towns';
 import { engineerNeed } from './engineers';
 import { FORKS, doctrineCost, doctrineDef, forkOpen, type ForkId, type Side } from './doctrine';
@@ -111,8 +113,16 @@ export function recommend(s: SimState, d: Decision, stance: Stance = s.automatio
   const hasOpt = (o: string) => d.options.some((x) => x.id === o);
   const pick = (option: string, why: string) => (hasOpt(option) ? { option, why } : { option: d.fallback, why: 'The default is the safest choice here.' });
   switch (d.kind) {
-    case 'bailout':
+    case 'bailout': {
+      // A supplier that is the country's only home source of something is saved whenever it can be (19.2): its loss
+      // stops every line downstream for good.
+      const sole = !!d.site && s.sites[d.site].processes.some((p) => {
+        const out = RECIPES[p.recipe].output;
+        return SITES.filter((x) => x.owner !== 'foreign' && x.id !== d.site && s.sites[x.id].status === 'active' && s.sites[x.id].processes.some((q) => RECIPES[q.recipe].output === out)).length === 0;
+      });
+      if (sole && afford(d.value ?? 0)) return pick('bail', 'It is the only home source of what it makes: losing it would stop every line downstream.');
       return rich && afford(d.value ?? 0) ? pick('bail', 'You can afford it, and losing a supplier hurts everything downstream.') : pick('let', 'Money is tight; a bailout would leave you short.');
+    }
     case 'budget':
       return pick('push', 'The Committee often grants a firm request.');
     case 'reprice':
@@ -267,6 +277,9 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
           if (level > t.expandBelow) return;
           const soon = monthsTo(s, line, 0.85, 12) !== null || nationalStock(s, line) < reserveTarget(s, line) * 0.8;
           if (soon && money(500)) acts.push({ type: 'expand', site: def.id, process: i });
+          // A line far below target expands at its real price with a margin (19.2): in later terms the chief of staff
+          // rarely holds the fixed sum above, while land demand keeps growing with the rival's weapons.
+          else if (level < AUTO.criticalBelow && money(expandCost(s, def.id, i) * AUTO.costMargin)) acts.push({ type: 'expand', site: def.id, process: i });
         });
         if (stance !== 'thrift' && money(1500)) site.processes.forEach((p, i) => !p.automated && p.run !== 'idle' && acts.push({ type: 'build', kind: 'automate', target: def.id, process: i }));
       }
@@ -279,13 +292,24 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
       // biggest domestic maker, before the lines that need them run dry. A foreign maker may be the largest source, but
       // it can be banned and cannot be invested in, so the money goes to the home plant.
       // Under sanctions many links look short at once; the chief of staff concentrates on the worst.
-      const plan = { ...AUTO, ...((AUTO.byScenario as Record<string, Partial<typeof AUTO>>)[s.scenario] ?? {}) };
-      for (const w of weakLinks(s).filter((x) => x.ratio < plan.investRatio).slice(0, plan.links)) {
+      const plan = planFor(s);
+      // What starves the worst lines comes first (19.2): a line far below target is traced to its tightest part.
+      const starved = (Object.keys(s.lines) as LineId[])
+        .filter((l) => s.lines[l].unlocked && reserveTarget(s, l) > 0 && nationalStock(s, l) < reserveTarget(s, l) * AUTO.criticalBelow)
+        .map((l) => bottleneck(s, l)?.material)
+        .filter((m): m is NonNullable<typeof m> => !!m && !FINISHED.includes(m));
+      const weak = weakLinks(s).filter((x) => x.ratio < plan.investRatio).map((x) => x.material);
+      for (const material of [...new Set([...starved, ...weak])].slice(0, plan.links)) {
         const home = SITES.filter((d) => d.owner !== 'foreign' && s.sites[d.id].status === 'active' && !s.sites[d.id].mothballed)
           .flatMap((d) => s.sites[d.id].processes.map((p, k) => ({ d, p, k })))
-          .filter(({ p }) => RECIPES[p.recipe].output === w.material && p.expansions < AUTO.maxExpansions)
+          .filter(({ p }) => RECIPES[p.recipe].output === material && p.expansions < AUTO.maxExpansions)
           .sort((a, b) => b.p.capacity - a.p.capacity)[0];
         if (!home) continue;
+        // A maker your arsenals cannot buy from is qualified before it is grown.
+        if (home.d.owner === 'private' && !s.sites[home.d.id].qualified) {
+          if (!s.sites[home.d.id].qualifyingDays && money(qualifyCost(home.d.id) * AUTO.costMargin)) acts.push({ type: 'qualify', site: home.d.id });
+          continue;
+        }
         const type = home.d.owner === 'state' ? ('expand' as const) : ('invest' as const);
         const cost = type === 'expand' ? expandCost(s, home.d.id, home.k) : investCost(s, home.d.id, home.k);
         if (money(cost * AUTO.costMargin)) acts.push({ type, site: home.d.id, process: home.k });
@@ -304,7 +328,18 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
       }
       if (!s.strategy.research.active && money(300)) {
         const counter = s.rival.known.map((k) => DEVELOPMENTS[k.id].counter).find((r) => validate(s, { type: 'research', research: r }) === null);
-        const next = counter ?? RESEARCH_IDS.find((r) => validate(s, { type: 'research', research: r }) === null);
+        // A new line is opened only when the lines you have are not starving and its parts can be had (19.2):
+        // a line nobody can supply sits far below target and drags readiness down for a whole term.
+        const lineLevels = (Object.keys(s.lines) as LineId[]).filter((l) => s.lines[l].unlocked && reserveTarget(s, l) > 0).map((l) => nationalStock(s, l) / reserveTarget(s, l));
+        const starving = lineLevels.some((v) => v < AUTO.criticalBelow);
+        const supplied = (l: LineId) => (bottleneck(s, l)?.ratio ?? Infinity) >= planFor(s).newLineSupply;
+        const next =
+          counter ??
+          RESEARCH_IDS.find((r) => {
+            if (validate(s, { type: 'research', research: r }) !== null) return false;
+            const line = newLineOf(r);
+            return !line || (!starving && supplied(line));
+          });
         if (next) acts.push({ type: 'research', research: next });
       }
       break;
