@@ -80,15 +80,18 @@ describe('communities and permits', () => {
     expect(banned).toBe(true);
   });
 
-  it('community funds and open days lift a town, with a wait between them', () => {
+  it('a community fund lifts a town and cools its union, with a wait before the next', () => {
     let s = start();
     const t = townIndex(townOf('corranWorks'));
     s.communities.mood[t] = 30;
+    const strength = s.unions.towns[t].strength;
     s = apply(s, { type: 'communityFund', town: t });
     expect(s.communities.mood[t]).toBe(42);
+    expect(s.unions.towns[t].strength).toBe(strength - 5);
     expect(validate(s, { type: 'communityFund', town: t })).toMatch(/recently/);
-    s = apply(s, { type: 'openDay', town: t });
-    expect(moodOf(s, 'corranWorks')).toBe(46);
+    // 19.1: open days were folded into the fund.
+    expect(validate(s, { type: 'openDay', town: t })).toMatch(/community fund/);
+    expect(moodOf(s, 'corranWorks')).toBe(42);
   });
 
   it('mothballing a plant sours its town', () => {

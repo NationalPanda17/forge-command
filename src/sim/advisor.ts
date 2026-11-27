@@ -1,4 +1,5 @@
 // The advisor: the next best things to do, ranked, each with the action that does it where there is one.
+import { cyberLevel } from './cyber';
 import { apply, validate, type SimAction } from './actions';
 import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from './audit';
 import { MOOD_WORD, communityTowns, permitHeld } from './communities';
@@ -262,7 +263,7 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
     }
   }
   // Cyber: the rival is busy and the plants are unguarded.
-  if (s.cyber && (s.rival?.known.length ?? 0) >= 2 && s.cyber.levels.plants === 0) {
+  if (s.cyber && (s.rival?.known.length ?? 0) >= 2 && cyberLevel(s) === 0) {
     const a: SimAction = { type: 'cyberDefence', area: 'plants' };
     add({ id: 'cyber', priority: 54, tone: 'warn', title: 'Defend the plant control systems', why: `With ${s.rival.known.length} rival weapons programmes, its hackers are busy: about ${(attackOdds(s, 'plants') * 100).toFixed(1)}% a month of ransomware at one of your plants.`, action: ok(s, a) ? a : undefined, panel: 'intel' });
   }

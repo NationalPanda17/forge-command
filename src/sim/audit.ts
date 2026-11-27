@@ -1,6 +1,8 @@
 // Audits and oversight: the Auditor-General reviews your spending every six months. Waste counts against you: premiums
 // paid for buying without a contract, lines kept idle, ransoms, penalties, and suppliers quietly overbilling you.
 // An internal audit team finds fraud sooner and shows the Auditor-General you are on top of things.
+import { HF as H, moodShift, unionShift } from './homefront';
+import { townIndex, townOf } from './towns';
 import { clamp, rand } from './rng';
 import { troubleScale } from './scale';
 import { DAYS_PER_MONTH } from './selectors';
@@ -150,6 +152,8 @@ export function oversightMonth(s: SimState, feed: Feed): void {
     return;
   }
   const hard = verdict === 'damning';
+  // The unions read the report too (19.1): money for waste, none for us.
+  for (let t = 0; t < (s.unions?.towns.length ?? 0); t++) unionShift(s, t, H.oversight.auditUnion[verdict]);
   s.strategy.decisions.push({
     id: s.nextId++,
     kind: 'audit',
@@ -197,6 +201,8 @@ export function resolveOversight(s: SimState, d: { kind: string; site?: string; 
       s.month.income.sales += lost * 0.8;
       // A supplier whose contract has already ended is chased for the money, not ruined.
       if (d.site && c) s.sites[d.site].health = clamp(s.sites[d.site].health - 30);
+      // Jobs at the supplier are at risk (19.1): its town takes it badly.
+      if (d.site) moodShift(s, townIndex(townOf(d.site)), -H.oversight.prosecuteMood);
       f.treasury = clamp(f.treasury + 4);
       s.fraudsCaught = (s.fraudsCaught ?? 0) + 1;
       feed(s, 'good', `Prosecution begins: $${Math.round(lost * 0.8)}M recovered, and the contract is ended.`, d.site);

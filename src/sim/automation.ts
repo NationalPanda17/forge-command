@@ -8,9 +8,12 @@ import DEPTH from './tuning/depth.json';
 
 /** The chief of staff's supply planning (19.0.4). */
 const AUTO = DEPTH.autopilot;
+/** The chief of staff on the home front (19.1). */
+const HFA = HF.autopilot;
 import { bottleneck, monthsTo, weakLinks } from './analytics';
 import { routeByKey, routeCap } from './build';
-import { CYBER_AREA_IDS } from './cyber';
+import { cyberLevel, hasPlan } from './cyber';
+import { HF } from './homefront';
 import { COPROD_NEEDS, supplierNations } from './diplomacy';
 import { GRID_REGIONS, contractPrice, regionPlants } from './energy';
 import { requestOdds } from './hearings';
@@ -314,8 +317,11 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
         if (r !== 'central' && s.crisis?.region !== r && s.policy.depotDays[r] === 60 && s.automation?.raised?.includes(r)) acts.push({ type: 'setPolicy', policy: { depotDays: { ...s.policy.depotDays, [r]: r === 'isles' ? 45 : 30 } } });
       break;
     case 'resilience':
-      for (const area of CYBER_AREA_IDS) if (s.cyber.levels[area] < (money(1400) ? 2 : 1) && money(800)) acts.push({ type: 'cyberDefence', area });
-      if (!s.cyber.backups && money(1000)) acts.push({ type: 'cyberBackups' });
+      // One national cyber level and one recovery plan (19.1).
+      if (cyberLevel(s) < (money(1400) ? 2 : 1) && money(800)) acts.push({ type: 'cyberDefence', area: 'plants' });
+      if (!hasPlan(s) && money(1000)) acts.push({ type: 'cyberBackups' });
+      // A small intelligence service also hunts spies at home (19.1); the chief of staff runs no operations abroad.
+      if (stance !== 'thrift' && (s.intel?.agency ?? 0) < HFA.agencyMax && (s.rival?.known.length ?? 0) >= HFA.agencyMinDevelopments && money(HFA.agencyMoney)) acts.push({ type: 'intelAgency' });
       if (money(700)) for (const def of arsenals) if (!s.energy.generators.includes(def.id)) acts.push({ type: 'generator', site: def.id });
       for (const r of GRID_REGIONS) if (regionPlants(s, r).length && contractPrice(s, r) < 1 && !s.energy.shock) acts.push({ type: 'powerContract', region: r });
       if (stance !== 'thrift' && !s.oversight.team && money(900)) acts.push({ type: 'auditTeam' });
@@ -344,7 +350,8 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
       if (money(900)) for (const def of arsenals) if ((s.sites[def.id].clearance ?? 0) < 2) acts.push({ type: 'vet', site: def.id });
       break;
     case 'community':
-      if (money(t.peace ? 400 : 800)) s.communities.mood.forEach((m, town) => m < (t.peace ? 45 : 35) && acts.push({ type: 'communityFund', town }));
+      // A resentful town hires less and hardens its union (19.1): the fund now reaches towns sooner.
+      if (money(t.peace ? 400 : 800)) s.communities.mood.forEach((m, town) => m < HFA.fundBelow[stance] && acts.push({ type: 'communityFund', town }));
       if (money(400) && unionTowns(s).some((i) => s.unions.towns[i].strength >= (t.peace ? 55 : 70))) acts.push({ type: 'payDeal' });
       break;
   }

@@ -2,6 +2,7 @@
 // firings, noisy round-the-clock plants and lay-offs sour it. New plants and rail links need a local permit, and an
 // unhappy town objects: win it over, override it, or withdraw. Very unhappy towns protest at your gates, and the town
 // beside the burning pit can take you to court.
+import { HF, unionShift } from './homefront';
 import { clamp, pick, rand, randInt } from './rng';
 import { troubleScale } from './scale';
 import { townIndex, townOf } from './towns';
@@ -37,7 +38,7 @@ export interface CommunityState {
 export const newCommunities = (): CommunityState => ({ mood: CITIES.map(() => 55), permits: [], fundReady: {}, openDayReady: {}, burnBanUntil: 0 });
 
 export const DEMIL = 'karrowDemil';
-export const fundCost = (s: SimState) => Math.round(8 * s.priceIndex);
+export const fundCost = (s: SimState) => Math.round(HF.workforce.fundCost * s.priceIndex);
 export const openDayCost = (s: SimState) => Math.round(1 * s.priceIndex);
 export const packageCost = (s: SimState) => Math.round(10 * s.priceIndex);
 export const FUND_DAYS = 180;
@@ -126,11 +127,8 @@ export function validateCommunity(s: SimState, a: { type: string; town?: number 
     if (s.communities.mood[t] >= 90) return 'The town could hardly be happier.';
     return s.treasury >= fundCost(s) ? null : `Not enough money (needs $${fundCost(s)}M).`;
   }
-  if (a.type === 'openDay') {
-    if ((s.communities.openDayReady[t] ?? 0) > s.day) return 'You held an open day there recently.';
-    if (!SITES.some((d) => d.owner === 'state' && townIndex(townOf(d.id)) === t && s.sites[d.id].processes.length)) return 'You have no plant there to open.';
-    return s.treasury >= openDayCost(s) ? null : `Not enough money (needs $${openDayCost(s)}M).`;
-  }
+  // Open days were folded into the community fund in 19.1.
+  if (a.type === 'openDay') return 'Open days are part of the community fund now.';
   return null;
 }
 
@@ -141,13 +139,9 @@ export function applyCommunity(s: SimState, a: { type: string; town?: number }, 
     s.month.spend.projects += fundCost(s);
     s.communities.fundReady[t] = s.day + FUND_DAYS;
     shift(s, t, 12);
-    feed(s, 'good', `A community fund for ${CITIES[t].name}: a new library and a youth club. The town warms to you.`);
-  } else if (a.type === 'openDay') {
-    s.treasury -= openDayCost(s);
-    s.month.spend.projects += openDayCost(s);
-    s.communities.openDayReady[t] = s.day + OPEN_DAY_DAYS;
-    shift(s, t, 4);
-    feed(s, 'info', `Families in ${CITIES[t].name} tour your plant on an open day.`);
+    // The town's union cools with it (19.1).
+    unionShift(s, t, -HF.workforce.fundUnion);
+    feed(s, 'good', `A community fund for ${CITIES[t].name}: a new library and a youth club. The town warms to you, and its union cools.`);
   }
 }
 

@@ -11,13 +11,16 @@ import { threatWhy } from './explain';
 import { CLEARANCE_NAME, activity, security, targets } from '../sim/security';
 import { SITE_BY_ID } from '../sim/world';
 import { dateLabel } from './useSim';
-import { BACKUPS_COST, CYBER_AREAS, CYBER_AREA_IDS, CYBER_LEVEL, DRILLS_COST, MAX_CYBER, attackOdds, cyberCost, railFactor, upkeep } from '../sim/cyber';
+import { BACKUPS_COST, CYBER_AREA_IDS, CYBER_LEVEL, MAX_CYBER, attackOdds, cyberCost, cyberLevel, hasPlan, railFactor, upkeep } from '../sim/cyber';
+import { DISCONTENT_WORD, HF, discontentAt } from '../sim/homefront';
 import { pct } from '../ui/format';
 import IntelOpsSection from './IntelOpsSection';
 
 export default function IntelPanel({ state, act }: { state: SimState; act: (a: SimAction) => void }) {
   const known = state.rival.known;
   const left = state.rival.order.length - known.length;
+  const level = cyberLevel(state);
+  const raise: SimAction = { type: 'cyberDefence', area: 'plants' };
   return (
     <div className="space-y-4 p-3 text-[11px]">
       <p className="text-ops-text">
@@ -67,28 +70,6 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
       <IntelOpsSection state={state} act={act} />
 
       <section>
-        <h3 className="label mb-1">Counter-intelligence</h3>
-        <p className="mb-2 text-ops-dim">
-          {RIVAL_NAME[0].toUpperCase() + RIVAL_NAME.slice(1)}'s agents target your plants, more often as its programmes grow. Vet your staff to stop sabotage, stolen designs and leaks. {state.history.slice(-12).reduce((a, h) => a + (h.incidents ?? 0), 0)} incidents in the last year.
-        </p>
-        <ul className="space-y-1">
-          {targets(state).map((id) => {
-            const sec = security(state, id);
-            return (
-              <li key={id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                <span className="min-w-0 truncate text-ops-text">
-                  {state.sites[id].plantName ?? SITE_BY_ID[id].name} <span className="text-ops-dim">· {CLEARANCE_NAME[state.sites[id].clearance ?? 0]}</span>
-                </span>
-                <span className={sec < 0.35 ? 'text-ops-red' : sec < 0.6 ? 'text-ops-amber' : 'text-ops-green'}>
-                  {Math.round(sec * 100)}% secure · {(activity(state) * (1 - sec) * 100).toFixed(1)}% a month
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section>
         <h3 className="label mb-1">Threats now, against the start of your term</h3>
         <ul className="space-y-1">
           {THREAT_IDS.map((t) => {
@@ -106,48 +87,53 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
       </section>
 
       <section>
-        <h3 className="label mb-1">Cyber defence</h3>
+        <h3 className="label mb-1">Home security</h3>
         <p className="mb-2 text-ops-dim">
-          The rival's hackers go after three systems, more often as its weapons programmes grow. Each level of defence makes an attack a quarter less likely. Backups bring a system back far sooner; drills keep crews and dispatchers working without computers.
+          {RIVAL_NAME[0].toUpperCase() + RIVAL_NAME.slice(1)}'s agents and hackers come more often as its programmes grow. They find their way in where towns are discontented: a strong union and a resentful town make a plant easier to recruit in, and its systems easier to open. {state.history.slice(-12).reduce((a, h) => a + (h.incidents ?? 0) + (h.cyber ?? 0), 0)} incidents and attacks in the last year.
         </p>
         {state.cyber.railDays > 0 && (
           <p className="mb-2 text-ops-red">
             The rail booking system is down: trains run at {pct(railFactor(state))} of capacity for about {Math.max(1, Math.round(state.cyber.railDays / 7))} more weeks.
           </p>
         )}
-        <ul className="space-y-2">
-          {CYBER_AREA_IDS.map((area) => {
-            const a: SimAction = { type: 'cyberDefence', area };
-            const lvl = state.cyber.levels[area];
+        <div className="rounded border border-ops-line/60 p-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
+            <span className="min-w-0 text-white">Cyber defence · {CYBER_LEVEL[level]}</span>
+            <span className={level >= 2 ? 'text-ops-green' : level === 0 ? 'text-ops-amber' : 'text-ops-text'}>
+              {CYBER_AREA_IDS.map((area) => `${(attackOdds(state, area) * 100).toFixed(1)}%`).join(' / ')} a month
+            </span>
+          </div>
+          <p className="text-[10px] text-ops-dim">Chance of an attack on your plants / rail booking / suppliers. Each level makes all three a quarter less likely.</p>
+          <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
+            {upkeep(state) > 0 && <span className="text-[10px] text-ops-dim">Upkeep {money(upkeep(state))} a month</span>}
+            <Btn why={validate(state, { type: 'cyberBackups' })} onClick={() => act({ type: 'cyberBackups' })} pressed={hasPlan(state)} title="Offline backups and manual-fallback drills: systems that are hit come back far sooner, and trains keep running">
+              {hasPlan(state) ? 'Recovery plan in place' : `Recovery plan · ${money(BACKUPS_COST(state))}`}
+            </Btn>
+            {level < MAX_CYBER && (
+              <Btn why={validate(state, raise)} onClick={() => act(raise)}>
+                Raise to {CYBER_LEVEL[level + 1].toLowerCase()} · {money(cyberCost(state))}
+              </Btn>
+            )}
+          </div>
+        </div>
+        <div className="mb-1 mt-3 label">Vetting at your plants</div>
+        <ul className="space-y-1">
+          {targets(state).map((id) => {
+            const sec = security(state, id);
+            const d = discontentAt(state, id);
             return (
-              <li key={area} className="rounded border border-ops-line/60 p-2">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-white">{CYBER_AREAS[area].name}</span>
-                  <span className={lvl >= 2 ? 'text-ops-green' : lvl === 0 ? 'text-ops-amber' : 'text-ops-text'}>
-                    {CYBER_LEVEL[lvl]} · {(attackOdds(state, area) * 100).toFixed(1)}% a month
-                  </span>
-                </div>
-                <p className="text-[10px] text-ops-dim">{CYBER_AREAS[area].blurb}</p>
-                {lvl < MAX_CYBER && (
-                  <div className="mt-1 flex justify-end">
-                    <Btn why={validate(state, a)} onClick={() => act(a)}>
-                      Raise to {CYBER_LEVEL[lvl + 1].toLowerCase()} · {money(cyberCost(state, area))}
-                    </Btn>
-                  </div>
-                )}
+              <li key={id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <span className="min-w-0 truncate text-ops-text">
+                  {state.sites[id].plantName ?? SITE_BY_ID[id].name} <span className="text-ops-dim">· {CLEARANCE_NAME[state.sites[id].clearance ?? 0]} · town {DISCONTENT_WORD(d)}</span>
+                </span>
+                <span className={`whitespace-nowrap ${sec < 0.35 ? 'text-ops-red' : sec < 0.6 ? 'text-ops-amber' : 'text-ops-green'}`}>
+                  {Math.round(sec * 100)}% secure · {(activity(state) * (1 - sec) * 100).toFixed(1)}% a month
+                </span>
               </li>
             );
           })}
         </ul>
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          <Btn why={validate(state, { type: 'cyberBackups' })} onClick={() => act({ type: 'cyberBackups' })} pressed={state.cyber.backups}>
-            {state.cyber.backups ? 'Backups in place' : `Offline backups · ${money(BACKUPS_COST(state))}`}
-          </Btn>
-          <Btn why={validate(state, { type: 'cyberDrills' })} onClick={() => act({ type: 'cyberDrills' })} pressed={state.cyber.drills}>
-            {state.cyber.drills ? 'Crews drill for it' : `Manual fallback drills · ${money(DRILLS_COST(state))}`}
-          </Btn>
-          {upkeep(state) > 0 && <span className="text-[10px] text-ops-dim">Upkeep {money(upkeep(state))} a month</span>}
-        </div>
+        {state.intel?.agency > 0 && <p className="mt-1 text-[10px] text-ops-dim">Your intelligence service also hunts spies at home: {Math.round(state.intel.agency * HF.security.catchPerAgency * 100)}% more rings are caught before they act.</p>}
       </section>
     </div>
   );

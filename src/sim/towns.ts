@@ -1,5 +1,6 @@
 // Workforce towns: every plant draws its people from the nearest town. Housing limits how fast you can hire, towns
 // grow with jobs and shrink after layoffs, and mothballing a plant has a local political price.
+import { HF, hireFactor, unionShift } from './homefront';
 import { clamp } from './rng';
 import { onMothball } from './communities';
 import type { FeedItem, SimState } from './types';
@@ -52,7 +53,8 @@ export function employed(s: SimState, town: string): number {
 export function hireRoom(s: SimState, town: string): number {
   const t = s.towns?.[townIndex(town)];
   if (!t) return Infinity;
-  return Math.max(0, Math.floor(t.pool - employed(s, town)));
+  // A resentful town (19.1) sends fewer people to your lines.
+  return Math.max(0, Math.floor((t.pool - employed(s, town)) * hireFactor(s.communities?.mood[townIndex(town)] ?? 55)));
 }
 
 export const HOMES_PER_PROJECT = 400;
@@ -113,6 +115,7 @@ export function mothball(s: SimState, siteId: string, feed: Feed): void {
   site.mothballed = true;
   s.strategy.factions.regions = clamp(s.strategy.factions.regions - Math.min(12, laid / 120));
   onMothball(s, siteId);
+  unionShift(s, townIndex(townOf(siteId)), HF.workforce.mothballUnion);
   s.confidence = clamp(s.confidence - Math.min(6, laid / 300));
   feed(s, 'warn', `${SITE_BY_ID[siteId].name} is mothballed: ${laid} people laid off in ${townOf(siteId)}. The region will not forget it.`, siteId, true);
 }
