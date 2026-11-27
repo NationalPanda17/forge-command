@@ -382,8 +382,8 @@ select option { background: rgb(var(--ops-panel)); color: rgb(var(--ops-text)); 
 
 /* ---------- Command bar ---------- */
 
+/* Placed by its own classes (absolute, inset from the window edge); a position here would override them. */
 .fc-cmdbar {
-  position: relative;
   min-height: 52px;
   border: 1px solid rgb(var(--ops-line));
   border-radius: 3px;
