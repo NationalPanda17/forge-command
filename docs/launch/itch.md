@@ -11,7 +11,7 @@ npm run build:itch
 
 This writes `release/forge-command-<version>-itch.zip`. The zip has `index.html` at its top, relative paths only (itch
 serves each upload from a folder of its own) and no offline service worker. The script checks those three things, and
-itch's limits (1,000 files, 200 MB a file), before it zips. The 20.0.0 build is 43 files and 0.7 MB. `dist-itch/` and
+itch's limits (1,000 files, 200 MB a file), before it zips. The 20.0.0 build is 42 files and 0.7 MB. `dist-itch/` and
 `release/` are not committed.
 
 The GitHub Pages site (`npm run build`, base `/forge-command/`) is unchanged and keeps its offline support.
