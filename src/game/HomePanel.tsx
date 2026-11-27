@@ -137,7 +137,7 @@ export default function HomePanel({
             <Btn onClick={() => onPanel('inbox')}>{unread ? `Log · ${unread} new` : 'Log'}</Btn>
           </span>
         </div>
-        <AdvisorCard state={state} act={act} onPanel={(p) => onPanel(p === 'programmes' ? 'policy' : (p as PanelId))} onSite={onSite} onMaterial={onMaterial ?? ((m) => onLine(m as LineId))} />
+        <AdvisorCard hideDecisions={state.strategy.decisions.length > 0} state={state} act={act} onPanel={(p) => onPanel(p === 'programmes' ? 'policy' : (p as PanelId))} onSite={onSite} onMaterial={onMaterial ?? ((m) => onLine(m as LineId))} />
       </section>
 
       <MandateCard m={mandate} />

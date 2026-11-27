@@ -152,18 +152,35 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
                     </Explain>
                     {p.maturity < 0.99 && ` · ramping ${Math.round(p.maturity * 100)}%`}
                   </div>
-                  {Object.keys(rec.inputs).length > 0 && (
-                    <div className="text-[10px] text-ops-dim">
-                      from{' '}
-                      {(Object.entries(rec.inputs) as [MaterialId, number][]).map(([m2, q], j) => (
-                        <span key={m2}>
-                          {j > 0 && ', '}
-                          {qty(q)} {MATERIALS[m2].unit} <MatLink m={m2} />
-                        </span>
-                      ))}{' '}
-                      each · scrap {Math.round(rec.scrap * 100)}%
-                    </div>
-                  )}
+                  {Object.keys(rec.inputs).length > 0 && (() => {
+                    // Inputs as a grid (19.3): each part, what one unit takes, and the days of it in stock here, shortest
+                    // first, with a mark as well as a colour so a short part stands out in either palette.
+                    const rate = Math.max(1e-6, processRate(state, site, p));
+                    const rows = (Object.entries(rec.inputs) as [MaterialId, number][])
+                      .map(([m2, q]) => ({ m2, q, days: (site.stock[m2] ?? 0) / Math.max(1e-6, rate * q) }))
+                      .sort((x, y) => x.days - y.days);
+                    return (
+                      <div className="mt-1">
+                        <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                          {rows.map(({ m2, q, days }) => {
+                            const tone = days >= 14 ? 'text-ops-green' : days >= 5 ? 'text-ops-amber' : 'text-ops-red';
+                            const mark = days >= 14 ? '✓' : days >= 5 ? '!' : '✕';
+                            return (
+                              <li key={m2} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-1">
+                                <span className="min-w-0 truncate text-ops-dim">
+                                  {qty(q)} <MatLink m={m2} />
+                                </span>
+                                <span className={`whitespace-nowrap ${tone}`} title="Days of this part in stock here, at today's rate">
+                                  {mark} {days >= 99 ? '99+' : Math.floor(days)}d
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <div className="mt-0.5 text-[10px] text-ops-dim">Per unit made · scrap {Math.round(rec.scrap * 100)}% · days of stock here</div>
+                      </div>
+                    );
+                  })()}
                   <div className="mt-1 flex flex-wrap items-center gap-1">
                     {mine && (
                       <Segmented<RunLevel>
