@@ -1,5 +1,17 @@
 # Changelog
 
+## 19.3.5: ready for playtesters
+
+- **A feedback form in the game.** The speech-bubble button at the top right, or "Tell us how this term went" on the
+  end-of-term report, opens seven short questions: how clear and how fair the game felt, the pace, whether you would
+  play again, and what confused you, what you enjoyed and what looked broken.
+- **Nothing is sent.** The form makes a short report to copy or save as a file. If you agree, it adds where you are in
+  the game: the version, mode, date, headline numbers and window size, and nothing personal. If your browser will not
+  copy, the report appears in a box to copy by hand. Your answers stay in this browser until you clear them.
+- **The clock pauses** while the form is open.
+- **A playtest brief** (`docs/playtest.md`) for whoever runs the sessions: who to invite, three sessions (a cold
+  start, one term, a career), what to watch, the same seven questions, and how to read the answers.
+
 ## 19.3.4: one card for every choice
 
 - **The Board's decisions, the budget hearing's questions and the advisor's next step now share one card.** Each card
