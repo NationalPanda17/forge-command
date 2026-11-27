@@ -7,7 +7,7 @@ import { monthLabel2 } from './useSim';
 import type { SimAction } from '../sim/actions';
 import type { SimState } from '../sim/types';
 import type { MaterialId } from '../sim/world';
-import { Btn } from '../ui/kit';
+import { Btn, ChoiceCard } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { adviceIcon } from '../ui/kinds';
 
@@ -125,26 +125,23 @@ export default function AdvisorCard({
         return (
           <>
             {first && (
-              <div className={`mb-1.5 rounded border p-3 ${TONE[first.tone]}`} style={{ boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' }}>
-                <div className="label mb-1 !text-ops-amber">Next step</div>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-[13px] font-semibold text-white">
-                  <Icon name={adviceIcon(first.id)} size={16} className="text-ops-amber" />
-                  <span className="min-w-0">{first.title}</span>
-                </div>
-                <div className="mt-0.5 text-ops-dim">{first.why}</div>
-                {first.tradeoff && <div className="mt-0.5 text-ops-amber/90">{first.tradeoff}</div>}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {first.action && (
-                    <Btn kind="primary" onClick={() => act(first.action!)}>
-                      Do it
-                    </Btn>
-                  )}
-                  {(first.panel || first.site || first.material) && (
-                    <button type="button" className="text-[11px] text-ops-cyan hover:underline" onClick={() => go(first)}>
-                      Show ›
-                    </button>
-                  )}
-                </div>
+              <div className="mb-1.5">
+                <ChoiceCard as="div" tone={first.tone === 'bad' ? 'red' : 'amber'} eyebrow="Next step" icon={<Icon name={adviceIcon(first.id)} size={16} />} title={first.title}>
+                  <div className="mt-0.5 text-ops-dim">{first.why}</div>
+                  {first.tradeoff && <div className="mt-0.5 text-ops-amber/90">{first.tradeoff}</div>}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {first.action && (
+                      <Btn kind="primary" onClick={() => act(first.action!)}>
+                        Do it
+                      </Btn>
+                    )}
+                    {(first.panel || first.site || first.material) && (
+                      <button type="button" className="text-[11px] text-ops-cyan hover:underline" onClick={() => go(first)}>
+                        Show ›
+                      </button>
+                    )}
+                  </div>
+                </ChoiceCard>
               </div>
             )}
             <ol className="space-y-1.5">

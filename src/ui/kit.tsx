@@ -88,7 +88,19 @@ export function Btn({
   );
 }
 
-export function Segmented<T extends string>({ value, options, onChange, label, tones }: { value: T; options: { id: T; label: string; disabled?: boolean }[]; onChange: (v: T) => void; label: string; tones?: Partial<Record<T, string>> }) {
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  tones,
+}: {
+  value: T;
+  options: { id: T; label: string; disabled?: boolean }[];
+  onChange: (v: T) => void;
+  label: string;
+  tones?: Partial<Record<T, string>>;
+}) {
   return (
     <div className="seg" role="group" aria-label={label}>
       {options.map((o) => (
@@ -222,7 +234,21 @@ export const COLORS = {
   dim: 'rgb(var(--ops-dim))',
 };
 
-export function NumberInput({ value, onChange, min = 0, step = 1, label, className = 'w-20' }: { value: number; onChange: (v: number) => void; min?: number; step?: number; label: string; className?: string }) {
+export function NumberInput({
+  value,
+  onChange,
+  min = 0,
+  step = 1,
+  label,
+  className = 'w-20',
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  step?: number;
+  label: string;
+  className?: string;
+}) {
   return (
     <input
       type="number"
@@ -278,5 +304,112 @@ export function Flash({ value, children }: { value: number; children: ReactNode 
     <span ref={ref} className="inline-block">
       {children}
     </span>
+  );
+}
+
+// ---------- One card for every choice (19.3.4) ----------
+// The Board's decisions, the hearing's questions and the advisor's next step share one frame: an amber rule on the
+// left edge, a small label above, an icon and a title, the body, then the options or buttons. A player who has
+// learned one card can read them all.
+
+const CARD_TONE = {
+  amber: {
+    edge: 'rgb(var(--ops-amber) / 0.85)',
+    border: 'border-ops-amber/50',
+    label: '!text-ops-amber',
+    icon: 'text-ops-amber',
+  },
+  red: {
+    edge: 'rgb(var(--ops-red) / 0.85)',
+    border: 'border-ops-red/50',
+    label: '!text-ops-red',
+    icon: 'text-ops-red',
+  },
+  quiet: {
+    edge: 'rgb(var(--ops-line) / 0.9)',
+    border: 'border-ops-line/60',
+    label: '',
+    icon: 'text-ops-dim',
+  },
+} as const;
+
+/** A card that asks the player to choose or act. */
+export function ChoiceCard({
+  eyebrow,
+  title,
+  icon,
+  right,
+  tone = 'amber',
+  children,
+  as: Tag = 'article',
+}: {
+  /** A short label above the title, such as "Next step" or "The Board". */
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  /** The icon beside the title, already drawn (an Icon). */
+  icon?: ReactNode;
+  /** Something small at the right of the label row, such as a deadline or a member's faction. */
+  right?: ReactNode;
+  tone?: keyof typeof CARD_TONE;
+  children?: ReactNode;
+  as?: 'article' | 'li' | 'div';
+}) {
+  const t = CARD_TONE[tone];
+  return (
+    <Tag className={`rounded border bg-ops-panel/60 p-3 text-[11px] ${t.border}`} style={{ boxShadow: `inset 3px 0 0 ${t.edge}` }}>
+      {(eyebrow || right) && (
+        <div className="mb-1 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
+          <span className={`label min-w-0 ${t.label}`}>{eyebrow}</span>
+          {right && <span className="text-[10px] text-ops-dim">{right}</span>}
+        </div>
+      )}
+      <h3 className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 font-sans text-[14px] font-semibold text-white">
+        {icon ? <span className={t.icon}>{icon}</span> : <span />}
+        <span className="min-w-0">{title}</span>
+      </h3>
+      {children}
+    </Tag>
+  );
+}
+
+/** One option on a ChoiceCard: what it is, what it does, and any marks (advised, a promise, the default). */
+export function ChoiceOption({
+  label,
+  detail,
+  marks,
+  advised = false,
+  picked = false,
+  disabled = false,
+  after,
+  onClick,
+}: {
+  label: ReactNode;
+  detail?: ReactNode;
+  /** Small chips or notes beside the label. */
+  marks?: ReactNode;
+  advised?: boolean;
+  picked?: boolean;
+  disabled?: boolean;
+  /** A line under the detail, shown once the option is taken. */
+  after?: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={picked || undefined}
+      disabled={disabled}
+      onClick={onClick}
+      className={`w-full rounded border p-2 text-left transition-colors ${picked ? 'border-ops-cyan bg-ops-cyan/10' : disabled ? 'border-ops-line/40 opacity-50' : advised ? 'border-ops-amber/60 hover:bg-ops-amber/5' : 'border-ops-line hover:border-ops-dim hover:bg-white/[0.02]'}`}
+      style={advised && !picked ? { boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' } : undefined}
+    >
+      <span className={`flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] ${picked ? 'text-ops-cyan' : 'text-white'}`}>
+        <span className="min-w-0">{label}</span>
+        {advised && <Chip tone="border-ops-amber/60 text-ops-amber">Advised</Chip>}
+        {marks}
+      </span>
+      {detail && <span className="block text-[10px] text-ops-dim">{detail}</span>}
+      {after && <span className="block text-[10px] text-ops-dim">{after}</span>}
+    </button>
   );
 }
