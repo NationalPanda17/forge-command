@@ -14,6 +14,30 @@ export interface SlotInfo {
 const INDEX = 'forge-command-slots';
 const slotKey = (name: string) => `forge-command-slot:${name}`;
 export const MAX_SLOTS = 8;
+/**
+ * Browsers give a site about five million characters of storage. Past this much, a long game's next save may not fit,
+ * so saving says so (18.2).
+ */
+export const STORAGE_SOFT_LIMIT = 3_000_000;
+
+/** Characters this game's saves (the autosave, the named saves and their index) take in this browser. */
+export function storageUse(store: Pick<Storage, 'length' | 'key' | 'getItem'> = localStorage): number {
+  let n = 0;
+  try {
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (k?.startsWith('forge-command')) n += k.length + (store.getItem(k)?.length ?? 0);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return n;
+}
+
+/** A warning to add after saving when the browser's storage is filling up, or null. */
+export function storageWarning(used = storageUse()): string | null {
+  return used > STORAGE_SOFT_LIMIT ? `Saves now fill about ${Math.round((used / 5_000_000) * 100)}% of this browser's room: delete old ones, or export them to files.` : null;
+}
 
 export function listSlots(): SlotInfo[] {
   try {
