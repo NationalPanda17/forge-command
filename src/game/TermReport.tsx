@@ -22,7 +22,7 @@ import { momentIcon } from '../ui/kinds';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
 
-export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { state: SimState; onClose: () => void; onMenu: () => void; onSecondTerm?: (boon?: BoonId) => void }) {
+export default function TermReport({ state, onClose, onMenu, onSecondTerm, onFeedback }: { state: SimState; onClose: () => void; onMenu: () => void; onSecondTerm?: (boon?: BoonId) => void; onFeedback?: () => void }) {
   const legacy = useMemo(() => legacyOf(state), [state]);
   const moments = useMemo(() => keyMoments(state), [state]);
   // A career's Committee may decline to reappoint you (19.2).
@@ -291,7 +291,12 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           )}
         </section>
 
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {onFeedback && (
+            <button type="button" className="mr-auto text-[11px] text-ops-cyan hover:underline" onClick={onFeedback}>
+              Tell us how this term went ›
+            </button>
+          )}
           <Btn onClick={onClose}>Look at the map</Btn>
           {canGoOn && (
             <Btn kind="warn" onClick={() => onSecondTerm!(chosen)} title="Carry on with everything you built and every round you leave in the depots">

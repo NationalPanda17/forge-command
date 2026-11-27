@@ -64,6 +64,7 @@ const StatsPanel = lazyPart(() => import('./StatsPanel'));
 const StaffPanel = lazyPart(() => import('./StaffPanel'));
 const PolicyPanel = lazyPart(() => import('./PolicyPanel'));
 const TermReport = lazyPart(() => import('./TermReport'));
+const FeedbackDialog = lazyPart(() => import('./FeedbackDialog'));
 
 export type { PanelId } from './nav';
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
@@ -293,6 +294,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     [panelOpen, focus],
   );
   const [help, setHelp] = useState<SettingsTab | null>(null);
+  // The playtest feedback form (19.3.5).
+  const [feedback, setFeedback] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const tabs = allPanels(state).map((id) => ({ id, label: PANEL_LABEL[id] }));
@@ -308,6 +311,10 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   useEffect(() => {
     if (state.hearing) setSpeed(0);
   }, [state.hearing, setSpeed]);
+  // The feedback form stops the clock while it is open.
+  useEffect(() => {
+    if (feedback) setSpeed(0);
+  }, [feedback, setSpeed]);
   // A chapter briefing stops the clock until it is read.
   useEffect(() => {
     if (state.story?.briefing !== null && state.story?.briefing !== undefined) setSpeed(0);
@@ -651,6 +658,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             <Btn onClick={() => setPalette(true)} title="Go to any tab, site, material or town, or run a command (Ctrl K or /)" ariaLabel="Search">
               <Icon name="search" />
             </Btn>
+            <Btn onClick={() => setFeedback(true)} title="Playtest feedback: a few questions, then copy or save the report" ariaLabel="Feedback">
+              <Icon name="chat" />
+            </Btn>
             <Btn onClick={() => setHelp('clock')} title="Pause rules, field notes, sound, display and keyboard shortcuts (?)" ariaLabel="Settings">
               <Icon name="settings" />
             </Btn>
@@ -917,12 +927,18 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       {briefOpen && <CountryBrief state={state} onClose={() => setBriefOpen(false)} />}
       <Handover state={state} act={act} />
       {!state.hotseat?.handover && !state.over && (state.story?.briefing === null || state.story?.briefing === undefined) && <Hearing state={state} act={act} />}
+      {feedback && (
+        <Suspense fallback={null}>
+          <FeedbackDialog state={state} onClose={() => setFeedback(false)} />
+        </Suspense>
+      )}
       {state.over && !reportClosed && (
         <Suspense fallback={null}>
         <TermReport
           state={state}
           onClose={() => setReportClosed(true)}
           onMenu={() => onMenu(state)}
+          onFeedback={() => setFeedback(true)}
           onSecondTerm={(boon) => {
             act({ type: 'secondTerm', boon });
             setReportClosed(false);
