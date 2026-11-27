@@ -74,7 +74,7 @@ function costOf(s: SimState, a: SimAction): number {
   return Math.max(0, s.treasury - apply(s, a).treasury);
 }
 
-const money = (v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : v >= 1 ? `$${Math.round(v)}M` : `$${Math.round(v * 1000)}K`);
+import { money } from "./money";
 
 const ok = (s: SimState, a: SimAction) => validate(s, a) === null;
 
@@ -149,7 +149,7 @@ export function advise(s: SimState, limit = 6): Advice[] {
     const best = t.bids.filter((b) => b.perDay > 0 && b.reliability >= 0.5).sort((a, b) => a.price - b.price)[0];
     if (!best) continue;
     const a: SimAction = { type: 'awardTender', tender: t.id, site: best.site };
-    add({ id: `award-${t.id}`, priority: 78, tone: 'warn', title: `Award ${MATERIALS[t.material].name.toLowerCase()} to ${SITE_BY_ID[best.site].name}`, why: `The cheapest dependable bid: $${best.price.toFixed(4)}M a unit, ${Math.round(best.reliability * 100)}% reliability.`, action: a, panel: 'markets' });
+    add({ id: `award-${t.id}`, priority: 78, tone: 'warn', title: `Award ${MATERIALS[t.material].name.toLowerCase()} to ${SITE_BY_ID[best.site].name}`, why: `The cheapest dependable bid: ${money(best.price)} a unit, ${Math.round(best.reliability * 100)}% reliability.`, action: a, panel: 'markets' });
   }
 
   // Your plants and people.

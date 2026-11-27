@@ -33,6 +33,7 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
   const business = useMemo(() => (career && canGoOn ? unfinishedBusiness(state) : []), [state, career, canGoOn]);
   const boons = useMemo(() => (canGoOn ? boonsFor(state) : []), [state, canGoOn]);
   const [boon, setBoon] = useState<BoonId | undefined>(undefined);
+  const [allMoments, setAllMoments] = useState(false);
   const chosen = boon ?? boons[0];
   const r = termReport(state);
   const board = useMemo(() => recordScore(state), [state]);
@@ -163,19 +164,6 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           </div>
         </section>
 
-        {moments.length > 0 && (
-          <section>
-            <h3 className="label mb-1">The moments that defined the term</h3>
-            <ol className="space-y-0.5">
-              {moments.map((m, i) => (
-                <li key={`${m.day}-${i}`} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2">
-                  <span className="text-ops-dim">{dateLabel(m.day)}</span>
-                  <span className={`min-w-0 break-words ${m.tone === 'bad' ? 'text-ops-red' : m.tone === 'good' ? 'text-ops-green' : m.tone === 'warn' ? 'text-ops-amber' : 'text-ops-text'}`}>{tr(m.text)}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
 
         {career && (
           <section className="rounded border border-ops-amber/50 p-3" aria-label="The Committee's letter">
@@ -251,15 +239,46 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           </section>
         )}
 
+        {moments.length > 0 && (
+          <section>
+            <h3 className="label mb-1">The moments that defined the term</h3>
+            <ol className="space-y-0.5">
+              {(allMoments ? moments : moments.slice(0, 5)).map((m, i) => (
+                <li key={`${m.day}-${i}`} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2">
+                  <span className="text-ops-dim">{dateLabel(m.day)}</span>
+                  <span className={`min-w-0 break-words ${m.tone === 'bad' ? 'text-ops-red' : m.tone === 'good' ? 'text-ops-green' : m.tone === 'warn' ? 'text-ops-amber' : 'text-ops-text'}`}>{tr(m.text)}</span>
+                </li>
+              ))}
+            </ol>
+            {moments.length > 5 && (
+              <button type="button" className="mt-1 text-[11px] text-ops-cyan hover:underline" onClick={() => setAllMoments(!allMoments)}>
+                {allMoments ? 'Show fewer' : `Show all ${moments.length}`}
+              </button>
+            )}
+          </section>
+        )}
+
         <section>
           <h3 className="label mb-1">Achievements</h3>
           <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
-            {ACHIEVEMENTS.map((a) => (
-              <li key={a.id} className={earned[a.id] ? 'text-ops-green' : 'text-ops-dim'}>
-                {earned[a.id] ? '★' : '☆'} {a.title} <span className="text-[10px] text-ops-dim">· {a.text}</span>
+            {ACHIEVEMENTS.filter((a) => earned[a.id]).map((a) => (
+              <li key={a.id} className="text-ops-green">
+                ★ {a.title} <span className="text-[10px] text-ops-dim">· {a.text}</span>
               </li>
             ))}
           </ul>
+          {ACHIEVEMENTS.some((a) => !earned[a.id]) && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-[11px] text-ops-cyan">{ACHIEVEMENTS.filter((a) => !earned[a.id]).length} more to earn</summary>
+              <ul className="mt-1 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                {ACHIEVEMENTS.filter((a) => !earned[a.id]).map((a) => (
+                  <li key={a.id} className="text-ops-dim">
+                    ☆ {a.title} <span className="text-[10px]">· {a.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
 
         <div className="flex flex-wrap justify-end gap-2">

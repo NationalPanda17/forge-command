@@ -135,9 +135,13 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                 aria-pressed={picked}
                 disabled={locked}
                 onClick={() => setScenario(id)}
-                className={`rounded border p-2 text-left ${picked ? 'border-ops-cyan bg-ops-cyan/10' : locked ? 'border-ops-line/50 opacity-60' : 'border-ops-line hover:border-ops-dim'}`}
+                aria-disabled={locked}
+                className={`rounded border p-2 text-left ${picked ? 'border-ops-cyan bg-ops-cyan/10' : locked ? 'cursor-not-allowed border-dashed border-ops-line/60 opacity-60' : 'border-ops-line hover:border-ops-dim'}`}
               >
-                <div className={`font-sans text-[14px] font-semibold ${picked ? 'text-ops-cyan' : 'text-white'}`}>{SCENARIOS[id].name}</div>
+                <div className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 font-sans text-[14px] font-semibold ${picked ? 'text-ops-cyan' : 'text-white'}`}>
+                  <span className="min-w-0">{SCENARIOS[id].name}</span>
+                  {locked && <span className="text-ops-dim" aria-label="Locked"><Icon name="lock" size={13} /></span>}
+                </div>
                 <div className="text-[11px] text-ops-dim">{locked ? `Locked. ${unlockText(scenarioUnlock(id)!)}` : SCENARIOS[id].blurb}</div>
               </button>
             );
@@ -168,7 +172,7 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
         </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Game mode">
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Game mode">
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -368,7 +372,14 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
               <p className="mt-1 text-[10px] text-ops-dim">A short tip the first time each system shows up: strikes, blackouts, audits, hackers, spies, the rival and more, with a button to the tab that handles it.</p>
             </div>
           )}
-          <div className="flex justify-end border-t border-ops-line/60 pt-4">
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-between gap-3 border-t border-ops-line/60 bg-ops-panel/95 px-4 py-3 backdrop-blur-sm">
+            <span className="min-w-0 text-[11px] text-ops-dim">
+              {mode === 'tutorial'
+                ? 'The tutorial · Easy · Classic Aldmere'
+                : mode === 'story'
+                  ? `The story · ${difficulty} · Classic Aldmere`
+                  : `${SCENARIOS[mode === 'career' ? careerScenario : scenario].name} · ${mode === 'career' ? careerDifficulty : difficulty} · ${(mode === 'career' ? careerWorld : world) !== null ? makeSpec((mode === 'career' ? careerWorld : world)!).title : 'Classic Aldmere'}`}
+            </span>
             <Btn kind="primary" className="px-6 py-2.5 font-sans text-[15px] font-bold tracking-[0.15em]" onClick={begin}>
               {mode === 'story' ? 'Begin the story' : mode === 'campaign' ? 'Take command' : mode === 'career' ? (activeCareer ? 'Begin a new career' : 'Begin your career') : mode === 'sandbox' ? 'Start sandbox' : mode === 'hotseat' ? 'Start the game' : 'Play the tutorial'}
               <Icon name="continue" />

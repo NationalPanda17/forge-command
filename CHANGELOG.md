@@ -1,5 +1,21 @@
 # Changelog
 
+## 19.3.1: clearer screens, part two
+
+- **Money reads the same everywhere:** "$128K" and "$12.8M", not "$0.1280M". This covers prices in the panels, offers,
+  the broker, export orders and contract awards.
+- **Contracts are a table,** with item and supplier, per day, price, how far under the list price (with an arrow) and
+  the month it ends, all in aligned columns.
+- **The Board marks its advice clearly.** The advised option has an amber edge and an "Advised" chip.
+- **Buttons that spend money name the spend.** Research buttons are amber and read "Research · $70M · 3 mo", and say
+  how much more you need when you can't afford one.
+- **The new-game screen:**
+  - the Begin button stays in view at the foot of the screen, with a one-line summary of your choices;
+  - locked postings are dashed and carry a lock;
+  - the six modes sit in a tidy three-by-two grid.
+- **The end-of-term report puts the decision first.** The Committee's letter and your legacy choice come before the
+  history. The term's moments show the first five, with "Show all", and achievements you have not earned fold away.
+
 ## 19.3.0: the world fills the screen
 
 - **The map is the world, edge to edge,** as in the grand strategy games. The framed map sheet, its corner brackets
