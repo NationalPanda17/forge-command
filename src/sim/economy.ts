@@ -1,4 +1,5 @@
 // The money side of the industry: inflation, tenders with competing bids, supplier finances and supplementary budgets.
+import { money } from './money';
 import { supplierEnergyFactor } from './energy';
 import { clamp, rand, randRange } from './rng';
 import { registerResolver } from './strategy';
@@ -90,7 +91,7 @@ export function economyMonth(s: SimState, feed: Feed): void {
           id: s.nextId++,
           kind: 'reprice',
           title: `${def.name} asks to reprice`,
-          body: `Costs have risen ${Math.round((s.priceIndex - 1) * 100)}% since you started. ${def.name} says it is losing money on your ${MATERIALS[c.material].name.toLowerCase()} contract and wants $${ask.toFixed(3)}M a unit instead of $${c.price.toFixed(3)}M.`,
+          body: `Costs have risen ${Math.round((s.priceIndex - 1) * 100)}% since you started. ${def.name} says it is losing money on your ${MATERIALS[c.material].name.toLowerCase()} contract and wants ${money(ask)} a unit instead of ${money(c.price)}.`,
           options: [
             { id: 'accept', label: 'Agree the new price', detail: 'Its finances recover a little.' },
             { id: 'refuse', label: 'Hold them to the contract', detail: 'It weakens further, and may fail.' },

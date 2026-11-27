@@ -45,7 +45,7 @@ export default function AlliesPanel({ state, act }: { state: SimState; act: (a: 
           <Btn why={validate(state, mission)} onClick={() => act(mission)}>
             Trade mission · {money(missionCost(state))}
           </Btn>
-          <Btn why={validate(state, co)} onClick={() => act(co)} title={`Needs relations of ${COPROD_NEEDS}. They land ${coprodRounds(state, coLine)} ${MATERIALS[coLine].name} a month at $${coprodPrice(state, coLine).toFixed(3)}M each, for two years.`}>
+          <Btn why={validate(state, co)} onClick={() => act(co)} title={`Needs relations of ${COPROD_NEEDS}. They land ${coprodRounds(state, coLine)} ${MATERIALS[coLine].name} a month at ${money(coprodPrice(state, coLine))} each, for two years.`}>
             Co-produce {MATERIALS[coLine].name} · {money(coprodCost(state))}
           </Btn>
         </div>

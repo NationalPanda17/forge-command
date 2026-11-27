@@ -1,5 +1,6 @@
 // Allies and exports: relations with the nations that sell you parts, trade missions and supply guarantees that keep
 // their export bans away, co-production deals with allies, and an export desk that goes looking for buyers.
+import { money } from './money';
 import { clamp, pick } from './rng';
 import { DAYS_PER_MONTH, nationalDailyDraw } from './selectors';
 import type { AllyId, FeedItem, SimState } from './types';
@@ -158,7 +159,7 @@ export function applyDiplomacy(s: SimState, a: { type: string; who?: string; nat
         id: s.nextId++,
         kind: 'export',
         title: `Your export desk finds a buyer: ${customer}`,
-        body: `${customer[0].toUpperCase() + customer.slice(1)} will take ${qty} ${MATERIALS[line].name} over ${months} months at $${price.toFixed(3)}M a round ($${Math.round(qty * price)}M). Deliveries come from the central depot and never take the reserve below half its target. Falling more than 10% short costs a penalty.`,
+        body: `${customer[0].toUpperCase() + customer.slice(1)} will take ${qty} ${MATERIALS[line].name} over ${months} months at ${money(price)} a round (${money(qty * price)}). Deliveries come from the central depot and never take the reserve below half its target. Falling more than 10% short costs a penalty.`,
         options: [
           { id: 'accept', label: 'Sign the contract', detail: 'Income and goodwill with industry.' },
           { id: 'decline', label: 'Let it go', detail: 'Keep every round at home.' },

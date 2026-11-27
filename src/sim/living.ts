@@ -1,4 +1,5 @@
 // The world around the industry: seasons, allies, export customers and events that unfold in stages.
+import { money } from './money';
 import { eventScale, takeLots } from './tick';
 import { claimBoost, industrialAction, resolveClaim, unionClaim } from './unions';
 import { railFactor } from './cyber';
@@ -149,7 +150,7 @@ export function livingMonth(s: SimState, feed: Feed): void {
       id: s.nextId++,
       kind: 'allyRequest',
       title: `The ${ALLIES[ally].name} asks for ${MATERIALS[line].name}`,
-      body: `Our ally is under pressure and asks for ${qty} ${MATERIALS[line].name} from the central depot, at $${price.toFixed(3)}M a round. Your reserve is at ${Math.round((nationalStock(s, line) / Math.max(1, reserveTarget(s, line))) * 100)}% of target.`,
+      body: `Our ally is under pressure and asks for ${qty} ${MATERIALS[line].name} from the central depot, at ${money(price)} a round. Your reserve is at ${Math.round((nationalStock(s, line) / Math.max(1, reserveTarget(s, line))) * 100)}% of target.`,
       options: [
         { id: 'send', label: `Send ${qty}`, detail: 'Relations improve; your reserve drops.' },
         { id: 'decline', label: 'Decline politely', detail: 'Relations cool.' },
@@ -174,7 +175,7 @@ export function livingMonth(s: SimState, feed: Feed): void {
           id: s.nextId++,
           kind: 'allyOffer',
           title: `The ${ALLIES[ally].name} offers ${MATERIALS[line].name}`,
-          body: `They can release ${qty} rounds from their own stocks at $${price.toFixed(3)}M each ($${Math.round(qty * price)}M), landed at Lowmouth in about five weeks.`,
+          body: `They can release ${qty} rounds from their own stocks at ${money(price)} each (${money(qty * price)}), landed at Lowmouth in about five weeks.`,
           options: [
             { id: 'buy', label: `Buy them ($${Math.round(qty * price)}M)`, detail: 'Expensive, but quick.' },
             { id: 'pass', label: 'No, thank you', detail: 'Nothing changes.' },
@@ -198,7 +199,7 @@ export function livingMonth(s: SimState, feed: Feed): void {
       id: s.nextId++,
       kind: 'export',
       title: `An export order from ${customer}`,
-      body: `${customer[0].toUpperCase() + customer.slice(1)} wants ${qty} ${MATERIALS[line].name} over ${months} months at $${price.toFixed(3)}M a round ($${Math.round(qty * price)}M). Deliveries come from the central depot, and never take the reserve below half its target. Falling more than 10% short costs a penalty.`,
+      body: `${customer[0].toUpperCase() + customer.slice(1)} wants ${qty} ${MATERIALS[line].name} over ${months} months at ${money(price)} a round (${money(qty * price)}). Deliveries come from the central depot, and never take the reserve below half its target. Falling more than 10% short costs a penalty.`,
       options: [
         { id: 'accept', label: 'Accept the order', detail: 'Income and goodwill with industry.' },
         { id: 'decline', label: 'Decline', detail: 'Keep every round at home.' },

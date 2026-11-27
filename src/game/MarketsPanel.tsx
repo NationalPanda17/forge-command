@@ -7,7 +7,7 @@ import { inputRates } from '../sim/selectors';
 import type { SimState } from '../sim/types';
 import { FINISHED, MATERIALS, SITES, SITE_BY_ID, type MaterialId } from '../sim/world';
 import { Bar, Btn, COLORS, LineChart, NumberInput, Segmented } from '../ui/kit';
-import { pct, qty } from '../ui/format';
+import { money, pct, qty, shortMonth } from '../ui/format';
 import { dateLabel, monthLabel2 } from './useSim';
 import { Explain } from '../ui/Explain';
 import { tr } from '../sim/worldgen';
@@ -88,7 +88,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
             Open tender (${TENDER_COST}M)
           </Btn>
         </div>
-        <p className="mt-1 text-ops-dim">Your plants use {qty(need[material] ?? 0)} a day. List price today ${priceNow(state, material).toFixed(4)}M.</p>
+        <p className="mt-1 text-ops-dim">Your plants use {qty(need[material] ?? 0)} a day. List price today {money(priceNow(state, material))}.</p>
       </section>
 
       {state.tenders.length > 0 && (
@@ -113,7 +113,7 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
                             {SITE_BY_ID[b.site].name}
                           </button>
                           <span className="block text-[10px] text-ops-dim">
-                            ${b.price.toFixed(4)}M · {qty(b.perDay)} a day · reliability {pct(b.reliability)} · {b.note}
+                            {money(b.price)} · {qty(b.perDay)} a day · reliability {pct(b.reliability)} · {b.note}
                           </span>
                         </span>
                         <Btn why={validate(state, a)} onClick={() => act(a)}>
@@ -132,23 +132,37 @@ export default function MarketsPanel({ state, act, onSite }: { state: SimState; 
       <section>
         <h3 className="label mb-1">Contracts</h3>
         {state.contracts.length ? (
-          <ul className="space-y-1">
-            {state.contracts.map((c) => {
-              const now = priceNow(state, c.material);
-              const left = Math.max(0, c.endDay - state.day);
-              return (
-                <li key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                  <span className="min-w-0">
-                    <span className="text-white">{MATERIALS[c.material].name}</span> <span className="text-ops-dim">from {SITE_BY_ID[c.site].name}</span>
-                    <span className="block text-[10px] text-ops-dim">
-                      {qty(c.perDay)} a day at ${c.price.toFixed(4)}M ({c.price < now ? <span className="text-ops-green">{pct(1 - c.price / now)} under today's list</span> : <span className="text-ops-amber">at or over list</span>})
-                    </span>
-                  </span>
-                  <span className={left < 60 ? 'text-ops-amber' : 'text-ops-dim'}>{left < 60 ? `ends in ${left} days` : `to ${dateLabel(c.endDay)}`}</span>
-                </li>
-              );
-            })}
-          </ul>
+          // A table (19.3): the material and supplier on the left, the numbers in aligned columns on the right.
+          <table className="table-ops w-full table-fixed">
+            <thead>
+              <tr>
+                <th className="text-left">Item</th>
+                <th className="w-[64px] text-right">Per day</th>
+                <th className="w-[60px] text-right">Price</th>
+                <th className="w-[64px] text-right">vs list</th>
+                <th className="w-[78px] text-right">Ends</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.contracts.map((c) => {
+                const now = priceNow(state, c.material);
+                const left = Math.max(0, c.endDay - state.day);
+                const under = c.price < now;
+                return (
+                  <tr key={c.id}>
+                    <td className="min-w-0">
+                      <span className="block truncate text-white">{MATERIALS[c.material].name}</span>
+                      <span className="block truncate text-[10px] text-ops-dim">{SITE_BY_ID[c.site].name}</span>
+                    </td>
+                    <td className="text-right">{qty(c.perDay)}</td>
+                    <td className="text-right">{money(c.price)}</td>
+                    <td className={`text-right ${under ? 'text-ops-green' : 'text-ops-amber'}`}>{under ? `▼ ${pct(1 - c.price / now)}` : '▲ over'}</td>
+                    <td className={`text-right ${left < 60 ? 'text-ops-amber' : 'text-ops-dim'}`}>{left < 60 ? `${left} days` : shortMonth(Math.floor(c.endDay / 30))}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         ) : (
           <p className="text-ops-amber">No contracts. Everything is bought on the spot market at a 30% premium.</p>
         )}

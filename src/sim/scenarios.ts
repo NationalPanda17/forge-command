@@ -4,6 +4,7 @@
 //   Rebuild: worn-out plants that decay faster, to refurbish or replace.
 //   Peacetime: a budget round at the start of each fiscal year, three packages that move the year's goals.
 // None of these draw random numbers except the broker's exposure roll, taken only when you buy.
+import { money } from './money';
 import DEPTH from './tuning/depth.json';
 import { addWaste } from './audit';
 import { AIR_LINES, LAND_LINES } from './fight';
@@ -148,7 +149,7 @@ function sanctionsMonth(s: SimState, feed: Feed, open: (k: Decision['kind']) => 
     id: s.nextId++,
     kind: 'broker',
     title: `A broker offers ${MATERIALS[line].name}`,
-    body: `A broker can land ${qty} ${MATERIALS[line].name} round the bans, no questions asked, at $${price.toFixed(3)}M each ($${total}M), about ${Math.round((T.sanctions.brokerPrice - 1) * 100)}% over the list price. If it comes out, the Committee will not like it.`,
+    body: `A broker can land ${qty} ${MATERIALS[line].name} round the bans, no questions asked, at ${money(price)} each (${money(total)}), about ${Math.round((T.sanctions.brokerPrice - 1) * 100)}% over the list price. If it comes out, the Committee will not like it.`,
     options: [
       { id: 'buy', label: `Buy them ($${total}M)`, detail: `Quick rounds; a ${Math.round(T.sanctions.exposeOdds * 100)}% chance it comes out.` },
       { id: 'pass', label: 'No', detail: 'Nothing changes.' },

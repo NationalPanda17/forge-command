@@ -1,4 +1,5 @@
 // Player actions on the network. validate explains why an action is not allowed; apply never mutates its input.
+import { money } from './money';
 import { DAYS_PER_MONTH, lotQty } from './selectors';
 import type { Policy, RunLevel, SimState } from './types';
 import { MATERIALS, RECIPES, SITE_BY_ID, type LineId, type MaterialId } from './world';
@@ -478,7 +479,7 @@ export function applyInPlace(s: SimState, a: SimAction): boolean {
       s.tenders = s.tenders.filter((x) => x.id !== t.id);
       s.sites[b.site].health = Math.min(100, s.sites[b.site].health + 6);
       storyCount(s, 'awarded');
-      feed(s, 'good', `Contract awarded to ${SITE_BY_ID[b.site].name}: ${b.perDay} ${MATERIALS[t.material].name} a day at $${b.price.toFixed(3)}M.`, b.site);
+      feed(s, 'good', `Contract awarded to ${SITE_BY_ID[b.site].name}: ${b.perDay} ${MATERIALS[t.material].name} a day at ${money(b.price)}.`, b.site);
       break;
     }
     case 'tutorial':

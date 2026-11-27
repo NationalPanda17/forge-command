@@ -26,16 +26,26 @@ export function Decisions({ state, act }: { state: SimState; act: (a: SimAction)
             ) : null;
           })()}
           <div className="mt-2 space-y-1">
-            {d.options.map((o) => (
-              <button key={o.id} type="button" className="btn w-full flex-col items-start gap-0 py-1.5 text-left normal-case tracking-normal" onClick={() => act({ type: 'decide', decision: d.id, option: o.id })}>
-                <span className="text-[12px] text-white">
-                  {tr(o.label)}
-                  {o.id === recommend(state, d).option && <span className="ml-2 text-[10px] text-ops-cyan">(advised)</span>}
-                  {o.id === d.fallback && <span className="ml-2 text-[10px] text-ops-dim">(default at month end)</span>}
-                </span>
-                <span className="text-[10px] text-ops-dim">{tr(o.detail)}</span>
-              </button>
-            ))}
+            {d.options.map((o) => {
+              // The advised option stands out (19.3): an amber rule on its edge and a chip, not a note in brackets.
+              const advised = o.id === recommend(state, d).option;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`btn w-full flex-col items-start gap-0 py-1.5 text-left normal-case tracking-normal ${advised ? 'border-ops-amber/60' : ''}`}
+                  style={advised ? { boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' } : undefined}
+                  onClick={() => act({ type: 'decide', decision: d.id, option: o.id })}
+                >
+                  <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-white">
+                    <span className="min-w-0">{tr(o.label)}</span>
+                    {advised && <Chip tone="border-ops-amber/60 text-ops-amber">Advised</Chip>}
+                    {o.id === d.fallback && <span className="text-[10px] text-ops-dim">default at month end</span>}
+                  </span>
+                  <span className="text-[10px] text-ops-dim">{tr(o.detail)}</span>
+                </button>
+              );
+            })}
           </div>
         </article>
       ))}
@@ -50,7 +60,7 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
       <Decisions state={state} act={act} />
 
       <section>
-        <div className="label mb-1">Engineering program</div>
+        <h3 className="label mb-1">Engineering program</h3>
         {st.research.active ? (
           <div className="mb-2">
             <div className="flex justify-between">
@@ -75,9 +85,15 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
                 {done ? (
                   <Chip tone="border-ops-green/60 text-ops-green">done</Chip>
                 ) : (
-                  <Btn why={st.research.active?.id === id ? 'In progress' : validate(state, { type: 'research', research: id })} onClick={() => act({ type: 'research', research: id })}>
-                    {money(r.cost)} · {Math.round(r.days / 30)} mo
-                  </Btn>
+                  // A button that spends money is amber and names the spend (19.3).
+                  <span className="flex flex-col items-end gap-0.5">
+                    <Btn kind="warn" why={st.research.active?.id === id ? 'In progress' : validate(state, { type: 'research', research: id })} onClick={() => act({ type: 'research', research: id })}>
+                      Research · {money(r.cost)} · {Math.round(r.days / 30)} mo
+                    </Btn>
+                    {st.research.active?.id !== id && /Not enough money/.test(validate(state, { type: 'research', research: id }) ?? '') && (
+                      <span className="text-[10px] text-ops-amber">Needs {money(r.cost - state.treasury)} more</span>
+                    )}
+                  </span>
                 )}
               </li>
             );
