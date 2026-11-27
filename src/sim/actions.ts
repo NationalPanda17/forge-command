@@ -32,6 +32,7 @@ import { CITIES } from './world';
 import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
+import { REPLACE_DAYS, replaceCost } from './scenarios';
 import { MAX_POLICIES, POLICIES, REVOKE_COST, canSecondTerm, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
 import type { RegionId } from './world';
 export { CONTRACT_DISCOUNT };
@@ -41,6 +42,8 @@ export type SimAction =
   | { type: 'expand'; site: string; process: number }
   | { type: 'hire'; site: string; count: number }
   | { type: 'repair'; site: string }
+  /** Rebuild (19.0c): tear out a worn plant and build it new: closed for a while, then more capacity and slower wear. */
+  | { type: 'replacePlant'; site: string }
   | { type: 'signContract'; site: string; material: MaterialId; perDay: number; months: 12 | 24 | 36 }
   | { type: 'cancelContract'; contract: number }
   | { type: 'qualify'; site: string }
@@ -214,7 +217,15 @@ export function validate(s: SimState, a: SimAction): string | null {
     case 'repair':
       if (def!.owner !== 'state') return 'Only your own sites.';
       if (site!.condition >= 95) return 'Already in good repair.';
+      if (s.rebuild?.replacing[a.site]) return 'It is being replaced.';
       return funds(s, repairCost(s, a.site));
+    case 'replacePlant':
+      if (!s.rebuild) return 'Plants are replaced only in a rebuild.';
+      if (def!.owner !== 'state' || !site!.processes.length) return 'Only your own plants.';
+      if (s.rebuild.replacing[a.site]) return 'Already being replaced.';
+      if (s.rebuild.replaced.includes(a.site)) return 'Already replaced.';
+      if (site!.status !== 'active') return 'The plant is not running.';
+      return funds(s, replaceCost(repairCost(s, a.site)));
     case 'signContract': {
       if (def!.owner === 'state') return 'You do not contract with yourself.';
       if (site!.status === 'closed') return `${def!.name} has closed.`;
@@ -396,6 +407,12 @@ export function applyInPlace(s: SimState, a: SimAction): boolean {
     case 'repair':
       charge(s, repairCost(s, a.site));
       s.sites[a.site].condition = 100;
+      break;
+    case 'replacePlant':
+      charge(s, replaceCost(repairCost(s, a.site)));
+      s.sites[a.site].status = 'building';
+      s.rebuild!.replacing[a.site] = REPLACE_DAYS;
+      s.feed.push({ day: s.day, tone: 'info', text: `${SITE_BY_ID[a.site].name} closes to be rebuilt: about ${Math.round(REPLACE_DAYS / 30)} months.`, site: a.site });
       break;
     case 'signContract':
       s.contracts.push({

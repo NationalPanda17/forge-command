@@ -1,6 +1,7 @@
 // Everything about one site: what it makes, what limits it, what it holds, and what you can do there.
 import { useState } from 'react';
 import { TRAITS } from '../sim/cast';
+import { REPLACE_DAYS, REPLACE_GAIN, replaceCost } from '../sim/scenarios';
 import { CONTRACT_DISCOUNT, expandCost, investCost, qualifyCost, refurbishCost, repairCost, validate, type SimAction } from '../sim/actions';
 import { BASE_LINES } from '../sim/fight';
 import { baseDailyDraw, crewNeed, inbound, inputRates, lotQty, processRate } from '../sim/selectors';
@@ -203,10 +204,26 @@ export default function SitePanel({ state, siteId, act, onMaterial }: { state: S
           <Btn why={why({ type: 'hire', site: siteId, count: hire })} onClick={() => act({ type: 'hire', site: siteId, count: hire })} title="Trainees count after 90 days">
             Hire
           </Btn>
-          <Btn why={why({ type: 'repair', site: siteId })} onClick={() => act({ type: 'repair', site: siteId })}>
-            Overhaul · {money(repairCost(state, siteId))}
+          <Btn why={why({ type: 'repair', site: siteId })} onClick={() => act({ type: 'repair', site: siteId })} title={state.rebuild ? 'Refurbish: back to full condition, but a worn plant keeps wearing fast' : undefined}>
+            {state.rebuild ? 'Refurbish' : 'Overhaul'} · {money(repairCost(state, siteId))}
           </Btn>
+          {state.rebuild && !state.rebuild.replaced.includes(siteId) && (
+            <Btn why={why({ type: 'replacePlant', site: siteId })} onClick={() => act({ type: 'replacePlant', site: siteId })} title={`Closed for about ${Math.round(REPLACE_DAYS / 30)} months, then ${Math.round(REPLACE_GAIN * 100)}% more output, built to last`}>
+              Replace · {money(replaceCost(repairCost(state, siteId)))}
+            </Btn>
+          )}
         </div>
+      )}
+      {mine && state.rebuild && site.processes.length > 0 && (
+        <p className={site.condition < 50 ? 'text-ops-amber' : 'text-ops-dim'}>
+          {state.rebuild.replacing[siteId]
+            ? `Being rebuilt: ${state.rebuild.replacing[siteId]} days left.`
+            : state.rebuild.replaced.includes(siteId)
+              ? `Rebuilt: condition ${Math.round(site.condition)}%, built to last.`
+              : site.condition < 50
+                ? `Worn out: ${Math.round(site.condition)}%, and wearing fast. Refurbish it, or replace it for ${Math.round(REPLACE_GAIN * 100)}% more output, built to last.`
+                : `Condition ${Math.round(site.condition)}%.`}
+        </p>
       )}
       {mine && def.crew > 0 && site.processes.length > 0 && <PlantView state={state} siteId={siteId} act={act} />}
       {def.owner === 'private' && site.processes.length > 0 && (

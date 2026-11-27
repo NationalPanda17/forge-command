@@ -1,7 +1,10 @@
 // Automation: a chief of staff who runs the areas you hand over, every week, within a money reserve you set and in the
 // spirit of a stance you choose. The same rules recommend an answer to every decision card, answer budget hearings, and
 // drive the test player used by the balance check.
-import { applyInPlace, refurbishCost, validate, type SimAction } from './actions';
+import { applyInPlace, refurbishCost, repairCost, validate, type SimAction } from './actions';
+import { scoreMonths } from './mandate';
+import { replaceCost } from './scenarios';
+import DEPTH from './tuning/depth.json';
 import { bottleneck, monthsTo } from './analytics';
 import { routeByKey, routeCap } from './build';
 import { CYBER_AREA_IDS } from './cyber';
@@ -111,6 +114,21 @@ export function recommend(s: SimState, d: Decision, stance: Stance = s.automatio
       return pick('ask', 'A crisis is the best time to ask, and the hawks will back you.');
     case 'allyRequest':
       return ready > 0.85 ? pick('send', 'Your racks are full enough to help, and allies remember.') : pick('decline', 'Your own reserve is too thin to share.');
+    case 'broker':
+      // Grey-market rounds only when the racks are nearly empty: the premium and the risk are high.
+      return ready < DEPTH.scenarios.sanctions.autoBrokerBelow && afford((d.data?.qty ?? 0) * (d.data?.price ?? 0) + 300) ? pick('buy', 'The racks are nearly empty; the risk is worth it.') : pick('pass', 'Not worth the premium or the risk while the racks hold.');
+    case 'budgetRound': {
+      // Take the package that eases the weakest goal of the year just gone.
+      const last = s.history.slice(-12);
+      const goals = last.length ? scoreMonths(s, last, Math.max(0, (d.value ?? 1) - 1)).goals : [];
+      const weakest = [...goals].sort((a, b) => a.score - b.score)[0]?.id;
+      // The Treasury's budget is a real cut: the chief of staff leaves that gamble to you.
+      // The hawks' money comes with fuller racks expected: only worth it when readiness is comfortably met.
+      const ready = goals.find((g) => g.id === 'readiness')?.score ?? 0;
+      if (weakest === 'value' && ready >= 0.95) return pick('hawks', 'Value for money was the weakest goal, and the racks are full enough for the hawks’ terms.');
+      if (weakest === 'stewardship') return pick('regions', 'Stewardship was the weakest goal: this budget weighs it less.');
+      return pick('none', 'No package helps the weakest goal.');
+    }
     case 'allyOffer':
       return ready < 0.7 && afford((d.data?.qty ?? 0) * (d.data?.price ?? 0) + 300) ? pick('buy', 'Readiness is low and you can afford quick rounds.') : pick('pass', ready < 0.7 ? 'You cannot afford them without eating into your reserve.' : 'You do not need them badly enough at that price.');
     case 'export':
@@ -280,7 +298,19 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
       if (money(700)) for (const def of arsenals) if (!s.energy.generators.includes(def.id)) acts.push({ type: 'generator', site: def.id });
       for (const r of GRID_REGIONS) if (regionPlants(s, r).length && contractPrice(s, r) < 1 && !s.energy.shock) acts.push({ type: 'powerContract', region: r });
       if (stance !== 'thrift' && !s.oversight.team && money(900)) acts.push({ type: 'auditTeam' });
-      if (money(900)) for (const n of supplierNations()) if (s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
+      // Under sanctions (19.0c), missions win the bans off; otherwise they keep relations from sliding.
+      for (const n of supplierNations()) {
+        const banned = s.scenario === 'sanctions' && SITES.some((d) => d.nation === n && s.sites[d.id].embargoDays > 0);
+        if (banned ? money(300) && s.diplomacy.nations[n] < 60 : money(900) && s.diplomacy.nations[n] < 45) acts.push({ type: 'tradeMission', who: n });
+      }
+      // Rebuild (19.0c): replace the worst plants, refurbish the rest.
+      if (s.rebuild)
+        for (const d of SITES) {
+          const site = s.sites[d.id];
+          if (d.owner !== 'state' || !site.processes.length || site.status !== 'active' || s.rebuild.replacing[d.id]) continue;
+          if (site.condition < DEPTH.scenarios.rebuild.autoReplaceBelow && !s.rebuild.replaced.includes(d.id) && money(replaceCost(repairCost(s, d.id)) + 200)) acts.push({ type: 'replacePlant', site: d.id });
+          else if (site.condition < DEPTH.scenarios.rebuild.autoRepairBelow && money(repairCost(s, d.id) + 200)) acts.push({ type: 'repair', site: d.id });
+        }
       if (money(900)) for (const def of arsenals) if ((s.sites[def.id].clearance ?? 0) < 2) acts.push({ type: 'vet', site: def.id });
       break;
     case 'community':

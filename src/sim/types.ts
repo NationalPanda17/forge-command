@@ -390,6 +390,12 @@ export interface SimState {
   story: StoryState | null;
   /** The generated world's seed, or null for the classic Commonwealth of Aldmere. */
   world: number | null;
+  /** War footing (19.0c): the front in the Marches and the air surges. */
+  war?: import('./scenarios').WarState;
+  /** Rebuild (19.0c): plants being replaced, and those already rebuilt. */
+  rebuild?: import('./scenarios').RebuildState;
+  /** Peacetime (19.0c): the budget package taken in each fiscal year of the term. */
+  budgetDeals?: Record<number, import('./scenarios').BudgetDeal>;
   /** The generated world's features (19.0b), fixed when the game starts. Absent on the classic map and in older saves. */
   features?: import('./features').MapFeatures | null;
   /** Workforce towns, in the same order as the city list. */

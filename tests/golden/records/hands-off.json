@@ -141,7 +141,7 @@
    "confidence": 82.61,
    "readiness": 0.96,
    "stock": 194992,
-   "feed": 65,
+   "feed": 66,
    "rng": 978239366,
    "over": false
   },
@@ -152,7 +152,7 @@
    "confidence": 82.24,
    "readiness": 0.93,
    "stock": 179007,
-   "feed": 67,
+   "feed": 68,
    "rng": 613662260,
    "over": false
   },
@@ -163,7 +163,7 @@
    "confidence": 83.04,
    "readiness": 0.87,
    "stock": 160322,
-   "feed": 72,
+   "feed": 73,
    "rng": 2080650967,
    "over": false
   },
@@ -174,7 +174,7 @@
    "confidence": 82.31,
    "readiness": 0.79,
    "stock": 150857,
-   "feed": 75,
+   "feed": 76,
    "rng": 2084568443,
    "over": false
   },
@@ -185,7 +185,7 @@
    "confidence": 80.77,
    "readiness": 0.76,
    "stock": 140367,
-   "feed": 77,
+   "feed": 78,
    "rng": 1576956343,
    "over": false
   },
@@ -196,7 +196,7 @@
    "confidence": 78.85,
    "readiness": 0.74,
    "stock": 130292,
-   "feed": 81,
+   "feed": 82,
    "rng": 2133615692,
    "over": false
   },
@@ -207,7 +207,7 @@
    "confidence": 71.47,
    "readiness": 0.71,
    "stock": 129557,
-   "feed": 84,
+   "feed": 85,
    "rng": 1185991513,
    "over": false
   },
@@ -218,7 +218,7 @@
    "confidence": 69.48,
    "readiness": 0.69,
    "stock": 133149,
-   "feed": 90,
+   "feed": 91,
    "rng": 118061240,
    "over": false
   },
@@ -229,7 +229,7 @@
    "confidence": 66.91,
    "readiness": 0.69,
    "stock": 136651,
-   "feed": 96,
+   "feed": 97,
    "rng": 50461219,
    "over": false
   },
@@ -240,7 +240,7 @@
    "confidence": 61.51,
    "readiness": 0.69,
    "stock": 139087,
-   "feed": 100,
+   "feed": 101,
    "rng": 1694120917,
    "over": false
   },
@@ -251,7 +251,7 @@
    "confidence": 57.67,
    "readiness": 0.65,
    "stock": 143074,
-   "feed": 104,
+   "feed": 105,
    "rng": 163449665,
    "over": false
   },
@@ -262,10 +262,10 @@
    "confidence": 54.37,
    "readiness": 0.63,
    "stock": 141656,
-   "feed": 111,
+   "feed": 112,
    "rng": 2920169409,
    "over": false
   }
  ],
- "finalHash": "fbd8e7f3790f8db40980b208c360278242246cbb727ab9d9fa04d7aadcf85992"
+ "finalHash": "305eff7820db2753402fbebacd486e279fa8c5eb08c5c04bbcd1a06dee951bdd"
 }

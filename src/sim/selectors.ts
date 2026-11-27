@@ -6,6 +6,7 @@ import { hasResearch, recipeInputs, recipeScrap } from './strategy';
 import { peopleFactor } from './people';
 import { rivalArrivals, rivalLand, rivalShots } from './rival';
 import { threatShare } from './features';
+import { pressure } from './scenarios';
 import { FINISHED, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 export const RUN_FACTOR = { idle: 0, single: 0.6, normal: 1, surge: 1.3 } as const;
@@ -55,14 +56,14 @@ export function regionBases(region: RegionId, kind: 'air' | 'land'): string[] {
 export function regionDailyDraw(s: SimState, region: RegionId, line: LineId, crisisMult = 1): number {
   if (!unlocked(s, line)) return 0;
   const reg = REGIONS[region];
-  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * crisisMult * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * rivalLand(s, line);
+  if (LAND_LINES.includes(line)) return ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * reg.landShare * pressure(s, region, 'land') * crisisMult * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * rivalLand(s, line);
   let shots = 0;
   for (const t of THREAT_IDS) {
     const th = THREATS[t];
     const live = th.assign.filter((a) => a.weight > 0 && unlocked(s, a.line) && !(s.policy.conserve && CHEAP.includes(t) && PREMIUM.includes(a.line)));
     const w = live.reduce((a, x) => a + x.weight, 0);
     const passive = t === 'drone' && hasResearch(s, 'hpm') ? 0.8 : 1;
-    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * threatShare(s, region, reg.threatShare) * passive * th.shots * (a.weight / w) * rivalArrivals(s, t) * rivalShots(s, t);
+    for (const a of live) if (a.line === line) shots += (th.calmMonthly / DAYS_PER_MONTH) * threatShare(s, region, reg.threatShare) * pressure(s, region, 'air') * passive * th.shots * (a.weight / w) * rivalArrivals(s, t) * rivalShots(s, t);
   }
   return shots * crisisMult;
 }

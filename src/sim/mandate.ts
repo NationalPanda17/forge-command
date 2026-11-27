@@ -6,6 +6,7 @@
 // Everything here is derived from the history and the scenario, so nothing new is saved beyond a few month-end
 // figures (see recordMandateMonth), and older saves need no migration.
 import { independenceWeight } from './features';
+import { dealReadiness, dealWeights } from './scenarios';
 import T from './tuning/mandate.json';
 import { monthSpend, monthWaste } from './audit';
 import { communityTowns } from './communities';
@@ -53,6 +54,8 @@ export function mandateGoals(s: SimState, year = currentYear(s)): { id: GoalId; 
   let table: Partial<Record<GoalId, number>> = T.mandates[scenario as keyof typeof T.mandates] ?? T.mandates.standard;
   // The tutorial adds stewardship in its second year.
   if (scenario === 'tutorial' && year >= 1) table = { readiness: 0.35, value: 0.25, jobs: 0.25, stewardship: 0.15 };
+  // Peacetime's budget round (19.0c) moves weight between goals for the year.
+  if (s.budgetDeals) table = dealWeights(s, year, table as Record<string, number>) as Partial<Record<GoalId, number>>;
   let goals = (Object.entries(table) as [GoalId, number][]).map(([id, weight]) => ({ id, weight }));
   // On a map that relies on a foreign supplier (19.0b), the Committee also weighs supply independence.
   const indep = independenceWeight(s);
@@ -72,7 +75,9 @@ function band(s: SimState, b: Band, year: number): [number, number] {
   const r = ratchetFor(s, year) * g.ratchet;
   // In a war, under sanctions or rebuilding, the Committee expects less on the racks (more so early in a rebuild).
   let ease = 0;
-  if (b === 'readiness') ease = ((T.scenarioReadinessEase as Record<string, number>)[s.scenario] ?? 0) + (s.scenario === 'rebuild' ? (T.rebuildReadinessEase[year] ?? 0) : 0);
+  // The hawks' budget (19.0c) buys a year of fuller racks.
+  if (b === 'readiness') ease -= dealReadiness(s, year);
+  if (b === 'readiness') ease += ((T.scenarioReadinessEase as Record<string, number>)[s.scenario] ?? 0) + (s.scenario === 'rebuild' ? (T.rebuildReadinessEase[year] ?? 0) : 0);
   return [g.zero[d] + r - ease, g.full[d] + r - ease];
 }
 

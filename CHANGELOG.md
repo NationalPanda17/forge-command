@@ -1,5 +1,27 @@
 # Changelog
 
+## 19.0.2: Depth, part three, every scenario plays its own way
+
+- **War footing: a front and air surges.**
+  - The front in the Marches moves with the artillery its guns and depot hold.
+  - Let it fall back, and the fighting there grows heavier, the Committee loses patience, and the plants behind the
+    line are disrupted. Keep it stocked, and it advances.
+  - Every four months, a two-week surge of raids hits whichever region has the thinnest air defences.
+  - Home shows where the front stands.
+- **Sanctions: the bans come off one nation at a time.** A nation lifts its export ban once relations reach 60, so
+  trade missions are now how you end the embargo. In the meantime a broker offers rounds round the bans, at 80% over
+  the list price, with a chance the Committee hears of it.
+- **Rebuild: worn-out plants.**
+  - Your plants start run down, and a plant below 50% condition wears fast.
+  - **Refurbish** it as before, or **replace** it: it closes for about six weeks, then comes back with 10% more output,
+    built to last.
+- **Peacetime: the budget round.** Each fiscal year the Committee funds one of three budgets, each with its own terms:
+  - the hawks' budget gives more money, and fuller racks are expected;
+  - the Treasury's gives less money, and value for money counts for more;
+  - the regions' makes jobs count for more.
+- **The chief of staff** answers the broker and the budget round, sends trade missions to banned nations, and
+  refurbishes or replaces worn plants.
+
 ## 19.0.1: Depth, part two, every country is different
 
 A generated country now has a character of its own: two or three features, drawn from its seed, that change how you

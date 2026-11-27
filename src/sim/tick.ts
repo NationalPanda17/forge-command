@@ -33,6 +33,7 @@ import { industryDay, variantOf } from './industry';
 import { storyDay } from './story';
 import { applyWorld } from './worldgen';
 import { threatShare } from './features';
+import { pressure, scenarioDay, scenarioMonth } from './scenarios';
 import { resolveSecurity, securityMonth } from './security';
 import { townsDay, townsMonth } from './towns';
 import { accepted, resolveTesting, testingDay, testingMonth } from './testing';
@@ -442,7 +443,7 @@ function fight(s: SimState): DayFight {
     const bases = regionBases(region, 'air');
     for (const t of THREAT_IDS) {
       const th = THREATS[t];
-      const arriving = sround(s, (th.calmMonthly / DAYS_PER_MONTH) * threatShare(s, region, REGIONS[region].threatShare) * crisisMult(s, t, region) * rivalArrivals(s, t) * randRange(s, 0.8, 1.2));
+      const arriving = sround(s, (th.calmMonthly / DAYS_PER_MONTH) * threatShare(s, region, REGIONS[region].threatShare) * pressure(s, region, 'air') * crisisMult(s, t, region) * rivalArrivals(s, t) * randRange(s, 0.8, 1.2));
       // High-power microwave stops some drones before anything is fired.
       const passive = t === 'drone' && hasResearch(s, 'hpm') ? Math.round(arriving * 0.2) : 0;
       const n = arriving - passive;
@@ -488,7 +489,7 @@ function fight(s: SimState): DayFight {
     let shortLines = 0;
     for (const line of LAND_LINES) {
       if (!s.lines[line].unlocked || !arty.length) continue;
-      const want = sround(s, ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * REGIONS[region].landShare * landMult(s, region) * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * rivalLand(s, line) * randRange(s, 0.85, 1.15));
+      const want = sround(s, ((LAND_DRAW[line] ?? 0) / DAYS_PER_MONTH) * REGIONS[region].landShare * pressure(s, region, 'land') * landMult(s, region) * (line === 'shell155' && hasResearch(s, 'smartFuzes') ? 0.85 : 1) * rivalLand(s, line) * randRange(s, 0.85, 1.15));
       if (want <= 0) continue;
       let got = 0;
       for (const b of arty) {
@@ -707,6 +708,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   castMonth(s, feed);
   intelMonth(s);
   rivalMonth(s);
+  scenarioMonth(s, feed);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   // An endless sandbox has no last month, so it never skips a hearing (its nominal end date is only a placeholder).
@@ -790,6 +792,7 @@ function stepDay(s: SimState): void {
   buildDay(s, feed);
   rivalDay(s, feed);
   industryDay(s, feed);
+  scenarioDay(s, feed);
   cyberDay(s, feed);
   energyDay(s, feed);
   intelDay(s, feed);
