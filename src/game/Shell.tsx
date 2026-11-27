@@ -597,7 +597,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             <div className="min-w-[132px] px-1 leading-none">
               <div className="font-sans text-[19px] font-bold uppercase tracking-[0.06em] text-white">{dateLabel(state.day)}</div>
               <div className={`mt-1 font-sans text-[11px] font-semibold uppercase tracking-[0.16em] ${speed === 0 ? 'text-ops-amber' : 'text-ops-dim'}`}>
-                {speed === 0 ? 'Paused' : `${speed} day${speed > 1 ? 's' : ''} a second`}
+                {speed === 0 ? 'Paused · Space to run' : `${speed} day${speed > 1 ? 's' : ''} a second`}
               </div>
             </div>
             <button
@@ -814,7 +814,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                 >
                   {g.label}
                   {b.count > 0 && (
-                    <span className={`ml-1.5 rounded-[2px] px-1.5 font-sans text-[11px] font-bold ${b.bad ? 'bg-ops-red/20 text-ops-red' : 'bg-ops-amber/20 text-ops-amber'}`} aria-label={`${b.count} need${b.count === 1 ? 's' : ''} you`}>
+                    <span className={`ml-1 rounded-[2px] px-1 font-sans text-[10px] font-bold ${b.bad ? 'bg-ops-red/20 text-ops-red' : 'bg-ops-amber/20 text-ops-amber'}`} aria-label={`${b.count} need${b.count === 1 ? 's' : ''} you`}>
                       {b.count}
                     </span>
                   )}
@@ -856,7 +856,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               }}
             />
           )}
-          <div key={panel} className="fc-enter min-h-0 flex-1 overflow-y-auto">
+          <div key={panel} className="fc-enter fc-scroll-fade min-h-0 flex-1 overflow-y-auto">
             <PanelBoundary resetKey={panel} onHome={() => setPanel('home')}>
             <Suspense fallback={<p className="p-3 text-[11px] text-ops-dim">Loading…</p>}>
             {panel === 'plan' && <PlanPanel state={state} onMaterial={showMaterial} onSite={select} />}

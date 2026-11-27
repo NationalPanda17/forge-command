@@ -15,7 +15,7 @@
   --ops-panel: 13 19 29;
   --ops-panel2: 21 29 42;
   --ops-line: 40 54 74;
-  --ops-dim: 124 142 168; /* 5:1 or better on every panel (WCAG AA) */
+  --ops-dim: 142 158 182; /* brighter in 19.3: about 6.5:1 on every panel (WCAG AA) */
   --ops-text: 214 223 235;
   --ops-cyan: 56 214 245;
   --ops-blue: 59 130 246;
@@ -478,10 +478,13 @@ html.rm .fc-crisis-active { animation: none; }
 .fc-gtabs { background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1)); }
 .fc-gtab {
   position: relative;
+  /* The six groups share the row and always fit, badges included (19.3). */
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
-  padding: 9px 11px 7px;
-  font: 700 14px/1 theme('fontFamily.sans');
-  letter-spacing: 0.1em;
+  padding: 9px 6px 7px;
+  font: 700 13px/1 theme('fontFamily.sans');
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgb(var(--ops-dim));
   transition: color 120ms;
@@ -695,3 +698,36 @@ html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber))
   box-shadow: -4px 4px 12px rgba(0, 0, 0, 0.35);
 }
 .fc-panel-fold:hover { color: #fff; border-color: rgb(var(--ops-amber) / 0.6); }
+
+/* ---------- 19.3: the panels read like a game's, not a spreadsheet's ---------- */
+
+/* One step up the type scale inside the side panel: the smallest text was 10px. */
+#panels .text-\[9\.5px\],
+#panels .text-\[10px\] { font-size: 11px; }
+#panels .text-\[11px\] { font-size: 12px; }
+#panels .text-\[12px\] { font-size: 12.5px; }
+
+/* A section heading inside a tab: bronze, with a rule that runs to the edge, and room above it. */
+#panels h3.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgb(var(--fc-bronze));
+  letter-spacing: 0.14em;
+}
+#panels h3.label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(var(--fc-bronze) / 0.5), transparent);
+}
+
+/* The panel floats over the map: a shadow and a bronze hairline on the edge that faces it. */
+#panels { box-shadow: -10px 0 28px rgba(0, 0, 0, 0.5), inset 1px 0 0 rgb(var(--fc-bronze) / 0.35); }
+
+/* Content that scrolls fades out at the bottom, so the panel plainly goes on. */
+.fc-scroll-fade { -webkit-mask-image: linear-gradient(#000 calc(100% - 18px), transparent); mask-image: linear-gradient(#000 calc(100% - 18px), transparent); }
+
+/* While the clock is stopped, the play button breathes, so a new player sees that time is waiting on them (19.3). */
+@keyframes fc-breathe { 50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 4px rgb(var(--ops-amber) / 0.22), 0 0 18px rgb(var(--ops-amber) / 0.5); } }
+.fc-clock-pause.is-paused { animation: fc-breathe 2s ease-in-out infinite; }

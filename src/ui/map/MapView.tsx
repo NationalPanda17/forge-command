@@ -108,7 +108,7 @@ interface View { S: number; tx: number; ty: number }
  * The map's box, and (18.3) how far the game's overlays reach into it on each side: the map fits, centres and clamps
  * itself, and places its own furniture, in the safe area that is left.
  */
-interface Size { w: number; h: number; l?: number; t?: number; r?: number; b?: number }
+interface Size { w: number; h: number; l?: number; t?: number; r?: number; b?: number; cover?: boolean }
 
 /** The visible part of the map: left, top, width and height. */
 const safe = (sz: Size) => ({ x: sz.l ?? 0, y: sz.t ?? 0, w: sz.w - (sz.l ?? 0) - (sz.r ?? 0), h: sz.h - (sz.t ?? 0) - (sz.b ?? 0) });
@@ -118,6 +118,8 @@ const MAX_Z = 14;
 
 const fitScale = (sz: Size) => {
   const a = safe(sz);
+  // The full-window map (19.3) fills what you can see, edge to edge, as a strategy map does; a boxed map fits inside.
+  if (sz.cover) return Math.max(0.05, Math.max(a.w / G.FRAME_W, a.h / G.FRAME_H));
   return Math.max(0.05, Math.min((a.w - 16) / G.FRAME_W, (a.h - 16) / G.FRAME_H));
 };
 
@@ -925,6 +927,37 @@ function niceKm(target: number): number {
   return 500;
 }
 
+/** The fog the full-window map fades into (19.3): soft at the world's edge, solid beyond it to the screen's edges. */
+const FOG = '#050a12';
+const FOG_FADE = 46;
+const FOG_REACH = 6000;
+function EdgeFog({ uid }: { uid: string }) {
+  const { x0, y0, x1, y1 } = G.FRAME;
+  const R = FOG_REACH;
+  const F = FOG_FADE;
+  const fade = (id: string, x1g: string, y1g: string, x2g: string, y2g: string) => (
+    <linearGradient id={`${uid}-${id}`} x1={x1g} y1={y1g} x2={x2g} y2={y2g}>
+      <stop offset="0" stopColor={FOG} stopOpacity={1} />
+      <stop offset="1" stopColor={FOG} stopOpacity={0} />
+    </linearGradient>
+  );
+  return (
+    <g pointerEvents="none">
+      <defs>
+        {fade('fogT', '0', '0', '0', '1')}
+        {fade('fogB', '0', '1', '0', '0')}
+        {fade('fogL', '0', '0', '1', '0')}
+        {fade('fogR', '1', '0', '0', '0')}
+      </defs>
+      <path d={`M${x0 - R} ${y0 - R}H${x1 + R}V${y1 + R}H${x0 - R}Z M${x0} ${y0}V${y1}H${x1}V${y0}Z`} fill={FOG} fillRule="evenodd" />
+      <rect x={x0} y={y0} width={x1 - x0} height={F} fill={`url(#${uid}-fogT)`} />
+      <rect x={x0} y={y1 - F} width={x1 - x0} height={F} fill={`url(#${uid}-fogB)`} />
+      <rect x={x0} y={y0} width={F} height={y1 - y0} fill={`url(#${uid}-fogL)`} />
+      <rect x={x1 - F} y={y0} width={F} height={y1 - y0} fill={`url(#${uid}-fogR)`} />
+    </g>
+  );
+}
+
 const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: View; size: Size; boxes: Box[]; quiet?: boolean }) {
   const { S, tx, ty } = view;
   const L = size.l ?? 0;
@@ -1059,7 +1092,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
   const ins = props.insets;
   const insKey = ins ? `${ins.top},${ins.right},${ins.bottom},${ins.left}` : '';
   useEffect(() => {
-    const next = { ...sizeRef.current, l: ins?.left ?? 0, t: ins?.top ?? 0, r: ins?.right ?? 0, b: ins?.bottom ?? 0 };
+    const next = { ...sizeRef.current, l: ins?.left ?? 0, t: ins?.top ?? 0, r: ins?.right ?? 0, b: ins?.bottom ?? 0, cover: !!props.bare };
     sizeRef.current = next;
     setSize(next);
     if (!next.w) return;
@@ -1464,7 +1497,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
   return (
     <div
       ref={wrapRef}
-      className={`relative w-full select-none overflow-hidden bg-[#040912] outline-none ${props.bare ? 'focus-visible:shadow-[inset_0_0_0_2px_rgb(var(--ops-cyan)/0.6)]' : 'rounded-md border border-ops-line focus-visible:ring-1 focus-visible:ring-ops-cyan/60'}`}
+      className={`relative w-full select-none overflow-hidden ${props.bare ? 'bg-[#050a12]' : 'bg-[#040912]'} outline-none ${props.bare ? 'focus-visible:shadow-[inset_0_0_0_2px_rgb(var(--ops-cyan)/0.6)]' : 'rounded-md border border-ops-line focus-visible:ring-1 focus-visible:ring-ops-cyan/60'}`}
       style={{ height }}
       tabIndex={0}
       role="region"
@@ -1501,7 +1534,11 @@ export default function MapView(props: MapViewProps): JSX.Element {
               <RegionLayer uid={uid} show={layers.regions} crisis={crisisRegion} />
               <RoutesLayer layers={layers} use={routeUse} sig={useSig} network={network} showPlans={showPlans} highlight={highlight} />
             </g>
+            {/* The full-window map (19.3) has no sheet: the world fades into fog at its edges and the fog runs to the screen's. */}
+            {props.bare && <EdgeFog uid={uid} />}
             {/* The sheet's frame (17.2): a bronze double neatline with brackets at the corners, a constant size on screen. */}
+            {!props.bare && (
+            <>
             <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.55} strokeWidth={1} style={nss} />
             <rect x={G.FRAME.x0 - 5 / S} y={G.FRAME.y0 - 5 / S} width={G.FRAME_W + 10 / S} height={G.FRAME_H + 10 / S} fill="none" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.3} strokeWidth={1} style={nss} />
             <path
@@ -1518,6 +1555,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
               style={nss}
               pointerEvents="none"
             />
+            </>
+            )}
             {layers.flows && <ShipmentsLayer S={S} shipments={shipments} clock={clock} paused={dragging || zooming} aggregate={size.w < 640 ? lod <= 1 : S < 0.9} />}
             {!zooming && <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />}
             <CitiesLayer S={S} placed={zooming ? NO_CITY_LABELS : placement.cities} />
@@ -1548,7 +1587,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
             )}
             <SitesLayer S={S} markers={markers} selected={selected} focused={focused} hovered={hovered} labelIds={zooming ? NO_LABELS : placement.sites} spread={liveSpread} onActivate={onActivate} onFocusSite={onFocusSite} onHover={onHover} onMenu={onMenu} onPress={onPress} />
           </g>
-          <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
+          <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming || !!props.bare} />
         </svg>
       )}
       <div data-hud="" className={`fc-hud pointer-events-none absolute px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`} style={{ left: (size.l ?? 0) + 12, top: (size.t ?? 0) + 12 }}>

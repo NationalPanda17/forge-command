@@ -110,8 +110,9 @@ export default function HomePanel({
           <div key={k.label} className="min-w-0 rounded border border-ops-line/60 p-2">
             <div className="label">{k.label}</div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-              <span className={`font-sans text-[18px] font-semibold ${k.tone}`}>{k.value}</span>
-              {k.delta && <span className={`text-[10px] ${deltaTone(k.d)}`}>{k.delta} this month</span>}
+              <span className={`font-sans text-[22px] font-semibold leading-tight ${k.tone}`}>{k.value}</span>
+              {/* An arrow as well as a colour, so the change reads in the colour-blind palette too (19.3). */}
+              {k.delta && <span className={`text-[10px] ${deltaTone(k.d)}`}>{k.d > 0 ? '▲ ' : k.d < 0 ? '▼ ' : ''}{k.delta} this month</span>}
             </div>
             <div className="mt-1">
               <Sparkline values={k.series} color={k.color} label={`${k.label} trend`} />
@@ -123,8 +124,7 @@ export default function HomePanel({
       {state.probation && <ProbationCard state={state} />}
       {state.war && <FrontCard state={state} />}
 
-      <MandateCard m={mandate} />
-
+      {/* What to do comes first (19.3); how the year is going follows. */}
       <section>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h3 className="label">Needs you now</h3>
@@ -139,6 +139,8 @@ export default function HomePanel({
         </div>
         <AdvisorCard state={state} act={act} onPanel={(p) => onPanel(p === 'programmes' ? 'policy' : (p as PanelId))} onSite={onSite} onMaterial={onMaterial ?? ((m) => onLine(m as LineId))} />
       </section>
+
+      <MandateCard m={mandate} />
 
       <section>
         <h3 className="label mb-1">Rounds against the one-year goal</h3>
