@@ -74,3 +74,39 @@ These values were constants before and are now tuning. The behaviour is unchange
 - A counter halves the rival's interest. It does not rule the development out.
 - The story campaign keeps the adaptive rival, since no beat names a specific development.
 - The tutorial keeps the scripted order.
+
+## 19.0b: map variety from the seed
+
+A generated country gets two or three features. They come from the world seed on their own stream (`makeFeatures(seed)`, `mulberry(seed ^ 0xfea7)`), so they never use the game's random numbers. They are stored as `s.features` when the game starts. The classic map, the story and the tutorial have none, and an older save of a generated country keeps none, so it plays exactly as before. Tuning: `depth.json` → `map`.
+
+| Feature | Odds | Effect |
+|---|---|---|
+| **Chokepoint** | always (when a candidate exists) | One part from `chokepointMaterials` (magnets, rocket motors) has a single home maker. The others close, the survivor takes their whole share and starts qualified, and sabotage there does `chokepointDamage` ×2 condition damage. The map marks it **CP**. |
+| **Foreign reliance** | `foreignOdds` 0.7, never under Sanctions | One part your arsenals buy directly (`foreignMaterials`: RF seekers, rocket motors). Home makers run at `domesticCut` 0.4; foreign makers grow until the total share is at least `minTotal` 1.1, and start qualified. Supply independence joins the mandate at weight `independenceWeight` 0.10, and the weights are renormalised. |
+| **Coast** | long 0.3, short 0.3; re-rolled until the map has two features | **Long:** more of the air threat comes in over the coast (coast 0.38, east 0.22), and sea legs carry ×1.2. **Short:** the threat shifts inland (coast 0.22, east 0.38), and sea legs carry ×0.85. The shares still sum to 1. |
+
+**Starting contracts.** On a feature map, the starting contract for each arsenal input goes to the qualified maker with the most capacity. For the relied-on part, foreign makers count too. The classic map keeps its first private supplier, so its golden masters are unchanged.
+
+**What the player sees:**
+- **The new-game screen:** a line under the country, for example "Chokepoint: Rocket motors (one plant) · Relies on foreign radar seekers · Short coast".
+- **A country brief** before the clock first runs.
+- **The CP badge** on the map, which the map key explains.
+
+### Deviations from the spec
+
+- **Chokepoint candidates** are only magnets and rocket motors. They are the only parts with two home makers.
+- **Foreign reliance** is only for parts the arsenals buy. Foreign purchases count only when your own plants buy, so a part bought by a private maker would not have moved independence at all. Even so, foreign purchases come to 8–14% on these maps, short of the spec's 15–35%.
+- **Under Sanctions** there is no foreign reliance, since the bans already supply that pressure.
+- **Sea freight cost is unchanged**, because the path cache prices legs once. Only sea capacity changes.
+- **Sea capacity** is ×1.2 on a long coast and ×0.85 on a short one, milder than the spec's ×1.3 / ×0.7. It made no measurable difference.
+
+### Balance (autopilot, normal, generated maps, 21 seeds; `scratchpad/economy/maps.ts`)
+
+| Case | With features | Same worlds without |
+|---|---|---|
+| Standard | 56.6, 4/21 dismissed | 55.1, 5/21 |
+| Sanctions | 47.2, 5/21 | 51.3, 3/21 |
+| War footing (11 seeds) | 55.1, 1/11 | 57.6, 0/11 |
+| Rebuild (11 seeds) | 51.5, 2/11 | 46.7, 3/11 |
+
+On the classic map, Standard is 62.4 with none dismissed. Generated maps were already harsher before 19.0b: about 1 game in 4 is dismissed even without features. That is a separate issue, left for a follow-up.

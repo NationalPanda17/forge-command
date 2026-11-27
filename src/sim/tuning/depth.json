@@ -1,5 +1,5 @@
 {
-  "$comment": "Release 19.0 'Depth' tuning (docs/depth.md): the adaptive rival. Values are starting points tuned with the balance harness.",
+  "$comment": "Release 19.0 'Depth' tuning (docs/depth.md): the adaptive rival (19.0a) and map variety (19.0b). Values are starting points tuned with the balance harness.",
   "rival": {
     "adaptive": true,
     "firstDay": [
@@ -55,5 +55,37 @@
     "firstDelayByScenario": {
       "rebuild": 120
     }
+  },
+  "map": {
+    "chokepointMaterials": [
+      "magnets",
+      "rocketMotor"
+    ],
+    "foreignOdds": 0.7,
+    "foreignMaterials": [
+      "seekerRF",
+      "rocketMotor"
+    ],
+    "domesticCut": 0.4,
+    "minTotal": 1.1,
+    "longCoastOdds": 0.3,
+    "shortCoastOdds": 0.3,
+    "coastThreat": {
+      "short": {
+        "coast": 0.22,
+        "east": 0.38
+      },
+      "long": {
+        "coast": 0.38,
+        "isles": 0.15,
+        "east": 0.22
+      }
+    },
+    "seaCap": {
+      "long": 1.2,
+      "short": 0.85
+    },
+    "chokepointDamage": 2,
+    "independenceWeight": 0.1
   }
 }

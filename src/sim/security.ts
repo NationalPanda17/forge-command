@@ -4,6 +4,7 @@ import { clamp, pick, rand, randInt } from './rng';
 import type { FeedItem, SimState } from './types';
 import { SITES, SITE_BY_ID } from './world';
 import { RIVAL_NAME } from './rival';
+import { sabotageMult } from './features';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
@@ -56,7 +57,7 @@ export function securityMonth(s: SimState, feed: Feed): void {
     if (kind === 'sabotage') {
       site.disruptionDays = Math.max(site.disruptionDays, randInt(s, 20, 45));
       site.disruptionFactor = Math.min(site.disruptionFactor, 0.4);
-      site.condition = clamp(site.condition - 10);
+      site.condition = clamp(site.condition - 10 * sabotageMult(s, id));
       feed(s, 'bad', `Sabotage at ${name}: a fire in the assembly hall. Output down to 40% for weeks.`, id, true);
     } else if (kind === 'theft') {
       // Stolen designs speed up the rival's next weapon.

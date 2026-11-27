@@ -2,6 +2,7 @@
 import { eventScale, takeLots } from './tick';
 import { claimBoost, industrialAction, resolveClaim, unionClaim } from './unions';
 import { railFactor } from './cyber';
+import { seaFactor } from './features';
 import { addWaste } from './audit';
 import { hasPolicy } from './commitments';
 import { pathBetween } from './graph';
@@ -36,7 +37,7 @@ const NORTH_SEA = new Set(SITES.filter((d) => d.region === 'north').map((d) => d
 /** How much of a route's daily tonnage the weather allows. */
 export function legCapFactor(s: SimState, from: string, to: string, mode: string): number {
   const cyber = mode === 'rail' ? railFactor(s) : 1;
-  return cyber * weatherFactor(s, from, to, mode);
+  return cyber * weatherFactor(s, from, to, mode) * (mode === 'sea' ? seaFactor(s) : 1);
 }
 
 function weatherFactor(s: SimState, from: string, to: string, mode: string): number {

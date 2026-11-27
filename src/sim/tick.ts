@@ -32,6 +32,7 @@ import { hasPolicy, policyMonth, programmeMonth } from './commitments';
 import { industryDay, variantOf } from './industry';
 import { storyDay } from './story';
 import { applyWorld } from './worldgen';
+import { threatShare } from './features';
 import { resolveSecurity, securityMonth } from './security';
 import { townsDay, townsMonth } from './towns';
 import { accepted, resolveTesting, testingDay, testingMonth } from './testing';
@@ -441,7 +442,7 @@ function fight(s: SimState): DayFight {
     const bases = regionBases(region, 'air');
     for (const t of THREAT_IDS) {
       const th = THREATS[t];
-      const arriving = sround(s, (th.calmMonthly / DAYS_PER_MONTH) * REGIONS[region].threatShare * crisisMult(s, t, region) * rivalArrivals(s, t) * randRange(s, 0.8, 1.2));
+      const arriving = sround(s, (th.calmMonthly / DAYS_PER_MONTH) * threatShare(s, region, REGIONS[region].threatShare) * crisisMult(s, t, region) * rivalArrivals(s, t) * randRange(s, 0.8, 1.2));
       // High-power microwave stops some drones before anything is fired.
       const passive = t === 'drone' && hasResearch(s, 'hpm') ? Math.round(arriving * 0.2) : 0;
       const n = arriving - passive;

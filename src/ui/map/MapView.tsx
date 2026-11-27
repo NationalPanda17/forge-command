@@ -20,6 +20,8 @@ export interface MapMarker {
   kind?: SiteKind;
   name?: string;
 }
+/** What a site's badge means, for screen readers. */
+const BADGE_WORDS: Record<string, string> = { '?': 'not qualified', '!': 'rounds to retire', CP: 'chokepoint' };
 export interface MapShipment {
   id: number;
   /** Site ids along the way. */
@@ -607,7 +609,7 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
             transform={`translate(${x} ${y}) scale(${k})`}
             tabIndex={0}
             role="button"
-            aria-label={`${mk?.name ?? s.name}, ${KIND_LABEL[mk?.kind ?? s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${mk.badge}` : ''}`}
+            aria-label={`${mk?.name ?? s.name}, ${KIND_LABEL[mk?.kind ?? s.kind]}${s.nation ? `, ${s.nation}` : ''}${mk?.badge ? `, ${BADGE_WORDS[mk.badge] ?? mk.badge}` : ''}`}
             aria-pressed={sel}
             onClick={(e) => onActivate(s.id, e)}
             onKeyDown={(e) => {
@@ -1728,6 +1730,18 @@ export function MapLegend({ className = 'panel p-3' }: { className?: string }) {
           ).map(([t, l]) => (
             <div key={t} className="flex items-center gap-2 text-ops-text">
               <span className="inline-block h-2.5 w-2.5 rounded-sm border" style={{ borderColor: TONE_COLOR[t], background: `color-mix(in srgb, ${TONE_COLOR[t]} 25%, transparent)` }} />
+              {l}
+            </div>
+          ))}
+          {(
+            [
+              ['?', 'Not qualified'],
+              ['!', 'Rounds to retire'],
+              ['CP', 'Chokepoint'],
+            ] as const
+          ).map(([b, l]) => (
+            <div key={b} className="flex items-center gap-2 text-ops-text">
+              <span className="inline-block rounded-full px-1 font-mono text-[9px] font-bold leading-[13px] text-[#06111f]" style={{ background: TONE_COLOR.ok }}>{b}</span>
               {l}
             </div>
           ))}

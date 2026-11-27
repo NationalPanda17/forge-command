@@ -18,7 +18,8 @@ export interface WorldSpec {
 
 // ---------- Seeded noise (self-contained, so the engine never depends on the map module) ----------
 
-function mulberry(seed: number): () => number {
+/** A small seeded random stream, separate from the game's. */
+export function mulberry(seed: number): () => number {
   let a = seed | 0;
   return () => {
     a = (a + 0x6d2b79f5) | 0;

@@ -5,6 +5,7 @@
 //
 // Everything here is derived from the history and the scenario, so nothing new is saved beyond a few month-end
 // figures (see recordMandateMonth), and older saves need no migration.
+import { independenceWeight } from './features';
 import T from './tuning/mandate.json';
 import { monthSpend, monthWaste } from './audit';
 import { communityTowns } from './communities';
@@ -53,6 +54,9 @@ export function mandateGoals(s: SimState, year = currentYear(s)): { id: GoalId; 
   // The tutorial adds stewardship in its second year.
   if (scenario === 'tutorial' && year >= 1) table = { readiness: 0.35, value: 0.25, jobs: 0.25, stewardship: 0.15 };
   let goals = (Object.entries(table) as [GoalId, number][]).map(([id, weight]) => ({ id, weight }));
+  // On a map that relies on a foreign supplier (19.0b), the Committee also weighs supply independence.
+  const indep = independenceWeight(s);
+  if (indep > 0 && !goals.some((g) => g.id === 'independence')) goals.push({ id: 'independence', weight: indep });
   if (!hasForeign()) goals = goals.filter((g) => g.id !== 'independence');
   if (!communityTowns(s).length) goals = goals.filter((g) => g.id !== 'jobs');
   const total = goals.reduce((a, g) => a + g.weight, 0) || 1;
