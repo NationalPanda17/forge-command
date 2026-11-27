@@ -10,7 +10,7 @@ import { MAX_SAFETY, safetyCost } from './people';
 import { setNetwork } from './graph';
 import { applyWorld } from './worldgen';
 import { MAX_CLEARANCE, vetCost } from './security';
-import { HOMES_PER_PROJECT, HOUSING_DAYS, hireRoom, housingCost, mothball, reopen, townOf } from './towns';
+import { HOMES_PER_PROJECT, HOUSING_DAYS, hireRoom, housingCost, mothball, reopen, townIndex, townOf } from './towns';
 import { prioritise } from './testing';
 import { controlBlock } from './hotseat';
 import { storyCount } from './storyCount';
@@ -33,6 +33,7 @@ import type { Project, Settings } from './types';
 import { DESIGN_DAYS, addInhouseLine, designBlock, designCost, foundBlock, foundPlant, inhouseBlock, type VariantId } from './industry';
 import { CRISES } from './fight';
 import { REPLACE_DAYS, replaceCost } from './scenarios';
+import { HF, unionShift } from './homefront';
 import { MAX_POLICIES, POLICIES, REVOKE_COST, canSecondTerm, monthlyCapacity, programmeTerms, startSecondTerm, type PolicyId } from './commitments';
 import type { RegionId } from './world';
 export { CONTRACT_DISCOUNT };
@@ -541,6 +542,8 @@ export function applyInPlace(s: SimState, a: SimAction): boolean {
       site.clearance = (site.clearance ?? 0) + 1;
       // Vetting is intrusive: a little grumbling on the shop floor.
       site.morale = Math.max(0, site.morale - 2);
+      // Deeper vetting (19.1) is resented on the shop floor: the union gains ground.
+      if (site.clearance >= HF.security.vetUnionFromLevel) unionShift(s, townIndex(townOf(a.site)), HF.security.vetUnion);
       feed(s, 'info', `Security vetting at ${SITE_BY_ID[a.site].name} reaches level ${site.clearance}.`, a.site);
       break;
     }

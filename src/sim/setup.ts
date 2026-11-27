@@ -94,6 +94,13 @@ export function migrate(s: SimState): SimState {
 
 /** Fills in every field added since 2.0 that a save lacks (schema 2 = everything up to 18.0). */
 function fillDefaults(s: SimState): void {
+  // 19.1: one national cyber level and one recovery plan. Older saves keep the rounded mean of their three areas.
+  if (s.cyber?.levels) {
+    const v = Object.values(s.cyber.levels);
+    const lvl = Math.round(v.reduce((a, b) => a + b, 0) / Math.max(1, v.length));
+    for (const k of Object.keys(s.cyber.levels) as (keyof typeof s.cyber.levels)[]) s.cyber.levels[k] = lvl;
+    if (s.cyber.backups || s.cyber.drills) s.cyber.backups = s.cyber.drills = true;
+  }
   s.world ??= null;
   applyWorld(s.world);
   s.tests ??= [];

@@ -1,11 +1,14 @@
 // Cyber and IT attacks: the rival's hackers go after plant control systems, the rail booking system and your
-// suppliers' networks. Defences make attacks rarer; backups shorten the damage; manual fallback drills keep things
-// moving while the systems are down.
+// suppliers' networks. Since 19.1 there is one national defence level, which covers all three, and one recovery plan
+// (offline backups and manual-fallback drills together). Ransomware on your plants is likelier where the towns are
+// discontented: insiders open the door (docs/homefront.md).
 import { clamp, pick, rand, randInt } from './rng';
 import { troubleScale } from './scale';
 import { addWaste } from './audit';
 import type { FeedItem, SimState } from './types';
 import { SITES, SITE_BY_ID } from './world';
+import { HF, insiderFactor, meanDiscontent } from './homefront';
+import { unionTowns } from './unions';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
@@ -31,17 +34,24 @@ export interface CyberState {
 
 export const newCyber = (): CyberState => ({ levels: { plants: 0, rail: 0, suppliers: 0 }, backups: false, drills: false, railDays: 0, ransomPaid: 0 });
 
-export const cyberCost = (s: SimState, area: CyberArea) => Math.round((25 + 20 * s.cyber.levels[area]) * s.priceIndex);
-export const BACKUPS_COST = (s: SimState) => Math.round(20 * s.priceIndex);
-export const DRILLS_COST = (s: SimState) => Math.round(10 * s.priceIndex);
-/** Monthly upkeep of backups and drills, $M. */
-export const upkeep = (s: SimState) => ((s.cyber.backups ? 2 : 0) + (s.cyber.drills ? 1 : 0)) * s.priceIndex;
+/** The national cyber defence level (19.1): every area is kept at it. */
+export const cyberLevel = (s: SimState) => Math.min(...CYBER_AREA_IDS.map((a) => s.cyber.levels[a]));
+/** The next level's price. The area is ignored: one level covers all three. */
+export const cyberCost = (s: SimState, _area?: CyberArea) => Math.round((HF.security.cyberCost.base + HF.security.cyberCost.perLevel * cyberLevel(s)) * s.priceIndex);
+/** The recovery plan: offline backups and manual-fallback drills together. */
+export const BACKUPS_COST = (s: SimState) => Math.round(HF.security.planCost * s.priceIndex);
+/** Whether the recovery plan is in place. */
+export const hasPlan = (s: SimState) => !!(s.cyber.backups && s.cyber.drills);
+/** Monthly upkeep of the recovery plan, $M. */
+export const upkeep = (s: SimState) => (hasPlan(s) ? HF.security.planUpkeep : 0) * s.priceIndex;
 
 /** Chance of an attack on an area in a month. */
 export function attackOdds(s: SimState, area: CyberArea): number {
   const base = 0.012 * (1 + 0.4 * (s.rival?.known.length ?? 0)) * troubleScale(s);
   const repeat = area === 'plants' && s.cyber.ransomPaid > s.day ? 1.5 : 1;
-  return clamp(base * (1 - 0.25 * s.cyber.levels[area]) * repeat, 0, 0.5);
+  // Insiders in discontented towns (19.1) open the door to the plants' systems.
+  const insider = area === 'plants' ? insiderFactor(meanDiscontent(s, unionTowns(s))) : 1;
+  return clamp(base * (1 - 0.25 * s.cyber.levels[area]) * repeat * insider, 0, 0.5);
 }
 
 /** Rail capacity while the booking system is down. */
@@ -50,12 +60,11 @@ export const railFactor = (s: SimState) => (s.cyber && s.cyber.railDays > 0 ? (s
 export function validateCyber(s: SimState, a: { type: string; area?: CyberArea }): string | null {
   const funds = (c: number) => (s.treasury >= c ? null : `Not enough money (needs $${c}M).`);
   if (a.type === 'cyberDefence') {
-    if (!(a.area! in CYBER_AREAS)) return 'No such system.';
-    if (s.cyber.levels[a.area!] >= MAX_CYBER) return 'Already at the highest level.';
-    return funds(cyberCost(s, a.area!));
+    if (cyberLevel(s) >= MAX_CYBER) return 'Already at the highest level.';
+    return funds(cyberCost(s));
   }
-  if (a.type === 'cyberBackups') return s.cyber.backups ? 'Backups are already in place.' : funds(BACKUPS_COST(s));
-  if (a.type === 'cyberDrills') return s.cyber.drills ? 'Crews already drill for it.' : funds(DRILLS_COST(s));
+  if (a.type === 'cyberBackups') return hasPlan(s) ? 'The recovery plan is already in place.' : funds(BACKUPS_COST(s));
+  if (a.type === 'cyberDrills') return 'Drills are part of the recovery plan now.';
   return null;
 }
 
@@ -65,17 +74,15 @@ export function applyCyber(s: SimState, a: { type: string; area?: CyberArea }, f
     s.month.spend.projects += v;
   };
   if (a.type === 'cyberDefence') {
-    pay(cyberCost(s, a.area!));
-    s.cyber.levels[a.area!]++;
-    feed(s, 'info', `${CYBER_AREAS[a.area!].name}: defences raised to ${CYBER_LEVEL[s.cyber.levels[a.area!]].toLowerCase()}.`);
+    pay(cyberCost(s));
+    const next = cyberLevel(s) + 1;
+    for (const area of CYBER_AREA_IDS) s.cyber.levels[area] = next;
+    feed(s, 'info', `Cyber defences raised to ${CYBER_LEVEL[next].toLowerCase()} across plants, rail and suppliers.`);
   } else if (a.type === 'cyberBackups') {
     pay(BACKUPS_COST(s));
     s.cyber.backups = true;
-    feed(s, 'info', 'Offline backups are in place: systems that are hit come back far sooner.');
-  } else if (a.type === 'cyberDrills') {
-    pay(DRILLS_COST(s));
     s.cyber.drills = true;
-    feed(s, 'info', 'Crews and dispatchers now drill for working without computers.');
+    feed(s, 'info', 'A recovery plan is in place: offline backups, and crews who drill for working without computers.');
   }
 }
 

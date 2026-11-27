@@ -354,7 +354,7 @@ export function promisesMonth(s: SimState, feed: Feed): void {
         if (p.research && hasResearch(s, p.research)) verdict = 'kept';
         break;
       case 'cyber':
-        if (s.cyber && Object.values(s.cyber.levels).every((v) => v >= 2)) verdict = 'kept';
+        if (s.cyber && Object.values(s.cyber.levels).every((v) => v >= 2)) verdict = 'kept'; // one national level since 19.1
         break;
       case 'cleanAudit': {
         const f = s.oversight?.findings.at(-1);

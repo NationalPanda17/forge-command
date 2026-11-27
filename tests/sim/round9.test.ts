@@ -102,7 +102,8 @@ describe('cyber', () => {
     s.cyber.railDays = 10;
     expect(railFactor(s)).toBe(0.5);
     expect(legCapFactor(s, 'corranWorks', 'depotCentral', 'rail')).toBeLessThanOrEqual(0.5);
-    s = apply(s, { type: 'cyberDrills' });
+    // 19.1: drills are part of the recovery plan.
+    s = apply(s, { type: 'cyberBackups' });
     expect(railFactor(s)).toBe(0.8);
   });
 

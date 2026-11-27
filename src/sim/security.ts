@@ -1,5 +1,7 @@
 // Industrial espionage: the rival's intelligence service targets your plants. Vetting raises security; low morale
 // lowers it. Incidents are sabotage, stolen designs or leaks, unless your people catch the ring first.
+import { HF, moodShift, securityPenalty } from './homefront';
+import { townIndex, townOf } from './towns';
 import { clamp, pick, rand, randInt } from './rng';
 import type { FeedItem, SimState } from './types';
 import { SITES, SITE_BY_ID } from './world';
@@ -19,7 +21,8 @@ export function security(s: SimState, id: string): number {
   const site = s.sites[id];
   const vet = (site.clearance ?? 0) / MAX_CLEARANCE;
   const morale = (site.morale ?? 65) / 100;
-  return clamp(0.15 + 0.6 * vet + 0.25 * (morale - 0.4), 0, 0.95);
+  // A discontented town (19.1) is where spies find recruits; a calm one is a little safer.
+  return clamp(0.15 + 0.6 * vet + 0.25 * (morale - 0.4) - securityPenalty(s, id), 0, 0.95);
 }
 
 /** How active the rival's intelligence service is: it grows with every weapon the rival is working on. */
@@ -36,14 +39,15 @@ export function securityMonth(s: SimState, feed: Feed): void {
     const kind = pick(s, ['sabotage', 'sabotage', 'theft', 'leak'] as const);
     const site = s.sites[id];
     // Good security catches a ring before it does harm.
-    if (rand(s) < 0.15 + 0.25 * (site.clearance ?? 0)) {
+    // Your intelligence service also hunts spies at home (19.1).
+    if (rand(s) < 0.15 + 0.25 * (site.clearance ?? 0) + HF.security.catchPerAgency * (s.intel?.agency ?? 0)) {
       s.strategy.decisions.push({
         id: s.nextId++,
         kind: 'spyRing',
         title: `Spy ring uncovered at ${name}`,
         body: `Security officers at ${name} have caught a small ring working for ${RIVAL_NAME} before it could act. What now?`,
         options: [
-          { id: 'expose', label: 'Expose it publicly', detail: 'The Committee is impressed; the rival is embarrassed.' },
+          { id: 'expose', label: 'Expose it publicly', detail: 'The Committee is impressed; the rival is embarrassed. Arrests among neighbours sour the town.' },
           { id: 'turn', label: 'Turn them into double agents', detail: 'Feed them false papers: the rival’s next weapon is delayed, and you have longer to prepare.' },
           { id: 'quiet', label: 'Dismiss them quietly', detail: 'No fuss, and no gain.' },
         ],
@@ -79,7 +83,8 @@ export function resolveSecurity(s: SimState, d: { kind: string; site?: string },
   if (opt === 'expose') {
     s.confidence = clamp(s.confidence + 3);
     s.strategy.factions.hawks = clamp(s.strategy.factions.hawks + 2);
-    feed(s, 'good', 'The spy ring is exposed in the press. The Committee is pleased.');
+    if (d.site) moodShift(s, townIndex(townOf(d.site)), -HF.security.exposeMood);
+    feed(s, 'good', 'The spy ring is exposed in the press. The Committee is pleased; the town is shaken by the arrests.');
   } else if (opt === 'turn') {
     // Double agents: false papers delay the rival's next weapon, so there is longer to prepare.
     const k = s.rival?.known.find((x) => x.fielded > s.day);

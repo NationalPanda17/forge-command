@@ -1,0 +1,37 @@
+{
+  "$comment": "Release 19.1 'The home front' (docs/homefront.md). Discontent joins the workforce and security pillars. Values are starting points tuned with the 40-seed harness.",
+  "discontent": { "wStrength": 0.5, "wMood": 0.5, "baseline": 0.425 },
+  "workforce": {
+    "kMoodToUnion": 0.04,
+    "hireZero": 15,
+    "hireFull": 45,
+    "hireMin": 0.4,
+    "settleMood": 2,
+    "refuseMood": 3,
+    "strikeMood": 3,
+    "fundCost": 10,
+    "fundUnion": 5,
+    "mothballUnion": 10
+  },
+  "security": {
+    "kSecD": 0.3,
+    "kInsider": 1.0,
+    "catchPerAgency": 0.05,
+    "vetUnion": 2,
+    "vetUnionFromLevel": 2,
+    "exposeMood": 4,
+    "cyberCost": { "base": 60, "perLevel": 45 },
+    "planCost": 30,
+    "planUpkeep": 3
+  },
+  "oversight": {
+    "auditUnion": { "concerns": 3, "damning": 5 },
+    "prosecuteMood": 6
+  },
+  "autopilot": {
+    "fundBelow": { "balanced": 45, "peace": 50, "stockpile": 45, "thrift": 40 },
+    "agencyMinDevelopments": 2,
+    "agencyMoney": 1200,
+    "agencyMax": 1
+  }
+}

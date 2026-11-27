@@ -1,5 +1,27 @@
 # Changelog
 
+## 19.1.0: the home front
+
+Cyber, spies, unions, towns and the audit now work as one system. Every town has a level of **discontent**, made up of
+how strong its union is and how much its people resent you, and it reaches into everything.
+
+- **Unrest reaches your security.** Spies find recruits, and insiders open the door to ransomware, where the towns are
+  discontented. A calm town makes its plants a little safer.
+- **Towns and unions move together.**
+  - A resentful town hardens its union and sends fewer people to your lines.
+  - Settled claims and community funds calm a town. Refusals, strikes, mothballing and deep vetting stir it up.
+  - A damning audit angers the unions ("money for waste, none for us"). Prosecuting a fraudulent supplier frightens its
+    town.
+- **Fewer, more meaningful knobs.**
+  - One national cyber defence level covers plants, rail and suppliers.
+  - One recovery plan replaces backups and drills.
+  - The open day is gone; the community fund also cools a town's union now.
+  - Your intelligence service also catches spies at home.
+- **One card per town.** The Towns tab shows each town's discontent, work, mood and union together. The Intel tab has
+  a single Home security section.
+- **The chief of staff plays it too.** It funds restless towns sooner, keeps the cyber level and recovery plan, and
+  grows a small intelligence service to hunt spies.
+
 ## 19.0.4: a smarter chief of staff
 
 - **The chief of staff plans the supply chain.** It watches the whole chain for the parts the country cannot make

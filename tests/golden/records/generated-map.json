@@ -248,7 +248,7 @@
    "month": 23,
    "day": 690,
    "treasury": 1155.83,
-   "confidence": 99,
+   "confidence": 99.01,
    "readiness": 0.88,
    "stock": 239321,
    "feed": 300,
@@ -267,5 +267,5 @@
    "over": false
   }
  ],
- "finalHash": "81f65dce8d9b9c562b6b6fb258c34624c699001121c5d884d244ccb3dfb6cb4b"
+ "finalHash": "9d15f0bb0f3abc017d4f2ae4dd187c606aabb66a4830ac6917a82c23607a3e73"
 }

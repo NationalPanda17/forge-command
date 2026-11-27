@@ -5,6 +5,7 @@ import { clamp, rand, randInt } from './rng';
 import { leaderDrift, leaderHeat, leaderTalk } from './cast';
 import { MAX_SAFETY, safetyCost } from './people';
 import { townIndex, townOf } from './towns';
+import { HF, moodShift } from './homefront';
 import type { Chain, FeedItem, SimState } from './types';
 import { CITIES, SITES, SITE_BY_ID } from './world';
 
@@ -39,7 +40,9 @@ export function unionsMonth(s: SimState): void {
     const u = s.unions.towns[i];
     const here = plants(s).filter((d) => townIndex(townOf(d.id)) === i);
     const morale = here.reduce((a, d) => a + s.sites[d.id].morale, 0) / Math.max(1, here.length);
-    u.strength = clamp(u.strength + (55 - morale) * 0.06 + Math.max(0, s.priceIndex - u.wage) * 6 - 0.6 + leaderDrift(s, i), 5, 95);
+    // A resentful town (19.1) hardens its union; a warm one softens it.
+    const mood = s.communities?.mood[i] ?? 55;
+    u.strength = clamp(u.strength + (55 - morale) * 0.06 + Math.max(0, s.priceIndex - u.wage) * 6 - 0.6 + leaderDrift(s, i) + HF.workforce.kMoodToUnion * (55 - mood), 5, 95);
   }
 }
 
@@ -133,6 +136,7 @@ export function resolveClaim(s: SimState, d: { site?: string; value?: number; da
     u.strength = clamp(u.strength - cool, 5, 95);
     for (const p of townPlants(s, town)) s.sites[p.id].morale = clamp(s.sites[p.id].morale + morale);
     s.strategy.factions.regions = clamp(s.strategy.factions.regions + 2);
+    moodShift(s, town, HF.workforce.settleMood);
     feed(s, 'good', text, chain.site);
   };
   const claim = d.data?.claim ?? 'pay';
@@ -161,6 +165,7 @@ export function resolveClaim(s: SimState, d: { site?: string; value?: number; da
   } else {
     u.strength = clamp(u.strength + 5, 5, 95);
     site.morale = clamp(site.morale - 8);
+    moodShift(s, town, -HF.workforce.refuseMood);
     feed(s, 'warn', `You refuse the claim at ${SITE_BY_ID[chain.site].name}. Industrial action is coming.`, chain.site);
   }
 }
@@ -184,6 +189,7 @@ export function industrialAction(s: SimState, chain: Chain, feed: Feed): void {
   site.disruptionFactor = Math.min(site.disruptionFactor, 0.3);
   s.strategy.factions.regions = clamp(s.strategy.factions.regions - 3);
   s.month.strikes = (s.month.strikes ?? 0) + 1;
+  moodShift(s, town, -HF.workforce.strikeMood);
   feed(s, 'bad', `Strike at ${name}: production down to 30% for about ${Math.round(days / 7)} weeks.`, chain.site, true);
   // Sympathy strikes at the other plants in town.
   for (const p of townPlants(s, town)) {
