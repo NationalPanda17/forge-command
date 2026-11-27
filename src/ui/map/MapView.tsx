@@ -1652,7 +1652,7 @@ export function MapLayerToggles({ layers, onChange, className = '' }: { layers: 
     <div className={`flex min-w-0 max-w-full items-center gap-x-3 gap-y-1 overflow-x-auto md:flex-wrap md:overflow-visible ${className}`} role="group" aria-label="Map layers">
       {groups.map(([name, keys]) => (
         <div key={name} className="flex shrink-0 items-center gap-1.5">
-          <span className="label hidden md:inline">{name}</span>
+          <span className="label hidden min-[1280px]:inline">{name}</span>
           <div className="seg" role="group" aria-label={`${name} layers`}>
             {keys.map((k) => {
               const [, label, c] = LAYER_LABEL.find(([id]) => id === k)!;

@@ -23,6 +23,12 @@
 
   On autopilot, careers now reach a third term about 6 times in 10, up from almost never, and most single-term
   scenarios score higher.
+## 19.1.1: the map fits smaller windows
+
+- **The game now fits windows down to 1100 pixels wide,** down from 1280. On a narrower window the map still fills the
+  screen, with nothing cut off at the edge.
+- **Room for the map on narrower screens:** below 1200 pixels the season readout steps out of the top bar (the
+  weather layer and the alerts still show it), and below 1280 the map's layer bar drops its two headings.
 
 ## 19.1.0: the home front
 
