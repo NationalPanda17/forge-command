@@ -6,6 +6,7 @@ import { monthOfYear, seasonOf } from '../sim/living';
 import { Hearing } from './Hearing';
 import { Handover, HotseatChip } from './Hotseat';
 import StoryPanel, { Briefing } from './StoryPanel';
+import { CountryBrief, wantsBrief } from './CountryBrief';
 import { SettingsDialog, type SettingsTab } from './Options';
 import HomePanel, { snapshot } from './HomePanel';
 import InboxPanel from './InboxPanel';
@@ -86,6 +87,8 @@ function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> 
     if (def.owner !== 'state' && !site.qualified && site.processes.length) badge = '?';
     const unserv = Object.values(site.unserviceable).reduce((a, q) => a + (q ?? 0), 0);
     if (unserv >= 1) badge = '!';
+    // The map's chokepoint (19.0b): the only plant that makes a part every arsenal needs.
+    if (!badge && s.features?.chokepoint?.site === site.id) badge = 'CP';
     if (def.kind === 'plot') {
       // Open plots show only while you are planning; a founded plant shows as what it now is.
       if (!isFounded(s, site.id)) {
@@ -147,8 +150,10 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     const t = window.setTimeout(() => setActNote(null), actNote.tone === 'bad' ? 3200 : 2400);
     return () => window.clearTimeout(t);
   }, [actNote]);
+  // A generated country opens with its brief (19.0b), read before the clock first runs.
+  const [briefOpen, setBriefOpen] = useState(() => wantsBrief(state));
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
-  const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
+  const held = briefOpen || !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
   // Any change of speed by the player, or a step, ends the reason the clock last stopped.
   // The speed when the last control was pressed, so a press can tell pause from resume from a speed change.
   const speedRef = useRef(speed);
@@ -885,6 +890,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </aside>
       {actNote && <ActNoteView note={actNote} />}
       <Briefing state={state} act={act} />
+      {briefOpen && <CountryBrief state={state} onClose={() => setBriefOpen(false)} />}
       <Handover state={state} act={act} />
       {!state.hotseat?.handover && !state.over && (state.story?.briefing === null || state.story?.briefing === undefined) && <Hearing state={state} act={act} />}
       {state.over && !reportClosed && (

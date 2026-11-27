@@ -390,6 +390,8 @@ export interface SimState {
   story: StoryState | null;
   /** The generated world's seed, or null for the classic Commonwealth of Aldmere. */
   world: number | null;
+  /** The generated world's features (19.0b), fixed when the game starts. Absent on the classic map and in older saves. */
+  features?: import('./features').MapFeatures | null;
   /** Workforce towns, in the same order as the city list. */
   towns: TownState[];
   /** Test programmes at the ranges: running first, then queued. */

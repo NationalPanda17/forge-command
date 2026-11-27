@@ -11,6 +11,7 @@ import { setNetwork } from './graph';
 import { newRival } from './rival';
 import { newStory } from './story';
 import { applyWorld } from './worldgen';
+import { featureShare, makeFeatures } from './features';
 import { newTowns } from './towns';
 import { newHotseat } from './hotseat';
 import { newDiplomacy } from './diplomacy';
@@ -268,6 +269,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     design: null,
     story: null,
     world,
+    ...(world !== null && world !== undefined ? { features: makeFeatures(world, scenario) } : {}),
     towns: [],
     tests: [],
     hotseat: hotseat ? newHotseat(hotseat) : null,
@@ -309,7 +311,7 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
       repairDays: 0,
       processes: def.processes.map((p) => ({
         recipe: p.recipe,
-        capacity: processCapacity(p),
+        capacity: processCapacity({ ...p, share: featureShare(state.features, def.id, p.recipe, p.share) }),
         maturity: 1,
         run: START_LINES.includes(RECIPES[p.recipe].output as LineId) || def.owner !== 'state' || !FINISHED.includes(RECIPES[p.recipe].output) ? 'normal' : 'idle',
         partial: 0,
@@ -360,12 +362,24 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     }
   }
 
+  // A generated map's features (19.0b): the chokepoint plant and the foreign makers you rely on start qualified.
+  const feat = state.features;
+  if (feat?.chokepoint) state.sites[feat.chokepoint.site].qualified = true;
+  if (feat?.foreign) for (const d of SITES) if (d.owner === 'foreign' && d.processes.some((p) => RECIPES[p.recipe].output === feat.foreign!.material)) state.sites[d.id].qualified = true;
+
   // Starting contracts: the arsenals' main suppliers, 85% of need, nine months.
   const arsenals = SITES.filter((x) => x.owner === 'state' && x.kind === 'arsenal');
   const needs: Record<string, number> = {};
   for (const a of arsenals) for (const [mat, rate] of Object.entries(inputRates(state, state.sites[a.id]))) needs[mat] = (needs[mat] ?? 0) + rate!;
   for (const [mat, need] of Object.entries(needs)) {
-    const src = SITES.find((x) => x.owner === 'private' && x.qualified && x.processes.some((p) => RECIPES[p.recipe].output === mat));
+    // On a feature map the contract goes to the qualified maker with the most capacity, foreign ones included for the
+    // material you rely on abroad; the classic map keeps its first private supplier.
+    const src = feat
+      ? SITES.filter((x) => (x.owner === 'private' || (x.owner === 'foreign' && feat.foreign?.material === mat)) && state.sites[x.id].qualified)
+          .map((x) => ({ x, cap: state.sites[x.id].processes.filter((p) => RECIPES[p.recipe].output === mat).reduce((a, p) => a + p.capacity, 0) }))
+          .filter((c) => c.cap > 0)
+          .sort((a, b) => b.cap - a.cap)[0]?.x
+      : SITES.find((x) => x.owner === 'private' && x.qualified && x.processes.some((p) => RECIPES[p.recipe].output === mat));
     if (!src) continue;
     state.contracts.push({ id: state.nextId++, site: src.id, material: mat as LineId, perDay: Math.round(need * 0.85 * 1000) / 1000, price: MATERIALS[mat as LineId].price * 0.88, endDay: 9 * DAYS_PER_MONTH });
   }

@@ -9,6 +9,7 @@ import { CustomEditor } from './CustomEditor';
 import { DEFAULT_CUSTOM, type CustomScenario } from '../sim/custom';
 import { PRESETS } from '../sim/automation';
 import { makeSpec } from '../sim/worldgen';
+import { featureLines, makeFeatures } from '../sim/features';
 import { deleteSlot, listSlots, loadSlot } from './saves';
 import { DisplayOptions } from './Options';
 import { setTipsEnabled, tipsEnabled } from './Tips';
@@ -222,6 +223,9 @@ function Title({ onStart, autoPause, setAutoPause }: { onStart: (s: SimState) =>
                   {world !== null ? (
                     <>
                       You will run the industry of the <span className="text-ops-text">{makeSpec(world).title}</span>: a coastline, mountains, cities, sites and names of its own, from seed {seed || '0'}.
+                      {scenario !== 'tutorial' && featureLines(makeFeatures(world, scenario)).length > 0 && (
+                        <span className="mt-1 block text-ops-amber">{featureLines(makeFeatures(world, scenario)).map((l) => l.short).join(' · ')}</span>
+                      )}
                     </>
                   ) : (
                     'The hand-made Commonwealth of Aldmere, the same every time.'

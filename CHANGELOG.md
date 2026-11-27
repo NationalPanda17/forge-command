@@ -1,5 +1,22 @@
 # Changelog
 
+## 19.0.1: Depth, part two, every country is different
+
+A generated country now has a character of its own: two or three features, drawn from its seed, that change how you
+run it.
+
+- **A chokepoint.** One plant makes all of a part every arsenal needs, such as rocket motors or magnets. The map marks
+  it **CP**, and sabotage there does double damage.
+- **Foreign reliance**, on most maps. Your own plants make only 40% of your radar seekers or rocket motors, and foreign
+  makers supply the rest. The Committee now also judges your supply independence.
+- **A long or a short coast.**
+  - On a long coast, more raids come in from the sea, and your sea lanes carry more.
+  - On a short coast, the threat shifts inland, and your sea lanes carry less.
+- **You see them before you start.** The new-game screen lists the country's features, and a country brief opens the
+  game.
+- **Unchanged:** the classic Commonwealth of Aldmere, the story and the tutorial. A saved game keeps the country it was
+  made with.
+
 ## 19.0.0: Depth, part one, the adaptive rival
 
 The Vardan Directorate now studies you. It no longer follows a fixed order: it develops the weapon your stockpile is
