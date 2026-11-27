@@ -1,5 +1,23 @@
 # Changelog
 
+## 18.2.0: port baseline, part three
+
+The last of the groundwork before the Unreal port: a faster simulation late in long games, a warning before saves
+fill the browser, and the rules for the game's world written down and tested. Nothing changes in play: the golden
+masters are exactly as they were.
+
+- **Long games stay fast.** Each day used to copy the whole history of the game. Now past months, the log, the
+  Courier and the term's moments are shared from one day to the next, and only the live state is copied. A day in year
+  6 now takes about 1.2 ms (was 2.2), and in year 15 about 0.6 ms (was 2.4). The cost no longer grows with the length
+  of the game.
+- **Supply is worked out once a day.** Contracts and depot draws are no longer recomputed for every comparison while
+  shipments are chosen.
+- **A warning before saves run out of room.** When this game's saves pass about three million characters of the
+  browser's storage, saving says so, and suggests deleting old saves or exporting them to files.
+- **The world-state contract** is written down (`docs/port/determinism.md`) and tested. A classic game and a
+  generated country played turn about each end exactly as they do alone. The Unreal version will make the world an
+  explicit object instead of shared tables.
+
 ## 18.1.0: port baseline, part two
 
 The game's tables and core tuning now live in data files instead of in the code. Nothing changes in play: the golden

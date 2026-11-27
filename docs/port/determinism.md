@@ -98,3 +98,26 @@ falls out of step from that day on. Where the TypeScript draws before checking a
 23. the end of the term
 
 Every system runs every day or month, in this order, even when it does nothing. Some draw random numbers even then.
+
+## The world-state contract (browser version)
+
+- **Shared tables.** A generated country changes the site, city, region and candidate-route tables, the kilometre
+  scale and the route graph in place (`worldgen.ts`, `world.ts`, `graph.ts`). These are module state, not part of
+  `SimState`.
+- **Entry points that step or change a game** (`advanceDays`, `apply`, `migrate`, `newSim`) first make that game's
+  world current (`applyWorld`), then rebuild its network (`setNetwork`).
+- **Functions that only read** (`validate`, the advisor, the selectors and the UI) use whichever world was made
+  current last. In the browser that is always the one game on screen.
+- **Proof.** `tests/sim/world-contract.test.ts` plays a classic and a generated game turn about, and each ends exactly
+  as it does alone. The golden masters, run in shuffled order, show the same.
+- **In Unreal,** make this explicit: a `WorldInstance` (sites, cities, regions, routes, scale, graph) built from the
+  seed and passed through the simulation, with no global tables. That is the cleaner design. The browser version keeps
+  the contract above, because rewriting every system to pass the world through would change nearly every file for no
+  gain in play.
+
+## Copying the state (18.2)
+
+`advanceDays` copies the live state but shares the entries of the four lists that only ever grow: the history, the
+log, the Courier and the term's moments. A filed entry is never changed in place: `compactHistory` replaces old months
+with rounded copies. The C++ simulation should do better still: change the state in place on the fixed tick, and take
+a snapshot only for saves and the UI.

@@ -362,17 +362,26 @@ function logistics(s: SimState): void {
   const reqs = all.sort((a, b) => Number(b.state) - Number(a.state));
   // Contracted supply is reserved for your sites first.
   const reserved: Record<string, number> = {};
-  for (const c of s.contracts) if (c.endDay > s.day) reserved[`${c.site}|${c.material}`] = c.perDay * 3;
+  // Live contracts, and each regional depot's draw, worked out once for the day rather than in every comparison (18.2).
+  const contracted = new Set<string>();
+  for (const c of s.contracts)
+    if (c.endDay > s.day) {
+      reserved[`${c.site}|${c.material}`] = c.perDay * 3;
+      contracted.add(`${c.site}|${c.material}`);
+    }
+  const draws = new Map<string, number>();
+  const drawOf = (region: RegionId, m: LineId) => {
+    const k = `${region}|${m}`;
+    let v = draws.get(k);
+    if (v === undefined) draws.set(k, (v = regionDailyDraw(s, region, m)));
+    return v;
+  };
   for (const req of reqs) {
     let left = req.qty;
     const cands = sources(s, req)
-      .map((id) => ({ id, path: pathBetween(id, req.to) }))
+      .map((id) => ({ id, path: pathBetween(id, req.to), k: contracted.has(`${id}|${req.material}`) ? 0 : 1 }))
       .filter((c) => c.path)
-      .sort((a, b) => {
-        const ka = s.contracts.some((k) => k.site === a.id && k.material === req.material && k.endDay > s.day) ? 0 : 1;
-        const kb = s.contracts.some((k) => k.site === b.id && k.material === req.material && k.endDay > s.day) ? 0 : 1;
-        return ka - kb || a.path!.days - b.path!.days;
-      });
+      .sort((a, b) => a.k - b.k || a.path!.days - b.path!.days);
     for (const c of cands) {
       if (left <= 1e-6) break;
       const src = s.sites[c.id];
@@ -381,7 +390,7 @@ function logistics(s: SimState): void {
       if (SITE_BY_ID[c.id].kind === 'depot' && c.id !== 'depotCentral') {
         // Regional depots keep half their target for their own bases.
         const region = SITE_BY_ID[c.id].region as RegionId;
-        avail -= regionDailyDraw(s, region, req.material as LineId) * s.policy.depotDays[region] * 0.5;
+        avail -= drawOf(region, req.material as LineId) * s.policy.depotDays[region] * 0.5;
       }
       if (avail <= 1e-6) continue;
       left -= dispatch(s, c.id, req.to, req.material, Math.min(left, avail));
@@ -753,18 +762,20 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
  * month count.
  */
 export function compactHistory(h: MonthReport[]): void {
+  // Past months are shared between successive states (see advanceDays), so they are replaced, never changed in place.
   const round = (v: unknown): unknown => {
     if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      const o = v as Record<string, unknown>;
-      for (const k of Object.keys(o)) o[k] = round(o[k]);
-    }
+    if (v && typeof v === 'object' && !Array.isArray(v)) return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, round(x)]));
     return v;
   };
-  const old = h[h.length - 25];
-  if (old) round(old);
-  const ancient = h[h.length - 121];
-  if (ancient) delete ancient.plantOutput;
+  const i = h.length - 25;
+  if (h[i]) h[i] = round(h[i]) as MonthReport;
+  const j = h.length - 121;
+  if (h[j]?.plantOutput) {
+    const { plantOutput: _drop, ...rest } = h[j];
+    void _drop;
+    h[j] = rest as MonthReport;
+  }
 }
 
 function stepDay(s: SimState): void {
@@ -810,7 +821,15 @@ export const onHold = (s: SimState) => !!s.hearing || !!s.hotseat?.handover || (
 export function advanceDays(prev: SimState, n = 1, opts?: { stopOnHold?: boolean }): SimState {
   if (prev.over || (opts?.stopOnHold && onHold(prev))) return prev;
   applyWorld(prev.world ?? null);
-  const s = structuredClone(prev);
+  // The history, the log, the Courier and the term's moments only ever grow, and a filed entry is never changed (it is
+  // replaced when compacted), so the new state shares their entries and copies only the list. Everything else is
+  // copied whole. This was most of the cost of a day in a long game (18.2).
+  const { history, feed: log, news, moments, ...live } = prev;
+  const s = structuredClone(live) as SimState;
+  s.history = history.slice();
+  s.feed = log.slice();
+  s.news = news.slice();
+  if (moments) s.moments = moments.slice();
   s.alert = null;
   s.alerts = [];
   setNetwork(s.network.built, s.network.upgrades);

@@ -17,7 +17,7 @@ import { safeAdvice } from '../sim/advisor';
 import { engineerNeed } from '../sim/engineers';
 import { apply, validate, type SimAction } from '../sim/actions';
 import { SiteCard, chainOf, quickActions } from './mapInfo';
-import { downloadSave, saveSlot } from './saves';
+import { downloadSave, saveSlot, storageWarning } from './saves';
 import { isFounded } from '../sim/industry';
 import { Explain } from '../ui/Explain';
 import { countryTitle, tr } from '../sim/worldgen';
@@ -623,7 +623,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               onSubmit={(e) => {
                 e.preventDefault();
                 const why = saveSlot(saving, state);
-                setSaveNote(why ?? `Saved as “${saving.trim()}”.`);
+                setSaveNote(why ?? [`Saved as “${saving.trim()}”.`, storageWarning()].filter(Boolean).join(' '));
                 if (!why) setSaving(null);
               }}
             >
