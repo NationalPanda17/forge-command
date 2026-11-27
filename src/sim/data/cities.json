@@ -1,0 +1,93 @@
+[
+ {
+  "name": "Corran",
+  "x": 438,
+  "y": 268,
+  "pop": 1240,
+  "capital": true
+ },
+ {
+  "name": "Meric",
+  "x": 378,
+  "y": 62,
+  "pop": 610
+ },
+ {
+  "name": "Halvard",
+  "x": 172,
+  "y": 270,
+  "pop": 540
+ },
+ {
+  "name": "Ashford",
+  "x": 592,
+  "y": 342,
+  "pop": 310
+ },
+ {
+  "name": "Northgate",
+  "x": 505,
+  "y": 128,
+  "pop": 220
+ },
+ {
+  "name": "Marchford",
+  "x": 785,
+  "y": 245,
+  "pop": 280
+ },
+ {
+  "name": "Lowmouth",
+  "x": 340,
+  "y": 605,
+  "pop": 260
+ },
+ {
+  "name": "Brennock",
+  "x": 545,
+  "y": 190,
+  "pop": 140
+ },
+ {
+  "name": "Varn",
+  "x": 418,
+  "y": 372,
+  "pop": 95
+ },
+ {
+  "name": "Redmarl",
+  "x": 300,
+  "y": 488,
+  "pop": 120
+ },
+ {
+  "name": "Tarnby",
+  "x": 688,
+  "y": 428,
+  "pop": 70
+ },
+ {
+  "name": "Skerry Town",
+  "x": 100,
+  "y": 628,
+  "pop": 30
+ },
+ {
+  "name": "Velmgate",
+  "x": 800,
+  "y": 395,
+  "pop": 60
+ },
+ {
+  "name": "Saltash",
+  "x": 270,
+  "y": 180,
+  "pop": 85
+ },
+ {
+  "name": "Corvid",
+  "x": 752,
+  "y": 318,
+  "pop": 45
+ }
+]

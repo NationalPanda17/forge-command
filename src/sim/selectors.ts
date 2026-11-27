@@ -1,4 +1,5 @@
 // Derived values over the simulation state.
+import CORE from './tuning/core.json';
 import { BASE_LINES, CHEAP, LAND_DRAW, LAND_LINES, PREMIUM, THREATS, THREAT_IDS } from './fight';
 import type { Lot, ProcessState, SimState, SiteState } from './types';
 import { hasResearch, recipeInputs, recipeScrap } from './strategy';
@@ -88,12 +89,12 @@ export function nationalStock(s: SimState, line: LineId): number {
   return n;
 }
 
-export const RESERVE_DAYS = 365;
+export const RESERVE_DAYS = CORE.reserve.days;
 /** The stockpile law raises the target to fifteen months. */
-export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * ((s.policies ?? []).includes('stockpileLaw') ? 450 : RESERVE_DAYS);
+export const reserveTarget = (s: SimState, line: LineId) => nationalDailyDraw(s, line) * ((s.policies ?? []).includes('stockpileLaw') ? CORE.reserve.stockpileLawDays : RESERVE_DAYS);
 
 /** New lines are judged only after a year in production. */
-export const inGrace = (s: SimState, l: LineId) => s.lines[l].since !== undefined && s.day - s.lines[l].since! < 360;
+export const inGrace = (s: SimState, l: LineId) => s.lines[l].since !== undefined && s.day - s.lines[l].since! < CORE.reserve.graceDays;
 
 export function readiness(s: SimState): number {
   const lines = FINISHED.filter((l) => unlocked(s, l as LineId) && !inGrace(s, l as LineId) && nationalDailyDraw(s, l as LineId) > 0) as LineId[];

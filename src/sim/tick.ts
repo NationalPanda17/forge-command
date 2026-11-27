@@ -1,4 +1,5 @@
 // One simulated day. advanceDays never mutates its input.
+import CORE from './tuning/core.json';
 import { BASE_LINES, CHEAP, CRISES, LAND_DRAW, LAND_LINES, PREMIUM, THREATS, THREAT_IDS } from './fight';
 import { pathBetween } from './graph';
 import { clamp, pick, rand, randInt, randRange } from './rng';
@@ -53,20 +54,17 @@ import type { FeedItem, Lot, MonthReport, SimState, SiteState, ThreatId } from '
 import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type MaterialId, type RegionId } from './world';
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
-const WAGE_PER_DAY = 0.0095 / 30;
-const SPOT_PREMIUM = 1.3;
-const STATE_BUFFER_DAYS = 12;
-const PRIVATE_BUFFER_DAYS = 8;
+// Tuning lives in src/sim/tuning/core.json (18.1).
+const WAGE_PER_DAY = CORE.economy.wagePerMonth / 30;
+const SPOT_PREMIUM = CORE.economy.spotPremium;
+const STATE_BUFFER_DAYS = CORE.economy.stateBufferDays;
+const PRIVATE_BUFFER_DAYS = CORE.economy.privateBufferDays;
 /** Producers stop when this many days of output sit unsold. */
-const MAX_OUTPUT_DAYS = 20;
+const MAX_OUTPUT_DAYS = CORE.economy.maxOutputDays;
 const DEMIL_SITE = 'karrowDemil';
-const DEMIL_TPD = 40;
+const DEMIL_TPD = CORE.economy.demilTonnesPerDay;
 /** How hard the world pushes back, by difficulty. */
-export const DIFF = {
-  easy: { events: 0.5, crisis: 0.7, ramp: 1.5 },
-  normal: { events: 1, crisis: 1, ramp: 1 },
-  hard: { events: 1.6, crisis: 1.35, ramp: 0.7 },
-} as const;
+export const DIFF: Record<'easy' | 'normal' | 'hard', { events: number; crisis: number; ramp: number }> = CORE.difficulty.world;
 /** Minimum ready rounds a base keeps of each type it can fire. */
 /** How often things go wrong: difficulty times the sandbox setting. */
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
@@ -101,7 +99,7 @@ function withdrawPermit(s: SimState, p: Permit): number {
   return proj ? proj.cost * 0.8 : 0;
 }
 
-export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = { pac3: 8, sm6: 4, tamir: 20, irist: 6, stinger: 8, apkws: 30, coyote: 6, gmlrs: 30, shell155: 2000, javelin: 12 };
+export const MIN_BASE_ROUNDS: Partial<Record<LineId, number>> = CORE.baseMinimumRounds;
 
 export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert = false): void {
   const item: FeedItem = alert ? { day: s.day, tone, text, site, alert: true } : { day: s.day, tone, text, site };

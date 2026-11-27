@@ -1,0 +1,543 @@
+{
+ "mineIron": {
+  "id": "mineIron",
+  "name": "Iron mining",
+  "output": "ironOre",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "mineCoal": {
+  "id": "mineCoal",
+  "name": "Coal mining",
+  "output": "coal",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "mineBauxite": {
+  "id": "mineBauxite",
+  "name": "Bauxite mining",
+  "output": "bauxite",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "mineZinc": {
+  "id": "mineZinc",
+  "name": "Zinc mining",
+  "output": "zincOre",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "mineCopper": {
+  "id": "mineCopper",
+  "name": "Copper mining",
+  "output": "copperOre",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "mineRE": {
+  "id": "mineRE",
+  "name": "Rare-earth mining",
+  "output": "rareEarthOre",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "quarry": {
+  "id": "quarry",
+  "name": "Quartz quarrying",
+  "output": "silica",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "brineWell": {
+  "id": "brineWell",
+  "name": "Brine pumping",
+  "output": "brine",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "gasWell": {
+  "id": "gasWell",
+  "name": "Gas production",
+  "output": "natGas",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "pulping": {
+  "id": "pulping",
+  "name": "Pulping",
+  "output": "cellulose",
+  "yieldQty": 1,
+  "inputs": {},
+  "scrap": 0
+ },
+ "steelMaking": {
+  "id": "steelMaking",
+  "name": "Steelmaking",
+  "output": "steel",
+  "yieldQty": 1,
+  "inputs": {
+   "ironOre": 1.6,
+   "coal": 0.8
+  },
+  "scrap": 0.02
+ },
+ "aluminaSmelting": {
+  "id": "aluminaSmelting",
+  "name": "Alumina refining and smelting",
+  "output": "aluminium",
+  "yieldQty": 1,
+  "inputs": {
+   "bauxite": 4.5
+  },
+  "scrap": 0.01,
+  "extra": {
+   "gallium": 0.08
+  }
+ },
+ "zincSmelting": {
+  "id": "zincSmelting",
+  "name": "Zinc smelting (germanium recovery)",
+  "output": "germanium",
+  "yieldQty": 1,
+  "inputs": {
+   "zincOre": 20
+  },
+  "scrap": 0.02
+ },
+ "copperRefining": {
+  "id": "copperRefining",
+  "name": "Copper concentration and refining",
+  "output": "copper",
+  "yieldQty": 1,
+  "inputs": {
+   "copperOre": 100
+  },
+  "scrap": 0.01
+ },
+ "reSeparation": {
+  "id": "reSeparation",
+  "name": "Rare-earth separation",
+  "output": "reOxide",
+  "yieldQty": 1,
+  "inputs": {
+   "rareEarthOre": 20
+  },
+  "scrap": 0.02
+ },
+ "siliconRefining": {
+  "id": "siliconRefining",
+  "name": "Polysilicon refining",
+  "output": "polysilicon",
+  "yieldQty": 1,
+  "inputs": {
+   "silica": 0.012
+  },
+  "scrap": 0.03
+ },
+ "ammoniaSynth": {
+  "id": "ammoniaSynth",
+  "name": "Ammonia synthesis",
+  "output": "ammonia",
+  "yieldQty": 1,
+  "inputs": {
+   "natGas": 0.7
+  },
+  "scrap": 0.005
+ },
+ "nitricAcid": {
+  "id": "nitricAcid",
+  "name": "Nitric acid",
+  "output": "nitricAcid",
+  "yieldQty": 1,
+  "inputs": {
+   "ammonia": 0.29
+  },
+  "scrap": 0.01
+ },
+ "apElectrolysis": {
+  "id": "apElectrolysis",
+  "name": "Perchlorate electrolysis",
+  "output": "perchlorate",
+  "yieldQty": 1,
+  "inputs": {
+   "brine": 3,
+   "ammonia": 0.15
+  },
+  "scrap": 0.02
+ },
+ "htpbSynth": {
+  "id": "htpbSynth",
+  "name": "Binder polymerization",
+  "output": "htpb",
+  "yieldQty": 1,
+  "inputs": {
+   "natGas": 1.5
+  },
+  "scrap": 0.02
+ },
+ "nitration": {
+  "id": "nitration",
+  "name": "Cellulose nitration",
+  "output": "nitrocellulose",
+  "yieldQty": 1,
+  "inputs": {
+   "cellulose": 0.7,
+   "nitricAcid": 1.2
+  },
+  "scrap": 0.02
+ },
+ "heSynth": {
+  "id": "heSynth",
+  "name": "Explosive synthesis",
+  "output": "highExplosive",
+  "yieldQty": 1,
+  "inputs": {
+   "nitricAcid": 2.2,
+   "ammonia": 0.3
+  },
+  "scrap": 0.02
+ },
+ "propellantMix": {
+  "id": "propellantMix",
+  "name": "Propellant mixing",
+  "output": "propellant",
+  "yieldQty": 1,
+  "inputs": {
+   "perchlorate": 0.68,
+   "aluminium": 0.18,
+   "htpb": 0.14
+  },
+  "scrap": 0.02
+ },
+ "waferFab": {
+  "id": "waferFab",
+  "name": "Wafer slicing and polishing",
+  "output": "wafers",
+  "yieldQty": 1,
+  "inputs": {
+   "polysilicon": 0.4
+  },
+  "scrap": 0.05
+ },
+ "siChipFab": {
+  "id": "siChipFab",
+  "name": "Silicon chip fabrication",
+  "output": "siChips",
+  "yieldQty": 1,
+  "inputs": {
+   "wafers": 0.05,
+   "copper": 0.0002
+  },
+  "scrap": 0.08
+ },
+ "ganChipFab": {
+  "id": "ganChipFab",
+  "name": "GaN chip fabrication",
+  "output": "ganChips",
+  "yieldQty": 1,
+  "inputs": {
+   "wafers": 0.05,
+   "gallium": 0.004
+  },
+  "scrap": 0.15
+ },
+ "magnetMaking": {
+  "id": "magnetMaking",
+  "name": "Magnet sintering",
+  "output": "magnets",
+  "yieldQty": 1,
+  "inputs": {
+   "reOxide": 0.0003,
+   "steel": 0.0007
+  },
+  "scrap": 0.03
+ },
+ "opticsGrinding": {
+  "id": "opticsGrinding",
+  "name": "Optics grinding and coating",
+  "output": "geOptics",
+  "yieldQty": 1,
+  "inputs": {
+   "germanium": 0.4
+  },
+  "scrap": 0.1
+ },
+ "motorCasting": {
+  "id": "motorCasting",
+  "name": "Motor casting",
+  "output": "rocketMotor",
+  "yieldQty": 1,
+  "inputs": {
+   "propellant": 0.75,
+   "steel": 0.25
+  },
+  "scrap": 0.03
+ },
+ "warheadLoading": {
+  "id": "warheadLoading",
+  "name": "Warhead loading",
+  "output": "warhead",
+  "yieldQty": 1,
+  "inputs": {
+   "steel": 0.6,
+   "highExplosive": 0.4
+  },
+  "scrap": 0.02
+ },
+ "seekerRFAssembly": {
+  "id": "seekerRFAssembly",
+  "name": "Radar seeker assembly",
+  "output": "seekerRF",
+  "yieldQty": 1,
+  "inputs": {
+   "ganChips": 6,
+   "siChips": 4,
+   "aluminium": 0.003,
+   "copper": 0.002
+  },
+  "scrap": 0.05
+ },
+ "seekerIRAssembly": {
+  "id": "seekerIRAssembly",
+  "name": "IR seeker assembly",
+  "output": "seekerIR",
+  "yieldQty": 1,
+  "inputs": {
+   "geOptics": 1,
+   "siChips": 4,
+   "aluminium": 0.002
+  },
+  "scrap": 0.05
+ },
+ "guidanceAssembly": {
+  "id": "guidanceAssembly",
+  "name": "Guidance assembly",
+  "output": "guidance",
+  "yieldQty": 1,
+  "inputs": {
+   "siChips": 8,
+   "copper": 0.001,
+   "magnets": 0.2
+  },
+  "scrap": 0.03
+ },
+ "actuatorAssembly": {
+  "id": "actuatorAssembly",
+  "name": "Actuator assembly",
+  "output": "actuators",
+  "yieldQty": 1,
+  "inputs": {
+   "magnets": 0.5,
+   "copper": 0.001,
+   "aluminium": 0.002
+  },
+  "scrap": 0.02
+ },
+ "airframeFab": {
+  "id": "airframeFab",
+  "name": "Airframe fabrication",
+  "output": "airframe",
+  "yieldQty": 1,
+  "inputs": {
+   "aluminium": 1.1
+  },
+  "scrap": 0.02
+ },
+ "fuzeAssembly": {
+  "id": "fuzeAssembly",
+  "name": "Fuze assembly",
+  "output": "fuze",
+  "yieldQty": 1,
+  "inputs": {
+   "siChips": 1,
+   "highExplosive": 0.00005,
+   "steel": 0.0002
+  },
+  "scrap": 0.02
+ },
+ "shellForging": {
+  "id": "shellForging",
+  "name": "Shell forging and machining",
+  "output": "shellBody",
+  "yieldQty": 1,
+  "inputs": {
+   "steel": 0.05
+  },
+  "scrap": 0.02
+ },
+ "chargeMaking": {
+  "id": "chargeMaking",
+  "name": "Charge manufacture",
+  "output": "propCharge",
+  "yieldQty": 1,
+  "inputs": {
+   "nitrocellulose": 0.0025
+  },
+  "scrap": 0.01
+ },
+ "pac3": {
+  "id": "pac3",
+  "name": "PAC-3 MSE integration",
+  "output": "pac3",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.18,
+   "warhead": 0.011,
+   "seekerRF": 1,
+   "guidance": 1,
+   "actuators": 1,
+   "airframe": 0.06,
+   "fuze": 1
+  },
+  "scrap": 0.025
+ },
+ "sm6": {
+  "id": "sm6",
+  "name": "SM-6 integration",
+  "output": "sm6",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.9,
+   "warhead": 0.064,
+   "seekerRF": 1.2,
+   "guidance": 1.2,
+   "actuators": 1,
+   "airframe": 0.25,
+   "fuze": 1
+  },
+  "scrap": 0.025
+ },
+ "tamir": {
+  "id": "tamir",
+  "name": "Tamir integration",
+  "output": "tamir",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.05,
+   "warhead": 0.011,
+   "seekerRF": 0.05,
+   "guidance": 0.05,
+   "actuators": 0.1,
+   "airframe": 0.02,
+   "fuze": 0.3
+  },
+  "scrap": 0.02
+ },
+ "irist": {
+  "id": "irist",
+  "name": "IRIS-T integration",
+  "output": "irist",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.045,
+   "warhead": 0.0114,
+   "seekerIR": 0.5,
+   "guidance": 0.3,
+   "actuators": 0.3,
+   "airframe": 0.02,
+   "fuze": 0.5
+  },
+  "scrap": 0.02
+ },
+ "stinger": {
+  "id": "stinger",
+  "name": "Stinger integration",
+  "output": "stinger",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.006,
+   "warhead": 0.003,
+   "seekerIR": 0.3,
+   "guidance": 0.1,
+   "actuators": 0.1,
+   "airframe": 0.003,
+   "fuze": 0.3
+  },
+  "scrap": 0.02
+ },
+ "gmlrs": {
+  "id": "gmlrs",
+  "name": "GMLRS integration",
+  "output": "gmlrs",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.15,
+   "warhead": 0.09,
+   "guidance": 0.2,
+   "actuators": 0.2,
+   "airframe": 0.05,
+   "fuze": 0.5
+  },
+  "scrap": 0.015
+ },
+ "shell155": {
+  "id": "shell155",
+  "name": "155mm load, assemble and pack",
+  "output": "shell155",
+  "yieldQty": 1,
+  "inputs": {
+   "shellBody": 1,
+   "highExplosive": 0.011,
+   "fuze": 0.01,
+   "propCharge": 4
+  },
+  "scrap": 0.005
+ },
+ "apkws": {
+  "id": "apkws",
+  "name": "APKWS integration",
+  "output": "apkws",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.006,
+   "warhead": 0.0042,
+   "seekerIR": 0.03,
+   "guidance": 0.03,
+   "actuators": 0.05,
+   "airframe": 0.002,
+   "fuze": 0.1
+  },
+  "scrap": 0.02
+ },
+ "coyote": {
+  "id": "coyote",
+  "name": "Coyote integration",
+  "output": "coyote",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.008,
+   "warhead": 0.002,
+   "seekerRF": 0.1,
+   "guidance": 0.15,
+   "actuators": 0.2,
+   "airframe": 0.006,
+   "fuze": 0.2
+  },
+  "scrap": 0.02
+ },
+ "javelin": {
+  "id": "javelin",
+  "name": "Javelin integration",
+  "output": "javelin",
+  "yieldQty": 1,
+  "inputs": {
+   "rocketMotor": 0.004,
+   "warhead": 0.0084,
+   "seekerIR": 0.25,
+   "guidance": 0.2,
+   "actuators": 0.2,
+   "airframe": 0.005,
+   "fuze": 0.3
+  },
+  "scrap": 0.02
+ }
+}

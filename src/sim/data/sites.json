@@ -1,0 +1,1133 @@
+[
+ {
+  "qualified": true,
+  "crew": 420,
+  "id": "brennockMine",
+  "name": "Brennock Iron Pits",
+  "kind": "mine",
+  "x": 520,
+  "y": 175,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineIron",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Open-pit hematite on the Brennock hills."
+ },
+ {
+  "qualified": true,
+  "crew": 380,
+  "id": "hollinColliery",
+  "name": "Hollin Colliery",
+  "kind": "mine",
+  "x": 615,
+  "y": 235,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineCoal",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Deep coking-coal seams."
+ },
+ {
+  "qualified": true,
+  "crew": 210,
+  "id": "redmarlBauxite",
+  "name": "Redmarl Bauxite",
+  "kind": "mine",
+  "x": 285,
+  "y": 470,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineBauxite",
+    "share": 1.4
+   }
+  ],
+  "blurb": "Red laterite plateaus."
+ },
+ {
+  "qualified": true,
+  "crew": 260,
+  "id": "tarnFell",
+  "name": "Tarn Fell Zinc Mine",
+  "kind": "mine",
+  "x": 675,
+  "y": 410,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineZinc",
+    "share": 0.7
+   }
+  ],
+  "blurb": "Zinc-lead veins. The only domestic germanium comes from its residues."
+ },
+ {
+  "qualified": true,
+  "crew": 300,
+  "id": "corvidCopper",
+  "name": "Corvid Copper",
+  "kind": "mine",
+  "x": 760,
+  "y": 300,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineCopper",
+    "share": 1.4
+   }
+  ],
+  "blurb": "A vast low-grade open pit near the border."
+ },
+ {
+  "qualified": true,
+  "crew": 140,
+  "id": "skellSands",
+  "name": "Skell Mineral Sands",
+  "kind": "mine",
+  "x": 830,
+  "y": 530,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "mineRE",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Monazite sands. Small, but the country’s only rare earths."
+ },
+ {
+  "qualified": true,
+  "crew": 90,
+  "id": "whitesand",
+  "name": "Whitesand Quarry",
+  "kind": "quarry",
+  "x": 215,
+  "y": 560,
+  "region": "coast",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "quarry",
+    "share": 1.5
+   }
+  ],
+  "blurb": "High-purity quartz cliffs."
+ },
+ {
+  "qualified": true,
+  "crew": 70,
+  "id": "mericBrine",
+  "name": "Meric Saltworks",
+  "kind": "well",
+  "x": 440,
+  "y": 70,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "brineWell",
+    "share": 1.5
+   }
+  ],
+  "blurb": "Brine wells on the northern salt flats."
+ },
+ {
+  "qualified": true,
+  "crew": 160,
+  "id": "halvardGas",
+  "name": "Halvard Offshore Gas",
+  "kind": "well",
+  "x": 95,
+  "y": 300,
+  "region": "coast",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "gasWell",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Platforms in the strait, piped ashore at Halvard."
+ },
+ {
+  "qualified": true,
+  "crew": 240,
+  "id": "varnPulp",
+  "name": "Varn River Pulp",
+  "kind": "forestry",
+  "x": 405,
+  "y": 345,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "pulping",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Forests and a pulp mill on the Varn."
+ },
+ {
+  "qualified": true,
+  "crew": 900,
+  "id": "brennockSteel",
+  "name": "Brennock Steelworks",
+  "kind": "steelworks",
+  "x": 560,
+  "y": 200,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "steelMaking",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Two blast furnaces and a forge shop."
+ },
+ {
+  "qualified": true,
+  "crew": 520,
+  "id": "redmarlSmelter",
+  "name": "Redmarl Aluminium",
+  "kind": "smelter",
+  "x": 320,
+  "y": 500,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "aluminaSmelting",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Alumina refinery and potline. Its liquor yields gallium."
+ },
+ {
+  "qualified": true,
+  "crew": 300,
+  "id": "tarnSmelter",
+  "name": "Tarn Smelter",
+  "kind": "smelter",
+  "x": 700,
+  "y": 445,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "zincSmelting",
+    "share": 0.7
+   }
+  ],
+  "blurb": "Zinc smelter with a small germanium circuit."
+ },
+ {
+  "qualified": true,
+  "crew": 260,
+  "id": "corvidRefinery",
+  "name": "Corvid Refinery",
+  "kind": "refinery",
+  "x": 740,
+  "y": 330,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "copperRefining",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Concentrator and electrowinning tankhouse."
+ },
+ {
+  "qualified": true,
+  "crew": 120,
+  "id": "skellSeparation",
+  "name": "Skell Separation Plant",
+  "kind": "refinery",
+  "x": 805,
+  "y": 505,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "reSeparation",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Solvent-extraction rare-earth separation."
+ },
+ {
+  "qualified": true,
+  "crew": 220,
+  "id": "whitesandSilicon",
+  "name": "Whitesand Silicon",
+  "kind": "refinery",
+  "x": 245,
+  "y": 540,
+  "region": "coast",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "siliconRefining",
+    "share": 0.6
+   },
+   {
+    "recipe": "waferFab",
+    "share": 0.6
+   }
+  ],
+  "blurb": "Polysilicon reactors and a wafer line."
+ },
+ {
+  "qualified": true,
+  "crew": 340,
+  "id": "halvardChem",
+  "name": "Halvard Ammonia & Nitric",
+  "kind": "chemical",
+  "x": 165,
+  "y": 320,
+  "region": "coast",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "ammoniaSynth",
+    "share": 1.3
+   },
+   {
+    "recipe": "nitricAcid",
+    "share": 1.3
+   }
+  ],
+  "blurb": "Gas-fed ammonia and nitric acid trains."
+ },
+ {
+  "qualified": true,
+  "crew": 110,
+  "id": "halvardPolymers",
+  "name": "Halvard Polymers",
+  "kind": "chemical",
+  "x": 150,
+  "y": 345,
+  "region": "coast",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "htpbSynth",
+    "share": 1.4
+   }
+  ],
+  "blurb": "Specialty binders for propellant."
+ },
+ {
+  "qualified": true,
+  "crew": 180,
+  "id": "cinderFlats",
+  "name": "Cinder Flats Chemical",
+  "kind": "chemical",
+  "x": 470,
+  "y": 95,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "apElectrolysis",
+    "share": 1.25
+   }
+  ],
+  "blurb": "The only domestic perchlorate plant. One explosion away from a national crisis."
+ },
+ {
+  "qualified": true,
+  "crew": 260,
+  "id": "varnCellulose",
+  "name": "Varn River Cellulose",
+  "kind": "chemical",
+  "x": 435,
+  "y": 360,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "nitration",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Nitration lines for propellant-grade nitrocellulose."
+ },
+ {
+  "qualified": true,
+  "crew": 640,
+  "id": "ironmoor",
+  "name": "Ironmoor Energetics",
+  "kind": "explosives",
+  "x": 520,
+  "y": 385,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "heSynth",
+    "share": 1.2
+   },
+   {
+    "recipe": "propellantMix",
+    "share": 1.25
+   }
+  ],
+  "blurb": "A sprawling explosives and propellant complex in the moors."
+ },
+ {
+  "qualified": true,
+  "crew": 480,
+  "id": "trustedFoundry",
+  "name": "Aldmere Trusted Foundry",
+  "kind": "fab",
+  "x": 275,
+  "y": 415,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "siChipFab",
+    "share": 0.45
+   },
+   {
+    "recipe": "ganChipFab",
+    "share": 0.5
+   }
+  ],
+  "blurb": "Secure domestic fab. Expensive, but nobody can embargo it."
+ },
+ {
+  "qualified": true,
+  "crew": 90,
+  "id": "skellMagnetics",
+  "name": "Skell Magnetics",
+  "kind": "components",
+  "x": 785,
+  "y": 480,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "magnetMaking",
+    "share": 0.9
+   }
+  ],
+  "blurb": "Sintered NdFeB magnets."
+ },
+ {
+  "qualified": true,
+  "crew": 360,
+  "id": "haldenMicrowave",
+  "name": "Halden Microwave",
+  "kind": "components",
+  "x": 330,
+  "y": 295,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "seekerRFAssembly",
+    "share": 1.15
+   }
+  ],
+  "blurb": "Sole qualified maker of radar seekers."
+ },
+ {
+  "qualified": false,
+  "crew": 150,
+  "id": "pellucid",
+  "name": "Pellucid Imaging",
+  "kind": "components",
+  "x": 385,
+  "y": 410,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "opticsGrinding",
+    "share": 0.5
+   },
+   {
+    "recipe": "seekerIRAssembly",
+    "share": 0.4
+   }
+  ],
+  "blurb": "A domestic optics start-up hungry for a production order."
+ },
+ {
+  "qualified": true,
+  "crew": 300,
+  "id": "lindellFuze",
+  "name": "Lindell Fuze Works",
+  "kind": "components",
+  "x": 455,
+  "y": 300,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "fuzeAssembly",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Proximity and impact fuzes."
+ },
+ {
+  "qualified": true,
+  "crew": 420,
+  "id": "mercerControls",
+  "name": "Mercer Controls",
+  "kind": "components",
+  "x": 640,
+  "y": 480,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "actuatorAssembly",
+    "share": 1.2
+   },
+   {
+    "recipe": "guidanceAssembly",
+    "share": 1.15
+   }
+  ],
+  "blurb": "Guidance sections and fin actuators."
+ },
+ {
+  "qualified": true,
+  "crew": 380,
+  "id": "aldmereAero",
+  "name": "Aldmere Aerostructures",
+  "kind": "components",
+  "x": 350,
+  "y": 445,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "airframeFab",
+    "share": 1.3
+   },
+   {
+    "recipe": "magnetMaking",
+    "share": 0.3
+   }
+  ],
+  "blurb": "Airframes, wings and fins."
+ },
+ {
+  "qualified": true,
+  "crew": 520,
+  "id": "kestrel",
+  "name": "Kestrel Propulsion",
+  "kind": "motors",
+  "x": 600,
+  "y": 420,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "motorCasting",
+    "share": 1.1
+   }
+  ],
+  "blurb": "The motor house nearly every program depends on."
+ },
+ {
+  "qualified": false,
+  "crew": 260,
+  "id": "vantor",
+  "name": "Vantor Motor Works",
+  "kind": "motors",
+  "x": 360,
+  "y": 255,
+  "region": "central",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "motorCasting",
+    "share": 0.5
+   }
+  ],
+  "blurb": "A new motor caster with no flight history."
+ },
+ {
+  "qualified": true,
+  "crew": 700,
+  "id": "greystone",
+  "name": "Greystone Forge",
+  "kind": "components",
+  "x": 585,
+  "y": 215,
+  "region": "north",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "shellForging",
+    "share": 1.1
+   },
+   {
+    "recipe": "warheadLoading",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Shell bodies and warhead cases by the thousand."
+ },
+ {
+  "qualified": true,
+  "crew": 200,
+  "id": "ashfordCharges",
+  "name": "Ashford Propellant Charges",
+  "kind": "explosives",
+  "x": 625,
+  "y": 355,
+  "region": "east",
+  "owner": "private",
+  "processes": [
+   {
+    "recipe": "chargeMaking",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Modular artillery charges."
+ },
+ {
+  "qualified": true,
+  "crew": 1000,
+  "id": "corranWorks",
+  "name": "Corran Valley Works",
+  "kind": "arsenal",
+  "x": 420,
+  "y": 255,
+  "region": "central",
+  "owner": "state",
+  "processes": [
+   {
+    "recipe": "pac3",
+    "share": 1
+   },
+   {
+    "recipe": "sm6",
+    "share": 1
+   }
+  ],
+  "blurb": "Clean rooms and integration halls for the big hit-to-kill interceptors."
+ },
+ {
+  "qualified": true,
+  "crew": 850,
+  "id": "northgateCenter",
+  "name": "Northgate Integration Center",
+  "kind": "arsenal",
+  "x": 495,
+  "y": 140,
+  "region": "north",
+  "owner": "state",
+  "processes": [
+   {
+    "recipe": "tamir",
+    "share": 1
+   },
+   {
+    "recipe": "irist",
+    "share": 1
+   },
+   {
+    "recipe": "stinger",
+    "share": 1
+   }
+  ],
+  "blurb": "Short-range air defense: three lines under one long roof."
+ },
+ {
+  "qualified": true,
+  "crew": 1400,
+  "id": "ashfordComplex",
+  "name": "Ashford Munitions Complex",
+  "kind": "arsenal",
+  "x": 605,
+  "y": 330,
+  "region": "east",
+  "owner": "state",
+  "processes": [
+   {
+    "recipe": "gmlrs",
+    "share": 1
+   },
+   {
+    "recipe": "shell155",
+    "share": 1
+   }
+  ],
+  "blurb": "Rockets and shells by the thousand."
+ },
+ {
+  "qualified": true,
+  "crew": 120,
+  "id": "saltmereRange",
+  "name": "Saltmere Test Range",
+  "kind": "testRange",
+  "x": 120,
+  "y": 430,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Over-water range for missile lot acceptance and surveillance firings."
+ },
+ {
+  "qualified": true,
+  "crew": 140,
+  "id": "karrowRange",
+  "name": "Karrow Proving Ground",
+  "kind": "testRange",
+  "x": 705,
+  "y": 585,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Artillery and rocket proving ground in the southern hills."
+ },
+ {
+  "qualified": true,
+  "crew": 160,
+  "id": "karrowDemil",
+  "name": "Karrow Demilitarization Facility",
+  "kind": "demil",
+  "x": 675,
+  "y": 610,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Where old rounds go to die: open burning pits, and a small recycling plant."
+ },
+ {
+  "qualified": true,
+  "crew": 220,
+  "id": "depotCentral",
+  "name": "Corran Central Depot",
+  "kind": "depot",
+  "x": 445,
+  "y": 285,
+  "region": "central",
+  "owner": "state",
+  "processes": [],
+  "blurb": "The national reserve, in earth-covered igloos."
+ },
+ {
+  "qualified": true,
+  "crew": 90,
+  "id": "depotNorth",
+  "name": "Meric Depot",
+  "kind": "depot",
+  "x": 395,
+  "y": 95,
+  "region": "north",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Northern ports and the Riverline."
+ },
+ {
+  "qualified": true,
+  "crew": 90,
+  "id": "depotCoast",
+  "name": "Halvard Depot",
+  "kind": "depot",
+  "x": 195,
+  "y": 255,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Facing the strait."
+ },
+ {
+  "qualified": true,
+  "crew": 90,
+  "id": "depotEast",
+  "name": "Marches Depot",
+  "kind": "depot",
+  "x": 760,
+  "y": 215,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Behind the eastern border."
+ },
+ {
+  "qualified": true,
+  "crew": 50,
+  "id": "depotIsles",
+  "name": "Skerry Depot",
+  "kind": "depot",
+  "x": 115,
+  "y": 615,
+  "region": "isles",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Island stores, resupplied by sea and air."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "mericSector",
+  "name": "Meric Air Defense Sector",
+  "kind": "adBase",
+  "x": 410,
+  "y": 55,
+  "region": "north",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Patriot and short-range batteries over the port."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "riverlineBrigade",
+  "name": "Riverline Artillery Brigade",
+  "kind": "artillery",
+  "x": 565,
+  "y": 105,
+  "region": "north",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Guns and launchers along the northern river."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "halvardAirBase",
+  "name": "Halvard Air Base",
+  "kind": "airBase",
+  "x": 150,
+  "y": 225,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Fighter base with layered air defense."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "coastSector",
+  "name": "Coastal Air Defense Sector",
+  "kind": "adBase",
+  "x": 135,
+  "y": 375,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Naval and ground air defense along the strait."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "marchesSector",
+  "name": "Marches Air Defense Sector",
+  "kind": "adBase",
+  "x": 830,
+  "y": 180,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Air defense behind the border."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "eastCorps",
+  "name": "3rd Artillery Corps",
+  "kind": "artillery",
+  "x": 860,
+  "y": 310,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "The heaviest guns in the country."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "velmSector",
+  "name": "Velm Plateau Air Defense",
+  "kind": "adBase",
+  "x": 815,
+  "y": 410,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Counter-drone batteries on the high plateau."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "skerryBase",
+  "name": "Skerry Isles Air Base",
+  "kind": "airBase",
+  "x": 85,
+  "y": 640,
+  "region": "isles",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Island air base far out at sea."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "portMeric",
+  "name": "Port of Meric",
+  "kind": "port",
+  "x": 360,
+  "y": 45,
+  "region": "north",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Northern deep-water port."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "portHalvard",
+  "name": "Halvard Docks",
+  "kind": "port",
+  "x": 160,
+  "y": 285,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Container docks on the strait. Prone to congestion."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "portLowmouth",
+  "name": "Port of Lowmouth",
+  "kind": "port",
+  "x": 335,
+  "y": 625,
+  "region": "coast",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Southern port, facing the open ocean."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "portSkerry",
+  "name": "Skerry Harbour",
+  "kind": "port",
+  "x": 125,
+  "y": 600,
+  "region": "isles",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Small island harbour."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "corranAirHub",
+  "name": "Corran Air Logistics Hub",
+  "kind": "airfield",
+  "x": 470,
+  "y": 265,
+  "region": "central",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Military airlift hub. Fast, but small and expensive."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "plotHalden",
+  "name": "Halden Vale plot",
+  "kind": "plot",
+  "x": 290,
+  "y": 330,
+  "region": "central",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Flat ground in the Halden vale, a short spur from the microwave works."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "plotNorthgate",
+  "name": "Northgate Heath plot",
+  "kind": "plot",
+  "x": 450,
+  "y": 180,
+  "region": "north",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Heathland south of Northgate, close to the arsenal."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "plotAshford",
+  "name": "Ashford Fields plot",
+  "kind": "plot",
+  "x": 655,
+  "y": 385,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Old farmland between Ashford and the motor works."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "plotRedmarl",
+  "name": "Redmarl Downs plot",
+  "kind": "plot",
+  "x": 370,
+  "y": 545,
+  "region": "central",
+  "owner": "state",
+  "processes": [],
+  "blurb": "Open downland near the smelter and the road to Lowmouth."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "plotMarches",
+  "name": "Marches Ridge plot",
+  "kind": "plot",
+  "x": 800,
+  "y": 255,
+  "region": "east",
+  "owner": "state",
+  "processes": [],
+  "blurb": "A ridge near the eastern depot. Close to the border, and to the fighting."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "karskMetals",
+  "name": "Karsk State Metals",
+  "kind": "foreign",
+  "x": 760,
+  "y": -45,
+  "region": "north",
+  "owner": "foreign",
+  "nation": "Karsk Federation",
+  "processes": [
+   {
+    "recipe": "aluminaSmelting",
+    "share": 0.4
+   },
+   {
+    "recipe": "zincSmelting",
+    "share": 1.2
+   }
+  ],
+  "blurb": "Cheap gallium and germanium, and a government fond of export controls."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "sableCircuits",
+  "name": "Sable Circuit Works",
+  "kind": "foreign",
+  "x": 300,
+  "y": 735,
+  "region": "coast",
+  "owner": "foreign",
+  "nation": "Ostrel Republic",
+  "processes": [
+   {
+    "recipe": "siChipFab",
+    "share": 0.8
+   },
+   {
+    "recipe": "ganChipFab",
+    "share": 0.7
+   },
+   {
+    "recipe": "waferFab",
+    "share": 0.6
+   }
+  ],
+  "blurb": "High volume, low price, one ocean away."
+ },
+ {
+  "qualified": true,
+  "crew": 0,
+  "id": "brightwater",
+  "name": "Brightwater Optics",
+  "kind": "foreign",
+  "x": -50,
+  "y": 360,
+  "region": "coast",
+  "owner": "foreign",
+  "nation": "Corvane Union",
+  "processes": [
+   {
+    "recipe": "opticsGrinding",
+    "share": 0.9
+   },
+   {
+    "recipe": "seekerIRAssembly",
+    "share": 1.25
+   }
+  ],
+  "blurb": "Imaging IR seekers across the strait."
+ },
+ {
+  "qualified": false,
+  "crew": 0,
+  "id": "lyreSensors",
+  "name": "Lyre Sensors",
+  "kind": "foreign",
+  "x": 440,
+  "y": 735,
+  "region": "coast",
+  "owner": "foreign",
+  "nation": "Ostrel Republic",
+  "processes": [
+   {
+    "recipe": "seekerRFAssembly",
+    "share": 0.6
+   }
+  ],
+  "blurb": "Capable radar seekers from a country under pressure from all sides."
+ },
+ {
+  "qualified": false,
+  "crew": 0,
+  "id": "northwind",
+  "name": "Northwind Aerojet",
+  "kind": "foreign",
+  "x": -50,
+  "y": 200,
+  "region": "coast",
+  "owner": "foreign",
+  "nation": "Corvane Union",
+  "processes": [
+   {
+    "recipe": "motorCasting",
+    "share": 0.4
+   },
+   {
+    "recipe": "apElectrolysis",
+    "share": 0.4
+   }
+  ],
+  "blurb": "Established motor maker across the strait."
+ }
+]
