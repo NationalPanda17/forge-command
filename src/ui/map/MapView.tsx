@@ -47,6 +47,10 @@ export interface MapNetwork {
 export interface MapRipple { key: string; site: string; tone: 'good' | 'bad' | 'warn' | 'info' }
 
 export interface MapViewProps {
+  /** How far the game's overlays reach over the map on each side (18.3). The map keeps its view and furniture clear. */
+  insets?: { top: number; right: number; bottom: number; left: number };
+  /** Fill the box with no border or rounded corners (the full-window map). */
+  bare?: boolean;
   markers: Record<string, MapMarker>;
   shipments: MapShipment[];
   routeUse?: Record<string, number>; // ROUTE_KEY -> 0..1 utilisation, tint routes that are busy
@@ -98,29 +102,42 @@ const FIGHTING: RegionId[] = ['north', 'coast', 'east', 'isles'];
 // ---------- View maths ----------
 
 interface View { S: number; tx: number; ty: number }
-interface Size { w: number; h: number }
+/**
+ * The map's box, and (18.3) how far the game's overlays reach into it on each side: the map fits, centres and clamps
+ * itself, and places its own furniture, in the safe area that is left.
+ */
+interface Size { w: number; h: number; l?: number; t?: number; r?: number; b?: number }
+
+/** The visible part of the map: left, top, width and height. */
+const safe = (sz: Size) => ({ x: sz.l ?? 0, y: sz.t ?? 0, w: sz.w - (sz.l ?? 0) - (sz.r ?? 0), h: sz.h - (sz.t ?? 0) - (sz.b ?? 0) });
 
 const MIN_Z = 0.85;
 const MAX_Z = 14;
 
-const fitScale = (sz: Size) => Math.max(0.05, Math.min((sz.w - 16) / G.FRAME_W, (sz.h - 16) / G.FRAME_H));
+const fitScale = (sz: Size) => {
+  const a = safe(sz);
+  return Math.max(0.05, Math.min((a.w - 16) / G.FRAME_W, (a.h - 16) / G.FRAME_H));
+};
 
 function fitView(sz: Size): View {
   const S = fitScale(sz);
-  return { S, tx: (sz.w - G.FRAME_W * S) / 2 - G.FRAME.x0 * S, ty: (sz.h - G.FRAME_H * S) / 2 - G.FRAME.y0 * S };
+  const a = safe(sz);
+  return { S, tx: a.x + (a.w - G.FRAME_W * S) / 2 - G.FRAME.x0 * S, ty: a.y + (a.h - G.FRAME_H * S) / 2 - G.FRAME.y0 * S };
 }
 
-function clampAxis(t: number, S: number, a0: number, a1: number, len: number): number {
+/** Keeps the sheet's edge within `m` of the safe area's edge, so any part of it can be brought into view. */
+function clampAxis(t: number, S: number, a0: number, a1: number, lo: number, len: number): number {
   const m = 48;
   const span = (a1 - a0) * S;
-  if (span <= len - 2 * m) return (len - span) / 2 - a0 * S;
-  return Math.max(len - m - a1 * S, Math.min(m - a0 * S, t));
+  if (span <= len - 2 * m) return lo + (len - span) / 2 - a0 * S;
+  return Math.max(lo + len - m - a1 * S, Math.min(lo + m - a0 * S, t));
 }
 
 function clampView(v: View, sz: Size): View {
   const s0 = fitScale(sz);
   const S = Math.max(s0 * MIN_Z, Math.min(s0 * MAX_Z, v.S));
-  return { S, tx: clampAxis(v.tx, S, G.FRAME.x0, G.FRAME.x1, sz.w), ty: clampAxis(v.ty, S, G.FRAME.y0, G.FRAME.y1, sz.h) };
+  const a = safe(sz);
+  return { S, tx: clampAxis(v.tx, S, G.FRAME.x0, G.FRAME.x1, a.x, a.w), ty: clampAxis(v.ty, S, G.FRAME.y0, G.FRAME.y1, a.y, a.h) };
 }
 
 function zoomAbout(v: View, px: number, py: number, k: number): View {
@@ -871,7 +888,7 @@ function Minimap({ view, size, onCenter }: { view: View; size: Size; onCenter: (
     onCenter(G.FRAME.x0 + ((e.clientX - r.left) / r.width) * G.FRAME_W, G.FRAME.y0 + ((e.clientY - r.top) / r.height) * G.FRAME_H);
   };
   return (
-    <div data-hud="" className="fc-hud absolute bottom-8 right-3 p-1">
+    <div data-hud="" className="fc-hud absolute p-1" style={{ right: (size.r ?? 0) + 12, bottom: (size.b ?? 0) + 32 }}>
       <svg
         width={w}
         height={h}
@@ -908,16 +925,20 @@ function niceKm(target: number): number {
 
 const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: View; size: Size; boxes: Box[]; quiet?: boolean }) {
   const { S, tx, ty } = view;
+  const L = size.l ?? 0;
+  const T = size.t ?? 0;
+  const RR = size.r ?? 0;
+  const B = size.b ?? 0;
   const ticks: { x?: number; y?: number; v: number }[] = [];
   const step = S < 0.6 ? 200 : S < 3 ? 100 : S < 6 ? 50 : 25;
   for (let v = 0; v <= G.FRAME.x1; v += step) {
     const x = v * S + tx;
     // On a narrow map the zoom buttons sit in a row along the top right: no ruler number under them.
-    if (!quiet && x > 34 && x < size.w - (size.w < 520 ? 170 : 60) && !clashes(smallTextBox(String(v), x + 3, 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
+    if (!quiet && x > L + 34 && x < size.w - RR - (size.w < 520 ? 170 : 60) && !clashes(smallTextBox(String(v), x + 3, T + 13, 8.5), boxes, tx, ty)) ticks.push({ x, v });
   }
   for (let v = 0; v <= G.FRAME.y1; v += step) {
     const y = v * S + ty;
-    if (!quiet && y > 64 && y < size.h - 70 && !clashes(smallTextBox(String(v), 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
+    if (!quiet && y > T + 64 && y < size.h - B - 70 && !clashes(smallTextBox(String(v), L + 7, y - 3, 8.5), boxes, tx, ty)) ticks.push({ y, v });
   }
   // A short bar: on a phone a long one covers a corner of the country.
   const km = niceKm(60 / S);
@@ -927,15 +948,15 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
       {ticks.map((t, i) =>
         t.x !== undefined ? (
           <g key={i}>
-            <line x1={t.x} x2={t.x} y1={0} y2={5} stroke={ops('cyan', 0.45)} />
-            <text x={t.x + 3} y={13} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
+            <line x1={t.x} x2={t.x} y1={T} y2={T + 5} stroke={ops('cyan', 0.45)} />
+            <text x={t.x + 3} y={T + 13} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
               {t.v}
             </text>
           </g>
         ) : (
           <g key={i}>
-            <line x1={0} x2={5} y1={t.y} y2={t.y} stroke={ops('cyan', 0.45)} />
-            <text x={7} y={t.y! - 3} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
+            <line x1={L} x2={L + 5} y1={t.y} y2={t.y} stroke={ops('cyan', 0.45)} />
+            <text x={L + 7} y={t.y! - 3} fontSize={8.5} fill={ops('dim')} {...halo(2.5)}>
               {t.v}
             </text>
           </g>
@@ -943,8 +964,8 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
       )}
       {/* Scale and north arrow sit on a plate, so nothing on the map runs underneath their text. */}
       <g data-hud="">
-      <rect x={6} y={size.h - 52} width={Math.max(bar + 52, 120) + 22} height={46} rx={2} fill={ops('panel', 0.94)} stroke={ops('line', 0.9)} />
-      <g transform={`translate(16 ${size.h - 22})`}>
+      <rect x={L + 6} y={size.h - B - 52} width={Math.max(bar + 52, 120) + 22} height={46} rx={2} fill={ops('panel', 0.94)} stroke={ops('line', 0.9)} />
+      <g transform={`translate(${L + 16} ${size.h - B - 22})`}>
         {[0, 1, 2, 3].map((i) => (
           <rect key={i} x={(bar / 4) * i} y={0} width={bar / 4} height={4} fill={i % 2 ? 'rgba(6, 11, 20, 0.9)' : ops('text', 0.9)} stroke={ops('text', 0.9)} strokeWidth={0.8} />
         ))}
@@ -955,7 +976,7 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
           {km} km
         </text>
       </g>
-      <g transform={`translate(${Math.max(bar + 52, 120)} ${size.h - 30})`}>
+      <g transform={`translate(${L + Math.max(bar + 52, 120)} ${size.h - B - 30})`}>
         <circle r={13} fill="rgba(6, 11, 20, 0.7)" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.6} />
         <path d="M0 -10L4 3L0 0.5L-4 3Z" fill="#e8c68a" />
         <path d="M0 10L4 3L0 0.5L-4 3Z" fill="none" stroke="rgb(var(--fc-bronze))" strokeWidth={0.8} />
@@ -994,6 +1015,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
 
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   const apply = useCallback((v: View) => {
     const c = clampView(v, sizeRef.current);
@@ -1007,8 +1030,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
     if (!el) return;
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
-      const next = { w: Math.round(r.width), h: Math.round(r.height) };
       const prev = sizeRef.current;
+      const next = { ...prev, w: Math.round(r.width), h: Math.round(r.height) };
       if (next.w === prev.w && next.h === prev.h) return;
       sizeRef.current = next;
       setSize(next);
@@ -1018,15 +1041,41 @@ export default function MapView(props: MapViewProps): JSX.Element {
         // Keep the centre and relative zoom.
         const v = viewRef.current;
         const z = v.S / fitScale(prev);
-        const cx = (prev.w / 2 - v.tx) / v.S;
-        const cy = (prev.h / 2 - v.ty) / v.S;
+        const a = safe(prev);
+        const b = safe(next);
+        const cx = (a.x + a.w / 2 - v.tx) / v.S;
+        const cy = (a.y + a.h / 2 - v.ty) / v.S;
         const S = fitScale(next) * z;
-        apply({ S, tx: next.w / 2 - cx * S, ty: next.h / 2 - cy * S });
+        apply({ S, tx: b.x + b.w / 2 - cx * S, ty: b.y + b.h / 2 - cy * S });
       }
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, [apply]);
+
+  // The overlays moved (the panel opened or closed): take the new safe area, and keep the selected site in sight.
+  const ins = props.insets;
+  const insKey = ins ? `${ins.top},${ins.right},${ins.bottom},${ins.left}` : '';
+  useEffect(() => {
+    const next = { ...sizeRef.current, l: ins?.left ?? 0, t: ins?.top ?? 0, r: ins?.right ?? 0, b: ins?.bottom ?? 0 };
+    sizeRef.current = next;
+    setSize(next);
+    if (!next.w) return;
+    const v = clampView(viewRef.current, next);
+    const sel = selectedRef.current;
+    if (sel && G.SITE_POS[sel]) {
+      const [x, y] = markerAt(sel, v.S, spreadRef.current);
+      const a = safe(next);
+      const sx = x + v.tx;
+      const sy = y + v.ty;
+      if (sx < a.x + 24 || sx > a.x + a.w - 24 || sy < a.y + 24 || sy > a.y + a.h - 24) {
+        animateTo({ S: v.S, tx: a.x + a.w / 2 - x, ty: a.y + a.h / 2 - y });
+        return;
+      }
+    }
+    apply(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insKey]);
 
   // Relief is built after first paint.
   useEffect(() => {
@@ -1076,8 +1125,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
   useEffect(() => () => cancelAnimationFrame(anim.current), []);
 
   const zoomBy = useCallback((k: number) => {
-    const { w, h } = sizeRef.current;
-    animateTo(zoomAbout(viewRef.current, w / 2, h / 2, k));
+    const a = safe(sizeRef.current);
+    animateTo(zoomAbout(viewRef.current, a.x + a.w / 2, a.y + a.h / 2, k));
   }, [animateTo]);
   const reset = useCallback(() => animateTo(fitView(sizeRef.current), 300), [animateTo]);
 
@@ -1413,7 +1462,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
   return (
     <div
       ref={wrapRef}
-      className="relative w-full select-none overflow-hidden rounded-md border border-ops-line bg-[#040912] outline-none focus-visible:ring-1 focus-visible:ring-ops-cyan/60"
+      className={`relative w-full select-none overflow-hidden bg-[#040912] outline-none ${props.bare ? 'focus-visible:shadow-[inset_0_0_0_2px_rgb(var(--ops-cyan)/0.6)]' : 'rounded-md border border-ops-line focus-visible:ring-1 focus-visible:ring-ops-cyan/60'}`}
       style={{ height }}
       tabIndex={0}
       role="region"
@@ -1500,7 +1549,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>
       )}
-      <div data-hud="" className={`fc-hud pointer-events-none absolute left-3 top-3 px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`}>
+      <div data-hud="" className={`fc-hud pointer-events-none absolute px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`} style={{ left: (size.l ?? 0) + 12, top: (size.t ?? 0) + 12 }}>
         <div className="font-sans text-[14px] font-bold uppercase leading-none tracking-[0.16em] text-ops-amber">{countryTitle()}</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
@@ -1546,7 +1595,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
         </div>
       )}
       {/* On a narrow map the buttons sit in a row, in the strip of sea above the country, so they never cover a label. */}
-      <div data-hud="" className={`absolute right-3 top-3 flex gap-1 ${size.w < 520 ? 'flex-row' : 'flex-col'}`}>
+      <div data-hud="" className={`absolute flex gap-1 ${size.w < 520 ? 'flex-row' : 'flex-col'}`} style={{ right: (size.r ?? 0) + 12, top: (size.t ?? 0) + 12 }}>
         <button type="button" className="btn h-7 w-7 px-0" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in (+)">
           <Icon name="zoomIn" />
         </button>
@@ -1563,11 +1612,12 @@ export default function MapView(props: MapViewProps): JSX.Element {
           size={size}
           onCenter={(x, y) => {
             const v = viewRef.current;
-            apply(clampView({ S: v.S, tx: size.w / 2 - x * v.S, ty: size.h / 2 - y * v.S }, sizeRef.current));
+            const a = safe(sizeRef.current);
+            apply(clampView({ S: v.S, tx: a.x + a.w / 2 - x * v.S, ty: a.y + a.h / 2 - y * v.S }, sizeRef.current));
           }}
         />
       )}
-      <div data-hud="" className="fc-hud pointer-events-none absolute bottom-2 right-3 px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider text-ops-dim">
+      <div data-hud="" className="fc-hud pointer-events-none absolute px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider text-ops-dim" style={{ right: (size.r ?? 0) + 12, bottom: (size.b ?? 0) + 8 }}>
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
       </div>

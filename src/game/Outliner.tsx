@@ -49,14 +49,14 @@ export function underWay(s: SimState): UnderWay[] {
   return [...lead, ...rest.sort((a, b) => a.days - b.days)];
 }
 
-const left = (days: number) => (days >= 60 ? `${Math.round(days / 30)} mo` : `${Math.max(0, Math.ceil(days))} d`);
+const timeLeft = (days: number) => (days >= 60 ? `${Math.round(days / 30)} mo` : `${Math.max(0, Math.ceil(days))} d`);
 
-export function Outliner({ state, onPanel, onSite }: { state: SimState; onPanel: (p: PanelId) => void; onSite: (id: string) => void }) {
+export function Outliner({ state, onPanel, onSite, top, left }: { state: SimState; onPanel: (p: PanelId) => void; onSite: (id: string) => void; top: number; left: number }) {
   const [open, setOpen] = useState(true);
   const items = underWay(state);
   if (!items.length) return null;
   return (
-    <section className="fc-outliner" aria-label="Under way">
+    <section className="fc-zoom fc-outliner" style={{ top, left, maxHeight: `calc(100% - ${top + 96}px)` }} aria-label="Under way">
       <button type="button" className="fc-outliner-head" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Fold away' : 'Show everything under way'}>
         <span>Under way</span>
         <span className="text-ops-dim">{items.length}</span>
@@ -65,7 +65,7 @@ export function Outliner({ state, onPanel, onSite }: { state: SimState; onPanel:
         <ul className="fc-outliner-list">
           {items.map((x) => (
             <li key={x.key}>
-              <button type="button" className="fc-outliner-row" onClick={() => (x.site ? onSite(x.site) : x.panel && onPanel(x.panel))} title={`${x.label}: ${left(x.days)} left`}>
+              <button type="button" className="fc-outliner-row" onClick={() => (x.site ? onSite(x.site) : x.panel && onPanel(x.panel))} title={`${x.label}: ${timeLeft(x.days)} left`}>
                 <span className={x.tone === 'bad' ? 'text-ops-red' : x.tone === 'warn' ? 'text-ops-amber' : 'text-ops-cyan'}>
                   <Icon name={x.icon} size={13} />
                 </span>
@@ -77,7 +77,7 @@ export function Outliner({ state, onPanel, onSite }: { state: SimState; onPanel:
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 text-ops-dim">{left(x.days)}</span>
+                <span className="shrink-0 text-ops-dim">{timeLeft(x.days)}</span>
               </button>
             </li>
           ))}

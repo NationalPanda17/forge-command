@@ -38,7 +38,7 @@ import { Btn, Flash } from '../ui/kit';
 import { Icon, Insignia, type IconName } from '../ui/icons';
 import { money, pct, textToneFor } from '../ui/format';
 import MaterialPanel from './MaterialPanel';
-import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
+import { FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
 import SitePanel from './SitePanel';
 import StrategyPanel from './StrategyPanel';
 import { GuidePanel, watchList } from './WatchGuide';
@@ -66,6 +66,12 @@ const TermReport = lazyPart(() => import('./TermReport'));
 
 export type { PanelId } from './nav';
 const SPEEDS: Speed[] = [0, 1, 2, 4, 8];
+
+/**
+ * Where the overlays sit over the full-window map (18.3), in pixels: the command bar (8 + 56), the status bar under it,
+ * the map's layer bar under that, and the panels' width. The map's safe area is worked out from these.
+ */
+const CHROME = { statusTop: 72, layersTop: 116, mapTop: 156, panelWidth: 470 } as const;
 
 function markersFor(s: SimState, showPlots: boolean): Record<string, MapMarker> {
   const out: Record<string, MapMarker> = {};
@@ -220,6 +226,11 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         setSpeed(speed === 0 ? lastSpeed.current : 0);
       } else if (['1', '2', '3', '4'].includes(e.key)) setSpeed(([1, 2, 4, 8] as Speed[])[Number(e.key) - 1]);
       else if (e.key === 'h' || e.key === 'H') setPanel('home');
+      // P folds the panels away or brings them back; F leaves the map alone on screen, and F again brings it all back.
+      else if (e.key === 'p' || e.key === 'P') {
+        setFocus(false);
+        setPanelOpen(!panelOpenRef.current || focusRef.current);
+      } else if (e.key === 'f' || e.key === 'F') setFocus((f) => !f);
       else if (e.key === '.') {
         // The next alert's tab, in turn.
         const list = alertRef.current;
@@ -240,8 +251,33 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     return () => window.removeEventListener('keydown', onKey);
   }, [speed, setSpeed, setPanel]);
   const [layers, setLayers] = useState<MapLayers>(DEFAULT_LAYERS);
-  // The map key starts closed, so the map keeps its height.
+  // The map key is a pop-over from the layer bar, closed at first.
   const [legendOpen, setLegendOpen] = useState(false);
+  // The panels fold away to a tab (P), and F leaves the map alone on screen; the fold is remembered in this browser.
+  const [panelOpen, setPanelOpenRaw] = useState(() => {
+    try {
+      return localStorage.getItem('forge-command-panels') !== 'closed';
+    } catch {
+      return true;
+    }
+  });
+  const setPanelOpen = useCallback((open: boolean) => {
+    setPanelOpenRaw(open);
+    try {
+      localStorage.setItem('forge-command-panels', open ? 'open' : 'closed');
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const [focus, setFocus] = useState(false);
+  const panelOpenRef = useRef(panelOpen);
+  panelOpenRef.current = panelOpen;
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+  const insets = useMemo(
+    () => ({ top: focus ? CHROME.statusTop + 44 : CHROME.mapTop, left: 8, bottom: 8, right: panelOpen && !focus ? CHROME.panelWidth + 16 : 48 }),
+    [panelOpen, focus],
+  );
   const [help, setHelp] = useState<SettingsTab | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -481,12 +517,12 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   }, [toast]);
 
   return (
-    <div className={`flex h-[100dvh] min-w-[1280px] flex-col gap-2 overflow-hidden p-2 ${speed === 0 ? 'fc-paused' : ''}`}>
+    <div className={`relative h-[100dvh] min-w-[1280px] overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announce}
       </div>
       <a href="#panels" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-ops-panel focus:px-2 focus:py-1">Skip to panels</a>
-      <header className="fc-zoom fc-cmdbar flex items-center gap-3 px-3 py-1.5">
+      <header className="fc-zoom fc-cmdbar absolute left-2 right-2 top-2 z-30 flex h-14 items-center gap-3 px-3">
         <button type="button" className="flex shrink-0 items-center gap-2.5 pr-1 text-left" onClick={() => onMenu(state)} title="Main menu">
           <Insignia size={34} />
           <span className="leading-none">
@@ -615,7 +651,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
 
       {/* The status bar (17.1): one notice at a time, the most important first, in a slot that never moves the map;
           and on the right, the alerts: what needs you now, which clear themselves once it is dealt with. */}
-      <div className="fc-zoom fc-statusbar" role="region" aria-label="Notices and alerts">
+      <div className="fc-zoom fc-statusbar absolute left-2 z-30" style={{ top: CHROME.statusTop, right: insets.right }} role="region" aria-label="Notices and alerts">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {saving !== null ? (
             <form
@@ -682,12 +718,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         <AlertChips items={watch} onPanel={setPanel} />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_470px] gap-2">
-        <div className="panel fc-mapframe flex min-w-0 flex-col overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ops-line/60 px-2 py-1">
-            <MapLayerToggles layers={layers} onChange={setLayers} />
-          </div>
-          <div className="relative min-h-0 flex-1">
+      {/* The map fills the window (18.3). Everything else floats over it, and the map keeps its view, rulers and
+          controls in the safe area the overlays leave free. */}
+      <div className="absolute inset-0 z-0">
           <MapView
             key={state.world ?? 'classic'}
             markers={markers}
@@ -698,6 +731,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             onSelect={select}
             layers={layers}
             height="100%"
+            bare
+            insets={insets}
             network={network}
             showPlans={panel === 'build'}
             highlight={highlight}
@@ -730,14 +765,34 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             related={chain}
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
-            <Outliner state={slow} onPanel={setPanel} onSite={select} />
-          </div>
-          <details className="group max-h-44 shrink-0 overflow-y-auto border-t border-ops-line/60 px-2 py-1" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
-            <summary className="label cursor-pointer select-none py-1 hover:text-ops-text">Map key</summary>
-            <MapLegend />
-          </details>
+      </div>
+      {!focus && <Outliner state={slow} onPanel={setPanel} onSite={select} top={insets.top + 64} left={insets.left + 12} />}
+      {!focus && (
+        <div className="fc-zoom fc-hud absolute z-20 flex items-center gap-2 px-2 py-1" style={{ left: 8, top: CHROME.layersTop }}>
+          <MapLayerToggles layers={layers} onChange={setLayers} />
+          <Btn pressed={legendOpen} onClick={() => setLegendOpen(!legendOpen)} title="What the map's symbols mean">
+            Key
+          </Btn>
         </div>
-        <aside id="panels" tabIndex={-1} className="fc-zoom panel flex min-h-0 min-w-0 flex-col overflow-hidden">
+      )}
+      {legendOpen && !focus && (
+        <div className="fc-zoom fc-hud absolute z-20 max-h-[55vh] w-[560px] overflow-y-auto" style={{ left: 8, top: CHROME.layersTop + 40 }} role="dialog" aria-label="Map key">
+          <MapLegend className="p-3" />
+        </div>
+      )}
+      {panelOpen && !focus && (
+        // A small tab on the panels' outer edge folds them away; it sits above the map's zoom buttons, clear of them.
+        <button type="button" className="fc-zoom fc-panel-fold absolute z-20" style={{ top: CHROME.statusTop + 48, right: CHROME.panelWidth + 8 }} onClick={() => setPanelOpen(false)} title="Fold the panels away (P); F for the map alone" aria-label="Fold the panels away">
+          <Icon name="continue" size={12} />
+        </button>
+      )}
+      {!panelOpen && (
+        <button type="button" className="fc-zoom fc-panel-tab absolute right-2 z-20" style={{ top: CHROME.statusTop }} onClick={() => setPanelOpen(true)} title="Show the panels (P)" aria-label="Show the panels">
+          <Icon name="back" />
+          <span>Panels</span>
+        </button>
+      )}
+        <aside id="panels" tabIndex={-1} className={`fc-zoom panel absolute bottom-2 right-2 z-20 flex flex-col overflow-hidden ${panelOpen ? '' : 'hidden'}`} style={{ top: CHROME.statusTop, width: CHROME.panelWidth }}>
           <nav className="fc-gtabs flex overflow-x-auto border-b border-ops-line px-1" aria-label="Panel groups">
             {GROUPS.map((g) => {
               const on = group === g.id;
@@ -828,10 +883,6 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             </PanelBoundary>
           </div>
         </aside>
-      </div>
-      <footer className="fc-zoom panel max-h-28 shrink-0 overflow-y-auto">
-        <Feed state={state} onSite={select} limit={6} />
-      </footer>
       {actNote && <ActNoteView note={actNote} />}
       <Briefing state={state} act={act} />
       <Handover state={state} act={act} />
