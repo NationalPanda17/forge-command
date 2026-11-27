@@ -43,6 +43,7 @@ export default function IntelPanel({ state, act }: { state: SimState; act: (a: S
                     <span className={fielded ? 'text-ops-red' : 'text-ops-amber'}>{fielded ? `in the field since ${dateLabel(k.fielded)}` : `expected ${dateLabel(k.fielded)}`}</span>
                   </div>
                   <p className="text-ops-dim">{d.intel}</p>
+                  {k.why && <p className="text-ops-amber">{k.why}</p>}
                   <p className="text-ops-text">{d.effect}</p>
                   <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                     <span className={done ? 'text-ops-green' : 'text-ops-text'}>

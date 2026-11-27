@@ -20,14 +20,14 @@ import {
   regionDailyDraw,
 } from './selectors';
 import { emptyMonth } from './setup';
-import { mandateConfidence, recordMandateMonth } from './mandate';
+import { fightScale, mandateConfidence, recordMandateMonth } from './mandate';
 import { economyMonth, priceNow } from './economy';
 import { legCapFactor, livingDay, livingMonth, plantSeasonFactor } from './living';
 import { buildDay } from './build';
 import { setNetwork } from './graph';
 import { writeEdition } from './news';
 import { absorbHires, peopleDay, peopleMonth, skillScrap } from './people';
-import { rivalArrivals, rivalDay, rivalLand, rivalPk, rivalShots } from './rival';
+import { rivalArrivals, rivalDay, rivalLand, rivalMonth, rivalPk, rivalShots } from './rival';
 import { hasPolicy, policyMonth, programmeMonth } from './commitments';
 import { industryDay, variantOf } from './industry';
 import { storyDay } from './story';
@@ -705,6 +705,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   doctrineMonth(s);
   castMonth(s, feed);
   intelMonth(s);
+  rivalMonth(s);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   // An endless sandbox has no last month, so it never skips a hearing (its nominal end date is only a placeholder).
@@ -718,9 +719,10 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   const parts = {
     readiness: judged.floor,
     mandate: judged.mandate,
-    leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5),
+    // A scenario can judge the fighting more leniently (Rebuild: a thin reserve the Committee knows about).
+    leaks: -Math.min(10, Math.max(0, fightTotals.leakSeverity - 2) * 0.5) * fightScale(s),
     // landShort sums each day's shortfall fraction: average it over the month.
-    land: -Math.min(8, (fightTotals.landShort / DAYS_PER_MONTH) * 4),
+    land: -Math.min(8, (fightTotals.landShort / DAYS_PER_MONTH) * 4) * fightScale(s),
     debt: s.treasury < 0 ? -(1 + -s.treasury / 400) : 0,
     other: 0,
   };
