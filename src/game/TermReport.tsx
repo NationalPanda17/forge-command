@@ -17,6 +17,8 @@ import { dateLabel, monthLabel2 } from './useSim';
 import { BOONS, boonsFor, keyMoments, legacyOf, type BoonId } from '../sim/legacy';
 import { tr } from '../sim/worldgen';
 import { useState } from 'react';
+import { Icon } from '../ui/icons';
+import { momentIcon } from '../ui/kinds';
 
 const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber', D: 'text-ops-amber', F: 'text-ops-red' } as const;
 
@@ -242,13 +244,21 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
         {moments.length > 0 && (
           <section>
             <h3 className="label mb-1">The moments that defined the term</h3>
-            <ol className="space-y-0.5">
-              {(allMoments ? moments : moments.slice(0, 5)).map((m, i) => (
-                <li key={`${m.day}-${i}`} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-2">
-                  <span className="text-ops-dim">{dateLabel(m.day)}</span>
-                  <span className={`min-w-0 break-words ${m.tone === 'bad' ? 'text-ops-red' : m.tone === 'good' ? 'text-ops-green' : m.tone === 'warn' ? 'text-ops-amber' : 'text-ops-text'}`}>{tr(m.text)}</span>
-                </li>
-              ))}
+            {/* A timeline (19.3.3): a rule down the left, a marker for each moment in its tone, and the date above
+                the line so the eye runs down the term. */}
+            <ol className="relative ml-3 border-l border-ops-line/70 pl-5">
+              {(allMoments ? moments : moments.slice(0, 5)).map((m, i) => {
+                const tone = m.tone === 'bad' ? 'text-ops-red' : m.tone === 'good' ? 'text-ops-green' : m.tone === 'warn' ? 'text-ops-amber' : 'text-ops-cyan';
+                return (
+                  <li key={`${m.day}-${i}`} className="relative pb-2.5 last:pb-0">
+                    <span className={`absolute -left-[31px] top-0.5 grid h-[22px] w-[22px] place-items-center rounded-full border border-current bg-ops-panel ${tone}`}>
+                      <Icon name={momentIcon(m.text, m.tone)} size={12} />
+                    </span>
+                    <span className="label block !text-[10px]">{dateLabel(m.day)}</span>
+                    <span className={`block min-w-0 break-words ${m.tone === 'info' ? 'text-ops-text' : tone}`}>{tr(m.text)}</span>
+                  </li>
+                );
+              })}
             </ol>
             {moments.length > 5 && (
               <button type="button" className="mt-1 text-[11px] text-ops-cyan hover:underline" onClick={() => setAllMoments(!allMoments)}>
