@@ -3,7 +3,9 @@ import { validate, type SimAction } from '../sim/actions';
 import { recommend } from '../sim/automation';
 import { FACTIONS, FACTION_IDS, OBJECTIVES, RESEARCH, RESEARCH_IDS, STAFF_ROLES, STAFF_ROLE_IDS, hasResearch } from '../sim/strategy';
 import type { SimState } from '../sim/types';
-import { Bar, Btn, Chip } from '../ui/kit';
+import { Bar, Btn, Chip, ChoiceCard, ChoiceOption } from '../ui/kit';
+import { Icon } from '../ui/icons';
+import { decisionIcon } from '../ui/kinds';
 import { money, textToneFor } from '../ui/format';
 import { dateLabel } from './useSim';
 import { tr } from '../sim/worldgen';
@@ -12,43 +14,32 @@ export function Decisions({ state, act }: { state: SimState; act: (a: SimAction)
   if (!state.strategy.decisions.length) return null;
   return (
     <div className="space-y-2">
-      {state.strategy.decisions.map((d) => (
-        <article key={d.id} className="rounded border border-ops-amber/50 bg-ops-amber/5 p-3 text-[11px]">
-          <h3 className="font-sans text-[15px] font-semibold text-white">{tr(d.title)}</h3>
-          <p className="text-ops-text">{tr(d.body)}</p>
-          {(() => {
-            const r = recommend(state, d);
-            const o = d.options.find((x) => x.id === r.option);
-            return o ? (
+      {state.strategy.decisions.map((d) => {
+        const r = recommend(state, d);
+        const o = d.options.find((x) => x.id === r.option);
+        return (
+          <ChoiceCard key={d.id} eyebrow="The Board · decide by month end" icon={<Icon name={decisionIcon(d.kind)} size={16} />} title={tr(d.title)}>
+            <p className="mt-1 text-ops-text">{tr(d.body)}</p>
+            {o && (
               <p className="mt-1 text-[10px] text-ops-cyan">
                 Advisor: {tr(o.label)}. <span className="text-ops-dim">{r.why}</span>
               </p>
-            ) : null;
-          })()}
-          <div className="mt-2 space-y-1">
-            {d.options.map((o) => {
-              // The advised option stands out (19.3): an amber rule on its edge and a chip, not a note in brackets.
-              const advised = o.id === recommend(state, d).option;
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`btn w-full flex-col items-start gap-0 py-1.5 text-left normal-case tracking-normal ${advised ? 'border-ops-amber/60' : ''}`}
-                  style={advised ? { boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' } : undefined}
-                  onClick={() => act({ type: 'decide', decision: d.id, option: o.id })}
-                >
-                  <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-white">
-                    <span className="min-w-0">{tr(o.label)}</span>
-                    {advised && <Chip tone="border-ops-amber/60 text-ops-amber">Advised</Chip>}
-                    {o.id === d.fallback && <span className="text-[10px] text-ops-dim">default at month end</span>}
-                  </span>
-                  <span className="text-[10px] text-ops-dim">{tr(o.detail)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </article>
-      ))}
+            )}
+            <div className="mt-2 space-y-1">
+              {d.options.map((x) => (
+                <ChoiceOption
+                  key={x.id}
+                  label={tr(x.label)}
+                  detail={tr(x.detail)}
+                  advised={x.id === r.option}
+                  marks={x.id === d.fallback ? <span className="text-[10px] text-ops-dim">default at month end</span> : undefined}
+                  onClick={() => act({ type: 'decide', decision: d.id, option: x.id })}
+                />
+              ))}
+            </div>
+          </ChoiceCard>
+        );
+      })}
     </div>
   );
 }
@@ -133,7 +124,14 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
                     <span>
                       {c.name} · skill {c.skill} · {money(c.salary)}/mo
                     </span>
-                    <Btn why={validate(state, { type: 'hireStaff', candidate: c.id })} onClick={() => act({ type: 'hireStaff', candidate: c.id })} title="A signing bonus of three months' salary">
+                    <Btn
+                      why={validate(state, {
+                        type: 'hireStaff',
+                        candidate: c.id,
+                      })}
+                      onClick={() => act({ type: 'hireStaff', candidate: c.id })}
+                      title="A signing bonus of three months' salary"
+                    >
                       Hire · {money(c.salary * 3)}
                     </Btn>
                   </div>
@@ -187,7 +185,11 @@ export default function StrategyPanel({ state, act }: { state: SimState; act: (a
                   {def.text} Reward ${def.money}M.
                 </span>
               </span>
-              {o.status === 'open' ? <span className="text-ops-dim">by {dateLabel(def.by)}</span> : <Chip tone={o.status === 'done' ? 'border-ops-green/60 text-ops-green' : 'border-ops-red/60 text-ops-red'}>{o.status}</Chip>}
+              {o.status === 'open' ? (
+                <span className="text-ops-dim">by {dateLabel(def.by)}</span>
+              ) : (
+                <Chip tone={o.status === 'done' ? 'border-ops-green/60 text-ops-green' : 'border-ops-red/60 text-ops-red'}>{o.status}</Chip>
+              )}
             </div>
           );
         })}

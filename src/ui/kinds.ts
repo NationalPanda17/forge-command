@@ -37,3 +37,30 @@ const MOMENT: [RegExp, IconName][] = [
 export function momentIcon(text: string, tone: string): IconName {
   return MOMENT.find(([re]) => re.test(text))?.[1] ?? (tone === 'good' ? 'check' : tone === 'bad' ? 'alert' : 'report');
 }
+
+const DECISION: Record<string, IconName> = {
+  bailout: 'coin',
+  budget: 'coin',
+  reprice: 'coin',
+  supplement: 'coin',
+  budgetRound: 'coin',
+  broker: 'coin',
+  allyRequest: 'people',
+  allyOffer: 'people',
+  export: 'truck',
+  labour: 'people',
+  poach: 'people',
+  recall: 'factory',
+  inspection: 'factory',
+  testFailure: 'flask',
+  permit: 'report',
+  audit: 'report',
+  fraud: 'report',
+  spyRing: 'shield',
+  ransom: 'shield',
+};
+
+/** The icon for a decision on the Board, from its kind. */
+export function decisionIcon(kind: string): IconName {
+  return DECISION[kind] ?? 'report';
+}

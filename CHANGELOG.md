@@ -1,5 +1,15 @@
 # Changelog
 
+## 19.3.4: one card for every choice
+
+- **The Board's decisions, the budget hearing's questions and the advisor's next step now share one card.** Each card
+  has an amber edge, a small label above (such as "The Board · decide by month end" or "Question 2 of 3"), an icon and
+  a title, then its options. Once you have read one card, you can read them all.
+- **Options look the same everywhere.** Each option shows its name and what it does. The advised option has an amber
+  edge and an "Advised" chip, and a promise carries an "A promise" chip. Your pick turns cyan and shows its effect.
+- **A hearing question you have answered goes quiet,** so the ones still open stand out.
+- **Decisions carry an icon for their kind:** money, people, production, security or paperwork.
+
 ## 19.3.3: clearer screens, part four
 
 - **What you just did stays in view.** After each action the status bar shows "Done" (or "Not done" and why), with the
