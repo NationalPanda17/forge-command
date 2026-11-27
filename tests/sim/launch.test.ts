@@ -20,6 +20,8 @@ describe('15.1 launch fixes', () => {
     s.story!.briefing = null;
     s.confidence = 0;
     s.treasury = -20000;
+    // Probation (19.1) already used this term, so an empty confidence dismisses at once.
+    s.probationTerm = s.term ?? 1;
     // Act: the month (and the chapter) closes.
     s = advanceDays(s, 1);
     // Assert: dismissed, and no briefing stands open over the term report.

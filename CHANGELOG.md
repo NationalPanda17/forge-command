@@ -1,5 +1,15 @@
 # Changelog
 
+## 19.0.3: the Committee's warning
+
+- **Probation before dismissal.** The first time in a term that the Committee's confidence falls to 25, you are put on
+  probation instead of drifting to dismissal. The Committee sets a readiness target and gives you six months to reach
+  it, and holds its judgment while you work. Reach the target and probation ends; miss it and you are dismissed. After
+  that, the old rule applies for the rest of the term.
+- **Home shows the target.** A probation card shows the target, where readiness stands and how many months are left.
+- **The chief of staff fights for the job.** On probation it spends its reserve, courts your allies, and arranges
+  co-production for the scarcest rounds.
+
 ## 19.0.2: Depth, part three, every scenario plays its own way
 
 - **War footing: a front and air surges.**

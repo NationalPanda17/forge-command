@@ -214,5 +214,15 @@
     "rebuild": 0.08,
     "tutorial": 0,
     "custom": 0
+  },
+  "probation": {
+    "enabled": true,
+    "warnAt": 25,
+    "months": 6,
+    "confidence": 25,
+    "targetGain": 0.08,
+    "targetMin": 0.5,
+    "targetMax": 0.85,
+    "recoverBonus": 5
   }
 }

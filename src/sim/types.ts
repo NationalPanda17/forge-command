@@ -390,6 +390,10 @@ export interface SimState {
   story: StoryState | null;
   /** The generated world's seed, or null for the classic Commonwealth of Aldmere. */
   world: number | null;
+  /** The Committee's probation (19.1): the readiness target and its deadline, or null. */
+  probation?: import('./probation').Probation | null;
+  /** The term in which probation was used: once a term. */
+  probationTerm?: number;
   /** War footing (19.0c): the front in the Marches and the air surges. */
   war?: import('./scenarios').WarState;
   /** Rebuild (19.0c): plants being replaced, and those already rebuilt. */
