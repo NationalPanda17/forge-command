@@ -1,5 +1,22 @@
 # Changelog
 
+## 19.3.0: the world fills the screen
+
+- **The map is the world, edge to edge,** as in the grand strategy games. The framed map sheet, its corner brackets
+  and the rulers are gone. The country fills the screen behind the bars and panels, and the world fades into fog at
+  its edges, with no hard border.
+- **Panels that read more easily:**
+  - text is a step larger, and dim text is brighter;
+  - section headings are bronze, with a rule line;
+  - the panel casts a shadow over the map, and long panels fade at the bottom to show they scroll.
+- **Home puts what to do first.** "Needs you now" now comes straight after the key numbers, ahead of the Committee's
+  mandate. The key numbers are larger, and their monthly changes carry ▲ ▼ arrows as well as colour.
+- **You can't miss a paused clock.** While time is stopped, the play button glows and pulses, and the clock reads
+  "Paused · Space to run". With reduced motion on, the glow stays still.
+- **Charts are shaded** under their main line.
+- **The tab row always fits.** All six panel groups fit even when several carry a count, so "Rival" is no longer cut
+  off.
+
 ## 19.2.0: Career
 
 - **Career mode.** Serve term after term in one country, with the plants, people and reserve you built. A career lasts

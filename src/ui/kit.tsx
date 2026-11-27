@@ -1,5 +1,5 @@
 // Small shared UI pieces.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { toneFor } from './format';
 
 export function Panel({ title, right, children, className = '', id }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; id?: string }) {
@@ -141,6 +141,7 @@ export function LineChart({
   marker?: number;
   markerLabel?: string;
 }) {
+  const gid = useId().replace(/:/g, '');
   const n = Math.max(...series.map((s) => s.values.length));
   if (n < 2) return <div className="flex h-16 items-center text-[11px] text-ops-dim">History appears after a couple of months.</div>;
   const all = series.flatMap((s) => s.values).filter((v): v is number => v !== null && Number.isFinite(v));
@@ -174,6 +175,21 @@ export function LineChart({
         ))}
         {lo < 0 && hi > 0 && <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="rgb(var(--ops-dim))" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />}
         {marker !== undefined && <line x1={x(marker)} x2={x(marker)} y1={0} y2={height} stroke="rgb(var(--ops-cyan) / 0.6)" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />}
+        {/* The main series is shaded down to the baseline, so the chart reads as a quantity, not a wire (19.3). */}
+        {series[0] && !series[0].dashed && (
+          <>
+            <defs>
+              <linearGradient id={`area-${gid}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={series[0].color} stopOpacity={0.22} />
+                <stop offset="1" stopColor={series[0].color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            {runs(series[0].values).map((pts, k) => {
+              const xs = pts.split(' ').map((p) => p.split(',')[0]);
+              return <polygon key={`area-${k}`} points={`${xs[0]},${height - pad} ${pts} ${xs.at(-1)},${height - pad}`} fill={`url(#area-${gid})`} />;
+            })}
+          </>
+        )}
         {series.map((s) =>
           runs(s.values).map((pts, k) => (
             <polyline key={`${s.label}-${k}`} points={pts} fill="none" stroke={s.color} strokeWidth={1.75} strokeDasharray={s.dashed ? '5 4' : undefined} vectorEffect="non-scaling-stroke" />
