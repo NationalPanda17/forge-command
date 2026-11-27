@@ -110,3 +110,68 @@ A generated country gets two or three features. They come from the world seed on
 | Rebuild (11 seeds) | 51.5, 2/11 | 46.7, 3/11 |
 
 On the classic map, Standard is 62.4 with none dismissed. Generated maps were already harsher before 19.0b: about 1 game in 4 is dismissed even without features. That is a separate issue, left for a follow-up.
+
+## 19.0c: scenario identities
+
+Each scenario now has a rule of its own, in `src/sim/scenarios.ts`, with tuning in `depth.json` under `scenarios`. Only one of these rules draws random numbers: the roll for whether a broker purchase leaks, made only when you buy.
+
+### War footing: a moving front, and air surges
+
+- **The front.** `s.war.front` runs from −1 to 1. Each month it moves by `frontStep` 0.25 × (c − 1).
+  - **c:** the artillery lots at the Marches' guns and depot, divided by `coverDays` 30 days of their draw, capped at 1.5.
+  - **Below −0.5 (falling back):**
+    - Marches land draw ×1.3;
+    - confidence −2 a month;
+    - the Marches' plants are disrupted (10 days, output ×0.8).
+  - **Above 0.5 (advancing):** Marches land draw ×0.8.
+- **Surges.** Every `surgeGap` 120 days, raids ×1.8 hit the region whose air defences hold the fewest days of rounds, for 14 days.
+- **`pressure(s, region, family)`** multiplies the arrivals and draws in the daily fight and in `regionDailyDraw`. Reserve targets therefore follow the front and the surges.
+- **Home** shows a front card: a bar for the front, the cover, and any surge under way.
+- **Deviation:** `coverDays` is 30, not the spec's 60. The game's own depot and base stocks hold about 30 days, and at 60 the front fell back in every game.
+
+### Sanctions: bans that lift, and a broker
+
+- **Starting relations.** The supplier nations start at 35, 27 and 20, in an order set by a hash of the seed. The spec's 40/32/25 made Sanctions easier than Peacetime.
+- **The bans** start at `maxBan` 540 days. A nation's ban lifts the month its relations reach 60. Trade missions are how you bring a nation round, and the autopilot sends them to banned nations.
+- **The broker.** While any ban holds, a monthly decision offers 60 days of draw of your scarcest line at ×1.8 the list price.
+  - Buying draws one random number: a 12% chance that it leaks, costing −6 confidence.
+  - The premium is booked as `grey` waste.
+  - The autopilot buys only below 50% readiness.
+
+### Rebuild: worn plants, refurbish or replace
+
+- **Worn start.** State plants start at condition 35–70, from a hash of the seed and the site.
+- **Fast wear.** Below 50 they lose an extra 0.05 a day.
+- **Output.** The existing condition factor (0.6 + 0.4 × condition) already cuts the output of a worn plant, so the spec's second factor was not added.
+- **Refurbish** is the existing overhaul: back to 100, but the plant goes on wearing.
+- **Replace** (`replacePlant`) costs 2.5 × the overhaul and closes the plant for 45 days. It comes back at 100 with +10% capacity, and never wears faster than normal again.
+- **The autopilot** replaces plants below 30 and refurbishes those below 50.
+- **Deviation:** the spec's −15% energy for a replaced plant is left out.
+
+### Peacetime: the budget round
+
+At the start of each fiscal year after the first, once the hearing is over, the Committee offers three packages. They are stored in `s.budgetDeals[year]`.
+
+| Package | Effect |
+|---|---|
+| **Hawks** | Appropriation +8%. The readiness full mark rises by 0.03 for the year. |
+| **Treasury** | Appropriation −5%. 0.10 of weight moves from readiness to value. |
+| **Regions** | 0.10 of weight moves from stewardship to jobs. |
+
+You can also leave the budget as it is. The weights are renormalised and still sum to 1.
+
+**The autopilot** takes the hawks only when value is the weakest goal and readiness is fully met. It takes the regions when stewardship is the weakest. It never takes the Treasury package: in testing, the cut lost a game.
+
+**Deviation:** the spec's export credit against value for money is left out.
+
+### Balance (full autopilot, 21 seeds; `audit2.ts`)
+
+| Case | 19.0c | Before (19.0b) |
+|---|---|---|
+| Peacetime, normal | 57.0, 3/21 dismissed | 57.5, 3/21 |
+| Peacetime, hard | 39.3, 7/21 | 39.1, 7/21 |
+| War footing | 46.2, 3/21 | 51.4, 3/21 |
+| Sanctions | 52.2, 3/21 | 51.5, 2/21 |
+| Rebuild | 49.7, 5/21 | 44.8, 7/21 |
+
+These runs are noisy. Small changes to a setting moved War footing by ±5 points in both directions, so differences of a few points are within that noise.

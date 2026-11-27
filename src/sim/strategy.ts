@@ -172,7 +172,7 @@ export interface DecisionOption {
 }
 export interface Decision {
   id: number;
-  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud' | 'permit' | 'poach';
+  kind: 'bailout' | 'budget' | 'reprice' | 'supplement' | 'allyRequest' | 'allyOffer' | 'export' | 'labour' | 'recall' | 'inspection' | 'spyRing' | 'testFailure' | 'ransom' | 'audit' | 'fraud' | 'permit' | 'poach' | 'broker' | 'budgetRound';
   title: string;
   body: string;
   options: DecisionOption[];

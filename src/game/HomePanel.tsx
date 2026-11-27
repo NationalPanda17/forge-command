@@ -1,5 +1,7 @@
 // Home: the whole game on one screen. The key numbers and their trend, what needs you now, what is coming, and what
 // changed since you last looked.
+import { FRONT_REGION, frontCover, frontState } from '../sim/scenarios';
+import { REGIONS } from '../sim/world';
 import { useMemo } from 'react';
 import type { SimAction } from '../sim/actions';
 import { threeMonthPlan } from '../sim/advisor';
@@ -118,6 +120,8 @@ export default function HomePanel({
         ))}
       </section>
 
+      {state.war && <FrontCard state={state} />}
+
       <MandateCard m={mandate} />
 
       <section>
@@ -224,6 +228,30 @@ function goalFigure(id: GoalId, raw: number): string {
   if (id === 'independence') return `${Math.round(raw * 100)}% foreign`;
   if (id === 'stewardship') return `${(raw * 100).toFixed(1)}% waste`;
   return `${Math.round(raw * 100)}% got through`;
+}
+
+/** War footing (19.0c): where the front in the Marches stands, what moves it, and any air surge under way. */
+function FrontCard({ state }: { state: SimState }) {
+  const w = state.war!;
+  const where = frontState(w);
+  const cover = frontCover(state);
+  const tone = where === 'falling back' ? 'text-ops-red' : where === 'advancing' ? 'text-ops-green' : 'text-ops-amber';
+  return (
+    <section className="rounded-[2px] border border-ops-line/60 p-2" aria-label="The front">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="label">{REGIONS[FRONT_REGION].name} front</h3>
+        <span className={`font-semibold ${tone}`}>{where[0].toUpperCase() + where.slice(1)}</span>
+      </div>
+      <div className="relative mt-1.5 h-2 rounded-sm bg-ops-line/40" role="meter" aria-valuemin={-1} aria-valuemax={1} aria-valuenow={Math.round(w.front * 100) / 100} aria-label="Front line">
+        <span className="absolute inset-y-0 left-1/2 w-px bg-ops-dim" aria-hidden="true" />
+        <span className={`absolute inset-y-0 rounded-sm ${w.front < 0 ? 'bg-ops-red/70' : 'bg-ops-green/70'}`} style={w.front < 0 ? { right: '50%', width: `${-w.front * 50}%` } : { left: '50%', width: `${w.front * 50}%` }} aria-hidden="true" />
+      </div>
+      <p className="mt-1.5 text-ops-dim">
+        The guns and depot there hold {Math.round(cover * 100)}% of the artillery they need. Below 100% the front gives ground each month; above it, it gains.
+        {w.surgeUntil > state.day && w.surgeRegion ? ` A surge is under way over ${REGIONS[w.surgeRegion].name}.` : ''}
+      </p>
+    </section>
+  );
 }
 
 /** The Committee's mandate: this fiscal year's goals, how each is going, and the term's projected grade. */

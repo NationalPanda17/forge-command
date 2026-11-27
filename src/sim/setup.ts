@@ -12,6 +12,7 @@ import { newRival } from './rival';
 import { newStory } from './story';
 import { applyWorld } from './worldgen';
 import { featureShare, makeFeatures } from './features';
+import { scenarioStart } from './scenarios';
 import { newTowns } from './towns';
 import { newHotseat } from './hotseat';
 import { newDiplomacy } from './diplomacy';
@@ -393,7 +394,6 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
     state.strategy.factions.hawks = 65;
     state.supplemented.push(c.id);
   }
-  if (scenario === 'sanctions') for (const def of SITES) if (def.owner === 'foreign') state.sites[def.id].embargoDays = 270;
   if (scenario === 'rebuild') {
     state.treasury += 500;
     state.appropriation = Math.round(state.appropriation * 1.1);
@@ -417,6 +417,8 @@ export function newSim({ seed, difficulty = 'normal', scenario = 'standard', mon
   state.rival = newRival(state);
   if (custom) state.rival.next = Math.round(state.rival.next * RIVAL_PACE[custom.rivalPace]);
   state.diplomacy = newDiplomacy(state);
+  // Each scenario's own rules (19.0c): the front, the bans and their broker, worn plants.
+  scenarioStart(state);
   if (story) state.story = newStory(0);
   state.towns = newTowns(state);
   // The tutorial keeps the rival quiet for its first year.

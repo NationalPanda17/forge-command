@@ -141,7 +141,7 @@
    "confidence": 83.56,
    "readiness": 0.71,
    "stock": 195744,
-   "feed": 220,
+   "feed": 221,
    "rng": 3721635215,
    "over": false
   },
@@ -152,7 +152,7 @@
    "confidence": 80.48,
    "readiness": 0.71,
    "stock": 207559,
-   "feed": 234,
+   "feed": 235,
    "rng": 2122777263,
    "over": false
   },
@@ -163,7 +163,7 @@
    "confidence": 74.42,
    "readiness": 0.66,
    "stock": 213922,
-   "feed": 251,
+   "feed": 252,
    "rng": 3626732764,
    "over": false
   },
@@ -174,7 +174,7 @@
    "confidence": 69.49,
    "readiness": 0.66,
    "stock": 218417,
-   "feed": 267,
+   "feed": 268,
    "rng": 1012391960,
    "over": false
   },
@@ -185,7 +185,7 @@
    "confidence": 64.84,
    "readiness": 0.68,
    "stock": 222885,
-   "feed": 276,
+   "feed": 277,
    "rng": 7488178,
    "over": false
   },
@@ -196,7 +196,7 @@
    "confidence": 61.99,
    "readiness": 0.67,
    "stock": 227274,
-   "feed": 288,
+   "feed": 289,
    "rng": 273832036,
    "over": false
   },
@@ -207,7 +207,7 @@
    "confidence": 58.78,
    "readiness": 0.67,
    "stock": 228159,
-   "feed": 297,
+   "feed": 298,
    "rng": 3530259553,
    "over": false
   },
@@ -267,5 +267,5 @@
    "over": false
   }
  ],
- "finalHash": "e8da0f5b0d7a3545f7657bf6da42eba784c5dc78af1c3438262a8a7c02560d5a"
+ "finalHash": "6d1442a3ff801ddefef33b7d0c2b5369d198dae7cee0421335e717e43aa9e534"
 }

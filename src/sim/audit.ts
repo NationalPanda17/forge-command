@@ -9,13 +9,14 @@ import { MATERIALS, SITE_BY_ID } from './world';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 
-export type WasteKind = 'spot' | 'idle' | 'ransom' | 'penalties' | 'fraud';
+export type WasteKind = 'spot' | 'idle' | 'ransom' | 'penalties' | 'fraud' | 'grey';
 export const WASTE_NAME: Record<WasteKind, string> = {
   spot: 'Premiums for buying without a contract',
   idle: 'Running costs of idle lines',
   ransom: 'Ransoms paid',
   penalties: 'Penalties and fees',
   fraud: 'Overbilling by suppliers',
+  grey: 'Broker premiums round the bans',
 };
 export const WASTE_IDS = Object.keys(WASTE_NAME) as WasteKind[];
 

@@ -141,7 +141,7 @@
    "confidence": 96.24,
    "readiness": 0.97,
    "stock": 199131,
-   "feed": 191,
+   "feed": 192,
    "rng": 3293445040,
    "over": false
   },
@@ -152,7 +152,7 @@
    "confidence": 96.93,
    "readiness": 0.96,
    "stock": 209888,
-   "feed": 204,
+   "feed": 205,
    "rng": 1379126606,
    "over": false
   },
@@ -163,7 +163,7 @@
    "confidence": 94.86,
    "readiness": 0.95,
    "stock": 218593,
-   "feed": 227,
+   "feed": 228,
    "rng": 2496104128,
    "over": false
   },
@@ -174,7 +174,7 @@
    "confidence": 94.52,
    "readiness": 0.94,
    "stock": 192467,
-   "feed": 258,
+   "feed": 259,
    "rng": 1717574640,
    "over": false
   },
@@ -185,7 +185,7 @@
    "confidence": 92.92,
    "readiness": 0.91,
    "stock": 176908,
-   "feed": 279,
+   "feed": 280,
    "rng": 2116046395,
    "over": false
   },
@@ -196,7 +196,7 @@
    "confidence": 95.05,
    "readiness": 0.92,
    "stock": 159037,
-   "feed": 299,
+   "feed": 300,
    "rng": 923564525,
    "over": false
   },
@@ -267,5 +267,5 @@
    "over": false
   }
  ],
- "finalHash": "17b0f1a5fa1be130bb742bd57105f7d1d2908dd55116beb276986faa5e7f1ed5"
+ "finalHash": "6fb77d8f69e6f0fa60008224ada61232f17d094785fc965e8c2d100d698dd01f"
 }

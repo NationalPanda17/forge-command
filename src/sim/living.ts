@@ -7,7 +7,8 @@ import { addWaste } from './audit';
 import { hasPolicy } from './commitments';
 import { pathBetween } from './graph';
 import { clamp, pick, rand } from './rng';
-import { registerResolver } from './strategy';
+import { registerResolver, type Decision } from './strategy';
+import { brokerBuy, budgetDeal, type BudgetDeal } from './scenarios';
 import { DAYS_PER_MONTH, lotQty, nationalDailyDraw, nationalStock, reserveTarget } from './selectors';
 import type { AllyId, Chain, FeedItem, SimState } from './types';
 import { FINISHED, MATERIALS, RECIPES, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
@@ -315,6 +316,18 @@ export function resolveLiving(s: SimState, d: Dec, opt: string, feed: Feed): boo
     s.month.spend.projects += v;
   };
   switch (d.kind) {
+    case 'broker': {
+      // Bought rounds count as purchases; the premium is booked as waste.
+      if (opt === 'buy')
+        brokerBuy(s, d as Decision, feed, (v) => {
+          s.treasury -= v;
+          s.month.spend.purchases += v;
+        }, (line, qty) => ship(s, 'portLowmouth', 'depotCentral', line, qty, 35));
+      return true;
+    }
+    case 'budgetRound':
+      budgetDeal(s, d.value ?? 0, opt as BudgetDeal, feed);
+      return true;
     case 'allyRequest': {
       const ally = data.ally!;
       if (opt === 'send') {

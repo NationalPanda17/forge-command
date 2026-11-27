@@ -141,7 +141,7 @@
    "confidence": 92.36,
    "readiness": 0.96,
    "stock": 242708,
-   "feed": 193,
+   "feed": 195,
    "rng": 2840696755,
    "over": false
   },
@@ -149,10 +149,10 @@
    "month": 14,
    "day": 420,
    "treasury": 746.31,
-   "confidence": 93.08,
+   "confidence": 93.07,
    "readiness": 0.97,
    "stock": 254464,
-   "feed": 203,
+   "feed": 205,
    "rng": 1080320412,
    "over": false
   },
@@ -160,10 +160,10 @@
    "month": 15,
    "day": 450,
    "treasury": 815.77,
-   "confidence": 93.97,
+   "confidence": 93.95,
    "readiness": 0.96,
    "stock": 253959,
-   "feed": 216,
+   "feed": 218,
    "rng": 2005474343,
    "over": false
   },
@@ -171,10 +171,10 @@
    "month": 16,
    "day": 480,
    "treasury": 818.27,
-   "confidence": 95.01,
+   "confidence": 94.98,
    "readiness": 0.97,
    "stock": 248983,
-   "feed": 225,
+   "feed": 227,
    "rng": 666626682,
    "over": false
   },
@@ -182,10 +182,10 @@
    "month": 17,
    "day": 510,
    "treasury": 764.18,
-   "confidence": 96.08,
+   "confidence": 96.05,
    "readiness": 0.96,
    "stock": 249213,
-   "feed": 233,
+   "feed": 235,
    "rng": 2550898568,
    "over": false
   },
@@ -193,10 +193,10 @@
    "month": 18,
    "day": 540,
    "treasury": 769.14,
-   "confidence": 98.94,
+   "confidence": 98.9,
    "readiness": 0.95,
    "stock": 247818,
-   "feed": 244,
+   "feed": 246,
    "rng": 2140863662,
    "over": false
   },
@@ -204,10 +204,10 @@
    "month": 19,
    "day": 570,
    "treasury": 855.44,
-   "confidence": 100,
+   "confidence": 99.96,
    "readiness": 0.94,
    "stock": 242022,
-   "feed": 253,
+   "feed": 255,
    "rng": 1106569386,
    "over": false
   },
@@ -218,7 +218,7 @@
    "confidence": 100,
    "readiness": 0.93,
    "stock": 231852,
-   "feed": 264,
+   "feed": 266,
    "rng": 2095664514,
    "over": false
   },
@@ -229,7 +229,7 @@
    "confidence": 100,
    "readiness": 0.93,
    "stock": 227939,
-   "feed": 276,
+   "feed": 278,
    "rng": 3028394745,
    "over": false
   },
@@ -240,7 +240,7 @@
    "confidence": 100,
    "readiness": 0.85,
    "stock": 224549,
-   "feed": 294,
+   "feed": 296,
    "rng": 3355349003,
    "over": false
   },
@@ -248,7 +248,7 @@
    "month": 23,
    "day": 690,
    "treasury": 901.52,
-   "confidence": 99.17,
+   "confidence": 99.15,
    "readiness": 0.81,
    "stock": 207978,
    "feed": 300,
@@ -267,5 +267,5 @@
    "over": false
   }
  ],
- "finalHash": "3f1fa7d47b9c46c178cfacf74b3dfcd011f352ef76d94879b2c8f520cfb3c1ee"
+ "finalHash": "15b4065b4fce1203a9c91cc4eaf302cb208e4ac1aad4ae94f96e6d0c91af0efa"
 }
