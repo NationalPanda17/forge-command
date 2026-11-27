@@ -528,3 +528,99 @@ html.rm .fc-crisis-active { animation: none; }
 .fc-beacon > circle { animation: fc-beacon 2.2s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .fc-smoke > g, .fc-beacon > circle { animation: none; } }
 html.rm .fc-smoke > g, html.rm .fc-beacon > circle { animation: none; }
+
+/* ---------- Status bar and alerts (17.1) ---------- */
+
+.fc-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 8px 0 12px;
+  border: 1px solid rgb(var(--ops-line));
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.18));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+}
+.fc-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  min-width: 28px;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 2px;
+  border: 1px solid rgb(var(--ops-amber) / 0.55);
+  background: rgb(var(--ops-amber) / 0.12);
+  color: rgb(var(--ops-amber));
+  transition: background-color 120ms, border-color 120ms;
+}
+.fc-alert:hover { background: rgb(var(--ops-amber) / 0.22); border-color: rgb(var(--ops-amber)); }
+.fc-alert.is-bad { border-color: rgb(var(--ops-red) / 0.6); background: rgb(var(--ops-red) / 0.14); color: rgb(var(--ops-red)); }
+.fc-alert.is-bad:hover { background: rgb(var(--ops-red) / 0.24); border-color: rgb(var(--ops-red)); }
+
+/* Feedback beside the pointer after an action (17.1). */
+@keyframes fc-actnote { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-4px); } }
+.fc-actnote {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: 320px;
+  padding: 6px 10px;
+  border: 1px solid rgb(var(--ops-green) / 0.55);
+  border-top-color: rgb(var(--ops-green));
+  border-radius: 2px;
+  background: rgb(var(--ops-panel2));
+  color: rgb(var(--ops-text));
+  font-size: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: fc-actnote 2.4s ease-out both;
+}
+.fc-actnote.is-bad { border-color: rgb(var(--ops-red) / 0.6); border-top-color: rgb(var(--ops-red)); color: rgb(var(--ops-red)); animation-duration: 3.2s; }
+@media (prefers-reduced-motion: reduce) { .fc-actnote { animation: none; } }
+
+/* The outliner down the left edge of the map (17.1), clear of the map's title card above and scale bar below. */
+.fc-outliner {
+  position: absolute;
+  left: 16px;
+  top: 88px;
+  z-index: 15;
+  width: 236px;
+  max-height: calc(100% - 170px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(var(--ops-line));
+  border-top-color: rgb(var(--fc-bronze) / 0.7);
+  border-radius: 2px;
+  background: rgb(var(--ops-panel) / 0.94);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  font-size: 11.5px;
+}
+.fc-outliner-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 9px;
+  font: 700 12px/1 theme('fontFamily.sans');
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--ops-text));
+}
+.fc-outliner-head:hover { color: #fff; }
+.fc-outliner-list { overflow-y: auto; border-top: 1px solid rgb(var(--ops-line) / 0.7); }
+.fc-outliner-row { display: flex; width: 100%; align-items: center; gap: 7px; padding: 4px 9px; text-align: left; color: rgb(var(--ops-text)); }
+.fc-outliner-row:hover { background: rgb(var(--ops-cyan) / 0.07); color: #fff; }
+.fc-outliner-bar { display: block; height: 2px; margin-top: 3px; background: rgb(var(--ops-line)); }
+.fc-outliner-bar > span { display: block; height: 100%; background: rgb(var(--ops-cyan) / 0.8); }
+
+/* The tutorial's ring round the control a step is about (17.1). */
+@keyframes fc-coach { 0%, 100% { box-shadow: 0 0 0 2px rgb(var(--ops-amber)), 0 0 0 5px rgb(var(--ops-amber) / 0.25); } 50% { box-shadow: 0 0 0 2px rgb(var(--ops-amber)), 0 0 0 8px rgb(var(--ops-amber) / 0); } }
+.fc-coach { position: relative; z-index: 5; border-radius: 3px; animation: fc-coach 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber)); } }
+html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber)); }

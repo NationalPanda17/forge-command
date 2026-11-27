@@ -27,8 +27,11 @@ describe('grouped tabs', () => {
   it('every panel is in exactly one group, and every panel has a label', () => {
     const all = GROUPS.flatMap((g) => g.panels);
     expect(new Set(all).size).toBe(all.length);
-    for (const p of Object.keys(PANEL_LABEL) as PanelId[]) expect(all).toContain(p);
-    expect(groupOf('strategy')).toBe('people');
+    // Since 17.1, Watch and Feed are folded into Home and the Log: every other panel sits in a group.
+    for (const p of Object.keys(PANEL_LABEL) as PanelId[]) expect(all.includes(p) || p === 'watch' || p === 'feed').toBe(true);
+    expect(groupOf('strategy')).toBe('home');
+    expect(groupOf('watch')).toBe('home');
+    expect(groupOf('feed')).toBe('home');
     expect(groupOf('intel')).toBe('rival');
   });
 
@@ -48,7 +51,9 @@ describe('grouped tabs', () => {
     expect(b.towns).toEqual({ count: 2, bad: true });
     expect(b.power).toBeUndefined();
     expect(b.inbox?.count).toBe(3);
-    expect(groupBadge(s, b, GROUPS.find((g) => g.id === 'people')!)).toEqual({ count: 3, bad: true });
+    expect(groupBadge(s, b, GROUPS.find((g) => g.id === 'people')!)).toEqual({ count: 2, bad: true });
+    // The Board and the Log sit in Command (17.1), so their counts add up there.
+    expect(groupBadge(s, b, GROUPS.find((g) => g.id === 'home')!)).toEqual({ count: 4, bad: true });
     // The watch list's own "decisions waiting" line is not counted twice; promises due are counted on the Board.
     const w = panelBadges(s, [{ tone: 'warn', panel: 'strategy', text: '1 decision waiting on the Board tab.' }, { tone: 'warn', panel: 'strategy', text: 'Promise due in 1 month: x (Board tab).' }], 0);
     expect(w.strategy).toEqual({ count: 2, bad: true });
@@ -218,7 +223,7 @@ describe('home', () => {
     const home = clean(renderToString(createElement(HomePanel, { state: s, act: noop, seen: snapshot(start(5)), unread: 4, onPanel: noop, onSite: noop, onLine: noop })));
     expect(home).toMatch(/Needs you now/);
     expect(home).toMatch(/Since you last looked · 150 days ago/);
-    expect(home).toMatch(/Inbox · 4 new/);
+    expect(home).toMatch(/Log · 4 new/);
     expect(clean(renderToString(createElement(InboxPanel, { state: s, readKey: '', tip: null, onMarkRead: noop, onPanel: noop, onSite: noop })))).toMatch(/Mark all read/);
     const list = placeCommands(s, { panel: noop, site: noop, material: noop });
     expect(clean(renderToString(createElement(CommandPalette, { commands: list, onClose: noop })))).toMatch(/Search and commands/);

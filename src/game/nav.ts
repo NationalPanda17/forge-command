@@ -33,7 +33,7 @@ export type PanelId =
 
 export const PANEL_LABEL: Record<PanelId, string> = {
   home: 'Home',
-  inbox: 'Inbox',
+  inbox: 'Log',
   watch: 'Watch',
   site: 'Site',
   plan: 'Plan',
@@ -65,7 +65,7 @@ export const PANEL_LABEL: Record<PanelId, string> = {
 /** What each panel is for, for the command palette. */
 export const PANEL_BLURB: Record<PanelId, string> = {
   home: 'The overview: key numbers, what needs you, what changed',
-  inbox: 'Decisions, alerts, warnings and field notes in one place',
+  inbox: 'The situation log: decisions, alerts and field notes, or everything that happened',
   watch: 'The advisor and everything that needs you',
   site: 'The selected site',
   plan: 'Forecasts and weak links',
@@ -94,18 +94,26 @@ export const PANEL_BLURB: Record<PanelId, string> = {
   doctrine: 'Five forks that shape your industry for good',
 };
 
-export type GroupId = 'home' | 'production' | 'supply' | 'people' | 'rival' | 'records';
+export type GroupId = 'home' | 'production' | 'supply' | 'people' | 'treasury' | 'rival';
 
+/**
+ * The tab groups (17.1): Command for what you decide and what happened, then the industry, its supply, its people,
+ * its money and the rival. The id 'home' is kept for the Command group so saved preferences still match.
+ */
 export const GROUPS: { id: GroupId; label: string; panels: PanelId[] }[] = [
-  { id: 'home', label: 'Home', panels: ['home', 'inbox', 'watch', 'story', 'sandbox', 'guide'] },
+  { id: 'home', label: 'Command', panels: ['home', 'inbox', 'strategy', 'story', 'sandbox', 'guide'] },
   { id: 'production', label: 'Production', panels: ['site', 'plan', 'material', 'industry', 'testing', 'stockpile'] },
-  { id: 'supply', label: 'Supply', panels: ['markets', 'build', 'logistics', 'power', 'allies'] },
-  { id: 'people', label: 'People', panels: ['strategy', 'doctrine', 'staff', 'towns', 'policy'] },
+  { id: 'supply', label: 'Supply', panels: ['markets', 'logistics', 'build', 'power'] },
+  { id: 'people', label: 'People', panels: ['staff', 'towns', 'allies'] },
+  { id: 'treasury', label: 'Treasury', panels: ['money', 'policy', 'doctrine', 'stats', 'news'] },
   { id: 'rival', label: 'Rival', panels: ['intel', 'fight'] },
-  { id: 'records', label: 'Records', panels: ['money', 'stats', 'news', 'feed'] },
 ];
 
-export const groupOf = (p: PanelId): GroupId => GROUPS.find((g) => g.panels.includes(p))?.id ?? 'home';
+/** Panels folded into others in 17.1: Watch is part of Home, and Feed is the Log's "everything" view. */
+export const PANEL_ALIAS: Partial<Record<PanelId, PanelId>> = { watch: 'home', feed: 'inbox' };
+export const resolvePanel = (p: PanelId): PanelId => PANEL_ALIAS[p] ?? p;
+
+export const groupOf = (p: PanelId): GroupId => GROUPS.find((g) => g.panels.includes(resolvePanel(p)))?.id ?? 'home';
 
 /** The panels this game shows: the story and sandbox tabs only in those modes. */
 export function panelsFor(s: Pick<SimState, 'story' | 'mode'>, g: { panels: PanelId[] }): PanelId[] {
@@ -131,7 +139,7 @@ export function panelBadges(s: SimState, watch: { tone: string; panel?: string; 
   if (s.strategy.decisions.length) add('strategy', s.strategy.decisions.length, true);
   if (unread) add('inbox', unread, false);
   // The watch list's "decisions waiting" line repeats the decision count above.
-  for (const w of watch) if (w.panel && w.tone !== 'info' && !/decisions? waiting/.test(w.text ?? '')) add(w.panel as PanelId, 1, w.tone === 'bad');
+  for (const w of watch) if (w.panel && w.tone !== 'info' && !/decisions? waiting/.test(w.text ?? '')) add(resolvePanel(w.panel as PanelId), 1, w.tone === 'bad');
   return out;
 }
 

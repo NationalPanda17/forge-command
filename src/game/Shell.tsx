@@ -10,16 +10,15 @@ import { SettingsDialog, type SettingsTab } from './Options';
 import HomePanel, { snapshot } from './HomePanel';
 import InboxPanel from './InboxPanel';
 import CommandPalette, { placeCommands, type Command } from './CommandPalette';
-import { GROUPS, PANEL_LABEL, allPanels, groupBadge, groupOf, panelBadges, panelsFor, type GroupId, type PanelId } from './nav';
+import { GROUPS, PANEL_LABEL, allPanels, groupBadge, groupOf, panelBadges, panelsFor, resolvePanel, type GroupId, type PanelId } from './nav';
 import { loadPauseRules, pauseFor, savePauseRules, type PauseRules } from './events';
 import { feedKey, unreadCount } from './inbox';
 import { safeAdvice } from '../sim/advisor';
 import { engineerNeed } from '../sim/engineers';
-import { validate } from '../sim/actions';
+import { apply, validate, type SimAction } from '../sim/actions';
 import { SiteCard, chainOf, quickActions } from './mapInfo';
 import { downloadSave, saveSlot } from './saves';
 import { isFounded } from '../sim/industry';
-import AdvisorCard from './AdvisorCard';
 import { Explain } from '../ui/Explain';
 import { countryTitle, tr } from '../sim/worldgen';
 import { confidenceWhy, readinessWhy, seasonWhy, treasuryWhy } from './explain';
@@ -41,7 +40,9 @@ import MaterialPanel from './MaterialPanel';
 import { Feed, FightPanel, LogisticsPanel, MoneyPanel, StockpilePanel } from './OpsPanels';
 import SitePanel from './SitePanel';
 import StrategyPanel from './StrategyPanel';
-import { GuidePanel, WatchPanel, watchList } from './WatchGuide';
+import { GuidePanel, watchList } from './WatchGuide';
+import { AlertChips, alertGroups } from './Alerts';
+import { Outliner } from './Outliner';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
 
@@ -101,7 +102,44 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   };
   const rulesRef = useRef(pauseRules);
   rulesRef.current = pauseRules;
-  const { state, speed, setSpeed: rawSetSpeed, act, step: rawStep, clock, pausedBy, clearPause, saveFailed } = useSim(initial, (next, prev) => pauseFor(rulesRef.current, next.alerts ?? [], next.history.length > prev.history.length));
+  const { state, speed, setSpeed: rawSetSpeed, act: rawAct, step: rawStep, clock, pausedBy, clearPause, saveFailed } = useSim(initial, (next, prev) => pauseFor(rulesRef.current, next.alerts ?? [], next.history.length > prev.history.length));
+  // Feedback where you clicked (17.1): each action shows what it did and what it cost, or why it could not be done,
+  // beside the pointer. Several actions at once (the safe advice) are summed into one note.
+  const [actNote, setActNote] = useState<ActNote | null>(null);
+  const pointer = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => (pointer.current = { x: e.clientX, y: e.clientY, t: performance.now() });
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, []);
+  const pending = useRef<{ before: SimState; after: SimState; n: number; why: string | null; timer: number } | null>(null);
+  const liveState = useRef(state);
+  liveState.current = state;
+  const act = useCallback(
+    (a: SimAction) => {
+      const quiet = a.type === 'tutorial' || a.type === 'tipSeen' || a.type === 'storyBriefed' || a.type === 'handover';
+      if (!quiet) {
+        const p = pending.current;
+        const from = p ? p.after : liveState.current;
+        const why = validate(from, a);
+        const after = why ? from : apply(from, a);
+        if (p) window.clearTimeout(p.timer);
+        const next = { before: p?.before ?? liveState.current, after, n: (p?.n ?? 0) + (why ? 0 : 1), why: why ?? p?.why ?? null, timer: 0 };
+        next.timer = window.setTimeout(() => {
+          pending.current = null;
+          setActNote(noteFor(next.before, next.after, next.n, next.why, pointer.current));
+        }, 40);
+        pending.current = next;
+      }
+      rawAct(a);
+    },
+    [rawAct],
+  );
+  useEffect(() => {
+    if (!actNote) return;
+    const t = window.setTimeout(() => setActNote(null), actNote.tone === 'bad' ? 3200 : 2400);
+    return () => window.clearTimeout(t);
+  }, [actNote]);
   // A handover or an unread briefing holds the clock: nothing may restart it behind the screen.
   const held = !!state.hotseat?.handover || !!state.hearing || (state.story?.briefing !== null && state.story?.briefing !== undefined);
   // Any change of speed by the player, or a step, ends the reason the clock last stopped.
@@ -136,14 +174,20 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   );
   const [selected, setSelected] = useState<string | null>('corranWorks');
   const [material, setMaterial] = useState<MaterialId>('pac3');
-  const [panel, setPanelRaw] = useState<PanelId>(initial.tutorial && initial.tutorial.step < TUTORIAL_DONE ? 'watch' : 'home');
+  const [panel, setPanelRaw] = useState<PanelId>('home');
   // The last tab used in each group, so a group opens where you left it.
   const [lastIn, setLastIn] = useState<Partial<Record<GroupId, PanelId>>>({});
-  const setPanel = useCallback((p: PanelId) => {
+  const setPanel = useCallback((to: PanelId) => {
+    // Watch and Feed were folded into Home and the Log in 17.1; links to them still work.
+    const p = resolvePanel(to);
     setPanelRaw(p);
     setLastIn((l) => (l[groupOf(p)] === p ? l : { ...l, [groupOf(p)]: p }));
   }, []);
   const [palette, setPalette] = useState(false);
+  // For the keyboard: the tabs with alerts, and the last tab used in each group.
+  const alertRef = useRef<PanelId[]>([]);
+  const lastInRef = useRef(lastIn);
+  lastInRef.current = lastIn;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,10 +205,23 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       if (document.querySelector('[aria-label="Search and commands"]')) return;
       if (document.querySelector('[role="dialog"]') && e.key !== 'Escape' && e.key !== '?') return;
       if (e.key === ' ' && el?.closest('button, [role="button"], a')) return;
+      // Shift and a number opens a tab group (the number alone sets the speed).
+      const digit = /^Digit([1-6])$/.exec(e.code);
+      if (e.shiftKey && digit) {
+        const g = GROUPS[Number(digit[1]) - 1];
+        if (g) setPanel(lastInRef.current[g.id] ?? panelsFor(stateRef.current, g)[0]);
+        return;
+      }
       if (e.key === ' ') {
         e.preventDefault();
         setSpeed(speed === 0 ? lastSpeed.current : 0);
       } else if (['1', '2', '3', '4'].includes(e.key)) setSpeed(([1, 2, 4, 8] as Speed[])[Number(e.key) - 1]);
+      else if (e.key === 'h' || e.key === 'H') setPanel('home');
+      else if (e.key === '.') {
+        // The next alert's tab, in turn.
+        const list = alertRef.current;
+        if (list.length) setPanel(list[(list.indexOf(panelRef.current) + 1) % list.length]);
+      }
       else if (e.key === '[' || e.key === ']') {
         const ids = tabsRef.current.map((t) => t.id);
         const i = ids.indexOf(panelRef.current);
@@ -362,6 +419,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   const slow = slowRef.current.s;
   const unread = useMemo(() => unreadCount(slow, readKey), [slow, readKey]);
   const watch = useMemo(() => watchList(slow), [slow]);
+  alertRef.current = alertGroups(watch).map((g) => g.panel);
   const badges = useMemo(() => panelBadges(slow, watch, unread), [slow, watch, unread]);
   const group = groupOf(panel);
   // The selected site's supply chain, drawn on the map; worked out again only when the selection or a month changes.
@@ -543,82 +601,81 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         </div>
       </header>
 
-      {saving !== null && (
-        <form
-          className="fc-zoom panel flex flex-wrap items-center gap-2 px-3 py-2 text-[12px]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const why = saveSlot(saving, state);
-            setSaveNote(why ?? `Saved as “${saving.trim()}”.`);
-            if (!why) setSaving(null);
-          }}
-        >
-          <label className="flex items-center gap-2">
-            <span className="label">Save as</span>
-            <input className="input w-56" value={saving} onChange={(e) => setSaving(e.target.value)} autoFocus maxLength={40} />
-          </label>
-          <Btn kind="primary" type="submit">Save</Btn>
-          <Btn onClick={() => setSaving(null)}>Cancel</Btn>
-        </form>
-      )}
-      {saveFailed && (
-        <div role="alert" className="fc-zoom fc-drop panel flex flex-wrap items-center justify-between gap-2 border-ops-amber/60 px-3 py-1.5 text-[12px] text-ops-amber">
-          <span>This browser would not save your game (its storage is full or switched off). Keep a copy as a file so you do not lose it.</span>
-          <Btn kind="warn" onClick={() => downloadSave(state)}>
-            Download save
-          </Btn>
+      {/* The status bar (17.1): one notice at a time, the most important first, in a slot that never moves the map;
+          and on the right, the alerts: what needs you now, which clear themselves once it is dealt with. */}
+      <div className="fc-zoom fc-statusbar" role="region" aria-label="Notices and alerts">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {saving !== null ? (
+            <form
+              className="flex min-w-0 items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const why = saveSlot(saving, state);
+                setSaveNote(why ?? `Saved as “${saving.trim()}”.`);
+                if (!why) setSaving(null);
+              }}
+            >
+              <label className="flex items-center gap-2">
+                <span className="label">Save as</span>
+                <input className="input h-6 w-56 py-0" value={saving} onChange={(e) => setSaving(e.target.value)} autoFocus maxLength={40} />
+              </label>
+              <Btn kind="primary" type="submit">Save</Btn>
+              <Btn onClick={() => setSaving(null)}>Cancel</Btn>
+            </form>
+          ) : saveFailed ? (
+            <div role="alert" className="fc-drop flex min-w-0 items-center gap-2 text-ops-amber">
+              <Icon name="alert" />
+              <span className="min-w-0 truncate" title="Its storage is full or switched off. Keep a copy as a file so you do not lose your game.">This browser would not save your game. Keep a copy as a file.</span>
+              <Btn kind="warn" onClick={() => downloadSave(state)}>Download save</Btn>
+            </div>
+          ) : banner && speed === 0 ? (
+            <div className={`fc-drop flex min-w-0 items-center gap-2 ${banner.tone === 'bad' ? 'text-ops-red' : banner.tone === 'good' ? 'text-ops-green' : 'text-ops-amber'}`}>
+              <Icon name="pause" />
+              <span className="min-w-0 truncate" title={tr(banner.text)}>
+                Paused: {tr(banner.text)}
+              </span>
+              {(banner.more ?? 0) > 0 && (
+                <button type="button" className="shrink-0 text-ops-dim underline decoration-dotted underline-offset-2 hover:text-ops-text" onClick={() => setPanel('inbox')}>
+                  +{banner.more} more in the log
+                </button>
+              )}
+              {banner.site && <Btn onClick={() => select(banner.site!)}>Show</Btn>}
+              <Btn kind="primary" onClick={() => setSpeed(lastSpeed.current)}>
+                Resume
+              </Btn>
+            </div>
+          ) : toast.length > 0 ? (
+            <div className="fc-drop flex min-w-0 items-center gap-2 text-ops-green">
+              <Icon name="trophy" />
+              <span className="min-w-0 truncate">
+                <span className="text-white">{toast[0].title}</span> <span className="text-ops-dim">· {toast[0].text}</span>
+                {toast.length > 1 && <span className="text-ops-dim"> · and {toast.length - 1} more</span>}
+              </span>
+            </div>
+          ) : saveNote ? (
+            <div role="status" className="fc-drop flex min-w-0 items-center gap-2 text-ops-green">
+              <Icon name="save" />
+              <span className="min-w-0 truncate">{saveNote}</span>
+              <Btn onClick={() => setSaveNote(null)}>OK</Btn>
+            </div>
+          ) : lead ? (
+            <button type="button" onClick={() => setPanel('news')} className="flex min-w-0 items-center gap-2 text-left hover:text-white">
+              <span className="label shrink-0">Courier</span>
+              <span className="min-w-0 truncate text-ops-text">{tr(lead.title)}</span>
+            </button>
+          ) : (
+            <span className="label">All quiet</span>
+          )}
         </div>
-      )}
-      {saveNote && (
-        <div role="status" className="fc-zoom fc-drop panel flex items-center justify-between gap-2 px-3 py-1 text-[12px] text-ops-green">
-          <span>{saveNote}</span>
-          <Btn onClick={() => setSaveNote(null)}>OK</Btn>
-        </div>
-      )}
-
-      {lead && (
-        <button type="button" onClick={() => setPanel('news')} className="fc-zoom panel flex min-w-0 items-center gap-2 px-3 py-1 text-left text-[11px] hover:border-ops-dim">
-          <span className="label shrink-0">Courier</span>
-          <span className="min-w-0 truncate text-ops-text">{tr(lead.title)}</span>
-        </button>
-      )}
-
-      {toast.length > 0 && (
-        <div className="fc-drop panel flex flex-wrap items-center gap-2 border-ops-green/60 px-3 py-2 text-[12px] text-ops-green">
-          <span>★ Achievement{toast.length > 1 ? 's' : ''}:</span>
-          {toast.map((a) => (
-            <span key={a.id} className="text-white">
-              {a.title} <span className="text-ops-dim">· {a.text}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {banner && speed === 0 && (
-        <div className={`fc-drop panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[12px] ${banner.tone === 'bad' ? 'border-ops-red/60 text-ops-red' : banner.tone === 'good' ? 'border-ops-green/60 text-ops-green' : 'border-ops-amber/60 text-ops-amber'}`}>
-          <span>
-            Paused: {tr(banner.text)}
-            {(banner.more ?? 0) > 0 && (
-              <button type="button" className="ml-2 text-ops-dim underline decoration-dotted underline-offset-2 hover:text-ops-text" onClick={() => setPanel('inbox')}>
-                +{banner.more} more in the inbox
-              </button>
-            )}
-          </span>
-          <span className="flex gap-1">
-            {banner.site && <Btn onClick={() => select(banner.site!)}>Show</Btn>}
-            <Btn kind="primary" onClick={() => setSpeed(lastSpeed.current)}>
-              Resume
-            </Btn>
-          </span>
-        </div>
-      )}
+        <AlertChips items={watch} onPanel={setPanel} />
+      </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_470px] gap-2">
         <div className="panel fc-mapframe flex min-w-0 flex-col overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ops-line/60 px-2 py-1">
             <MapLayerToggles layers={layers} onChange={setLayers} />
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1">
           <MapView
             key={state.world ?? 'classic'}
             markers={markers}
@@ -661,6 +718,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             related={chain}
             weather={!state.settings.seasons ? null : seasonOf(state.day) === 'winter' ? 'snow' : [2, 3].includes(monthOfYear(state.day)) ? 'flood' : [6, 7].includes(monthOfYear(state.day)) ? 'heat' : null}
           />
+            <Outliner state={slow} onPanel={setPanel} onSite={select} />
           </div>
           <details className="group max-h-44 shrink-0 overflow-y-auto border-t border-ops-line/60 px-2 py-1" open={legendOpen} onToggle={(e) => setLegendOpen((e.currentTarget as HTMLDetailsElement).open)}>
             <summary className="label cursor-pointer select-none py-1 hover:text-ops-text">Map key</summary>
@@ -709,8 +767,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               );
             })}
           </nav>
+          {/* One coach at a time: the tutorial while it runs, otherwise the next field note. */}
           {state.tutorial && state.tutorial.step < TUTORIAL_DONE && <TutorialCard state={state} onStep={(step) => act({ type: 'tutorial', step })} />}
-          {tip && (
+          {tip && !(state.tutorial && state.tutorial.step < TUTORIAL_DONE) && (
             <TipCard
               tip={tip}
               onShow={() => {
@@ -750,15 +809,8 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
             {panel === 'fight' && <FightPanel state={state} act={act} />}
             {panel === 'strategy' && <StrategyPanel state={state} act={act} />}
             {panel === 'money' && <MoneyPanel state={state} act={act} />}
-            {panel === 'feed' && <Feed state={state} onSite={select} />}
-            {panel === 'watch' && (
-              <>
-                <AdvisorCard state={state} act={act} onPanel={(p) => setPanel(p === 'programmes' ? 'policy' : p === 'site' ? 'site' : p)} onSite={select} onMaterial={showMaterial} />
-                <WatchPanel state={state} onSite={select} onMaterial={showMaterial} onPanel={(p) => setPanel(p)} />
-              </>
-            )}
             {panel === 'guide' && <GuidePanel />}
-            {panel === 'home' && <HomePanel state={slow} act={act} seen={seen} unread={unread} onPanel={setPanel} onSite={select} onLine={showMaterial} />}
+            {panel === 'home' && <HomePanel state={slow} act={act} seen={seen} unread={unread} onPanel={setPanel} onSite={select} onLine={showMaterial} onMaterial={showMaterial} />}
             {panel === 'inbox' && <InboxPanel state={state} readKey={readKey} tip={tip} onMarkRead={markRead} onPanel={setPanel} onSite={select} />}
             </Suspense>
             </PanelBoundary>
@@ -768,6 +820,7 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
       <footer className="fc-zoom panel max-h-28 shrink-0 overflow-y-auto">
         <Feed state={state} onSite={select} limit={6} />
       </footer>
+      {actNote && <ActNoteView note={actNote} />}
       <Briefing state={state} act={act} />
       <Handover state={state} act={act} />
       {!state.hotseat?.handover && !state.over && (state.story?.briefing === null || state.story?.briefing === undefined) && <Hearing state={state} act={act} />}
@@ -823,6 +876,45 @@ function Resource({ icon, label, tone, children }: { icon: IconName; label: stri
         <span className="label block whitespace-nowrap !text-[10px]">{label}</span>
         <span className="mt-0.5 block whitespace-nowrap font-sans text-[18px] font-bold">{children}</span>
       </span>
+    </div>
+  );
+}
+
+interface ActNote {
+  key: number;
+  text: string;
+  money: string | null;
+  tone: 'good' | 'bad' | 'info';
+  x: number;
+  y: number;
+}
+
+const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(2)}B` : v >= 1 ? `${Math.round(v)}M` : `${Math.round(v * 1000)}K`);
+
+/** What an action (or a batch of them) did, for the note beside the pointer. */
+function noteFor(before: SimState, after: SimState, n: number, why: string | null, at: { x: number; y: number; t: number }): ActNote {
+  const recent = performance.now() - at.t < 1500;
+  // Keyboard actions: beside whatever has focus.
+  const box = !recent ? (document.activeElement as HTMLElement | null)?.getBoundingClientRect() : null;
+  const x = recent ? at.x : box ? box.left + box.width / 2 : window.innerWidth / 2;
+  const y = recent ? at.y : box ? box.top : 80;
+  const key = Date.now();
+  if (n === 0) return { key, text: why ?? 'Not possible just now.', money: null, tone: 'bad', x, y };
+  const spent = after.treasury - before.treasury;
+  const money = Math.abs(spent) >= 0.05 ? `${spent < 0 ? '−' : '+'}$${short(Math.abs(spent))}` : null;
+  const fresh = after.feed.slice(before.feed.length);
+  const text = n > 1 ? `${n} actions taken` : fresh.length ? tr(fresh[fresh.length - 1].text) : 'Done.';
+  return { key, text, money, tone: why ? 'info' : 'good', x, y };
+}
+
+function ActNoteView({ note }: { note: ActNote }) {
+  // Kept inside the window: above the point, and clear of the edges.
+  const left = Math.max(12, Math.min(window.innerWidth - 332, note.x - 160));
+  const top = Math.max(12, note.y - 56);
+  return (
+    <div key={note.key} className={`fc-actnote ${note.tone === 'bad' ? 'is-bad' : ''}`} style={{ left, top }} role="status" aria-live="polite">
+      <span className="min-w-0 truncate">{note.text}</span>
+      {note.money && <span className={`shrink-0 font-sans text-[14px] font-bold ${note.money.startsWith('−') ? 'text-ops-amber' : 'text-ops-green'}`}>{note.money}</span>}
     </div>
   );
 }
