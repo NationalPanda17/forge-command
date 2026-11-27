@@ -138,5 +138,18 @@
       "treasuryShift": 0.1,
       "regionsShift": 0.1
     }
+  },
+  "autopilot": {
+    "$comment": "19.0.4: the chief of staff's supply planning. It invests at the home maker of the weakest materials in the chain.",
+    "investRatio": 1.0,
+    "links": 2,
+    "costMargin": 1.5,
+    "maxExpansions": 3,
+    "byScenario": {
+      "sanctions": {
+        "links": 1,
+        "investRatio": 0.8
+      }
+    }
   }
 }

@@ -1,11 +1,14 @@
 // Automation: a chief of staff who runs the areas you hand over, every week, within a money reserve you set and in the
 // spirit of a stance you choose. The same rules recommend an answer to every decision card, answer budget hearings, and
 // drive the test player used by the balance check.
-import { applyInPlace, refurbishCost, repairCost, validate, type SimAction } from './actions';
+import { applyInPlace, expandCost, investCost, refurbishCost, repairCost, validate, type SimAction } from './actions';
 import { scoreMonths } from './mandate';
 import { replaceCost } from './scenarios';
 import DEPTH from './tuning/depth.json';
-import { bottleneck, monthsTo } from './analytics';
+
+/** The chief of staff's supply planning (19.0.4). */
+const AUTO = DEPTH.autopilot;
+import { bottleneck, monthsTo, weakLinks } from './analytics';
 import { routeByKey, routeCap } from './build';
 import { CYBER_AREA_IDS } from './cyber';
 import { COPROD_NEEDS, supplierNations } from './diplomacy';
@@ -269,6 +272,21 @@ export function proposals(s: SimState, area: AutoArea, reserve = s.automation?.r
           const r = routeByKey(s, key);
           if (r && r.mode !== 'air' && load / routeCap(s, r) > 0.85) acts.push({ type: 'build', kind: 'upgrade', target: key });
         }
+      // Supply planning (19.0.4): the materials the country cannot make enough of get more capacity at home, at their
+      // biggest domestic maker, before the lines that need them run dry. A foreign maker may be the largest source, but
+      // it can be banned and cannot be invested in, so the money goes to the home plant.
+      // Under sanctions many links look short at once; the chief of staff concentrates on the worst.
+      const plan = { ...AUTO, ...((AUTO.byScenario as Record<string, Partial<typeof AUTO>>)[s.scenario] ?? {}) };
+      for (const w of weakLinks(s).filter((x) => x.ratio < plan.investRatio).slice(0, plan.links)) {
+        const home = SITES.filter((d) => d.owner !== 'foreign' && s.sites[d.id].status === 'active' && !s.sites[d.id].mothballed)
+          .flatMap((d) => s.sites[d.id].processes.map((p, k) => ({ d, p, k })))
+          .filter(({ p }) => RECIPES[p.recipe].output === w.material && p.expansions < AUTO.maxExpansions)
+          .sort((a, b) => b.p.capacity - a.p.capacity)[0];
+        if (!home) continue;
+        const type = home.d.owner === 'state' ? ('expand' as const) : ('invest' as const);
+        const cost = type === 'expand' ? expandCost(s, home.d.id, home.k) : investCost(s, home.d.id, home.k);
+        if (money(cost * AUTO.costMargin)) acts.push({ type, site: home.d.id, process: home.k });
+      }
       break;
     case 'research':
       for (const role of STAFF_ROLE_IDS) {
