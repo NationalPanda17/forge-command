@@ -175,3 +175,27 @@ You can also leave the budget as it is. The weights are renormalised and still s
 | Rebuild | 49.7, 5/21 | 44.8, 7/21 |
 
 These runs are noisy. Small changes to a setting moved War footing by ±5 points in both directions, so differences of a few points are within that noise.
+
+## 19.0.4: a smarter chief of staff
+
+Autopilot games were lost in a slow spiral in year three. Supplier ceilings dragged readiness and confidence down together: chips ran short, so fuzes and guidance did, then GMLRS and 155 mm shells drained. The old rule only invested in a supplier once a line was below 60% and the treasury held over $900M. It also only invested when the biggest maker of the bottleneck part was a private home company. For chips the biggest maker is foreign, so the home foundry never got a dollar.
+
+**Supply planning** (`automation.ts`, production area; tuning in `depth.json` → `autopilot`):
+- **What it watches.** Each round, it takes the `links` (2) weakest materials in the whole chain whose supply is below `investRatio` (1.0) of demand.
+- **Where it spends.** It invests in the biggest home maker of each (expanding the plant if it is yours) that has fewer than 3 expansions.
+- **When it can afford it.** The treasury must cover the real cost × `costMargin` (1.5) above the reserve.
+- **Under Sanctions** it takes one material at a time, below 0.8 of demand (`byScenario`): with the bans on, many links look short at once.
+
+**Balance** (full autopilot, 40 seeds):
+
+| Case | Before | After |
+|---|---|---|
+| Generated maps, normal | 54.2, 8/40 dismissed | 64.4, 2/40 |
+| Classic, normal | 59.8, 3/40 | 61.0, 3/40 |
+| War footing | 47.8, 3/41 | 53.1, 3/41 |
+| Rebuild | 50.8, 7/41 | 55.7, 3/41 |
+| Sanctions | 56.5, 1/41 | 59.0, 3/41 |
+| Hard | 44.2, 7/41 | 45.7, 8/41 |
+| Easy | 67.5, 1/41 | 69.2, 0/41 |
+
+**A caution for tuning.** These results swing a lot between settings. Trying a 2.0 margin with one material moved classic from 3/40 to 12/40 dismissed. Judge any change on 40 seeds or more, against a baseline from the same seeds.

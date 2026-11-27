@@ -1,5 +1,15 @@
 # Changelog
 
+## 19.0.4: a smarter chief of staff
+
+- **The chief of staff plans the supply chain.** It watches the whole chain for the parts the country cannot make
+  enough of, chips and seekers as well as finished rounds, and puts money into the home plants that make them before
+  the lines that need them run dry. It invests at home even when a foreign supplier is the bigger source, since a
+  foreign supplier can be banned.
+- **Fewer lost games on autopilot.**
+  - On a generated country, 2 games in 40 now end in dismissal instead of 8, and scores rise by about 10 points.
+  - War footing and Rebuild score about 5 points higher.
+
 ## 19.0.3: the Committee's warning
 
 - **Probation before dismissal.** The first time in a term that the Committee's confidence falls to 25, you are put on
