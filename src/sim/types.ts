@@ -425,6 +425,8 @@ export interface SimState {
   termMonth?: number;
   /** Earlier terms as Director in this game. */
   career: CareerTerm[];
+  /** Set when this campaign is a career (19.2): the id of its entry in the career record kept across games. */
+  careerId?: string;
   /** A custom scenario's settings, when playing one. */
   custom: CustomScenario | null;
   /** Regional grids, power contracts and generators. */

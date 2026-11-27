@@ -9,7 +9,8 @@ import { int, money, pct, qty } from '../ui/format';
 import { ACHIEVEMENTS, loadAchievements } from './achievements';
 import { entryKey, recordScore } from './scores';
 import { useMemo } from 'react';
-import { canSecondTerm } from '../sim/commitments';
+import { CAREER, canReappoint, gradeForNextRank, rankOf, unfinishedBusiness } from '../sim/career';
+import { nextUnlock, recordCareerTerm } from './career';
 import { epilogue } from '../sim/story';
 import { winner } from '../sim/hotseat';
 import { dateLabel, monthLabel2 } from './useSim';
@@ -22,7 +23,14 @@ const GRADE_TONE = { A: 'text-ops-green', B: 'text-ops-cyan', C: 'text-ops-amber
 export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { state: SimState; onClose: () => void; onMenu: () => void; onSecondTerm?: (boon?: BoonId) => void }) {
   const legacy = useMemo(() => legacyOf(state), [state]);
   const moments = useMemo(() => keyMoments(state), [state]);
-  const canGoOn = !!onSecondTerm && canSecondTerm(state) === null;
+  // A career's Committee may decline to reappoint you (19.2).
+  const why = canReappoint(state);
+  const canGoOn = !!onSecondTerm && why === null;
+  // The career record takes this term at once, so closing the tab loses nothing.
+  const career = useMemo(() => (state.careerId ? recordCareerTerm(state, { notReappointed: state.outcome === 'complete' && why !== null }) : null), [state, why]);
+  const ahead = career ? gradeForNextRank(state, career.points) : null;
+  const teaser = useMemo(() => (career ? nextUnlock() : null), [career]);
+  const business = useMemo(() => (career && canGoOn ? unfinishedBusiness(state) : []), [state, career, canGoOn]);
   const boons = useMemo(() => (canGoOn ? boonsFor(state) : []), [state, canGoOn]);
   const [boon, setBoon] = useState<BoonId | undefined>(undefined);
   const chosen = boon ?? boons[0];
@@ -169,6 +177,50 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           </section>
         )}
 
+        {career && (
+          <section className="rounded border border-ops-amber/50 p-3" aria-label="The Committee's letter">
+            <h3 className="label mb-2 !text-ops-amber">The Committee's letter</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-2">
+                <p className={canGoOn ? 'text-ops-green' : 'text-ops-red'}>
+                  {state.outcome === 'dismissed' ? 'Your career ends here: the Committee dismissed you.' : canGoOn ? `The Committee will reappoint you for term ${(state.term ?? 1) + 1}.` : why}
+                </p>
+                <div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-white">{CAREER.ranks[career.rank].name}</span>
+                    <span className="text-ops-dim">{career.points} points</span>
+                  </div>
+                  {ahead && (
+                    <>
+                      <div className="mt-1 h-1.5 rounded-sm bg-ops-line/40" aria-hidden="true">
+                        <div className="h-full rounded-sm bg-ops-amber/80" style={{ width: `${Math.min(100, (100 * (career.points - CAREER.ranks[career.rank].points)) / Math.max(1, CAREER.ranks[rankOf(career.points) + 1].points - CAREER.ranks[career.rank].points))}%` }} />
+                      </div>
+                      <p className="mt-1 text-[11px] text-ops-dim">
+                        {ahead.need} points to {ahead.rank}.{canGoOn && ahead.grade ? ` ${ahead.grade === 'A' ? 'An' : 'A'} ${ahead.grade} next term gets you there.` : ''}
+                      </p>
+                    </>
+                  )}
+                </div>
+                {teaser && (
+                  <p className="text-[11px] text-ops-text">
+                    Next to open: <span className="text-white">{teaser.name}</span>. <span className="text-ops-dim">{teaser.how}</span>
+                  </p>
+                )}
+              </div>
+              {business.length > 0 && (
+                <div className="min-w-0">
+                  <div className="label mb-1">Unfinished business</div>
+                  <ul className="space-y-0.5 text-ops-text">
+                    {business.map((b) => (
+                      <li key={b}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {canGoOn && (
           <section>
             <h3 className="label mb-1">What you carry into term {(state.term ?? 1) + 1}</h3>
@@ -215,6 +267,17 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
           {canGoOn && (
             <Btn kind="warn" onClick={() => onSecondTerm!(chosen)} title="Carry on with everything you built and every round you leave in the depots">
               Serve term {(state.term ?? 1) + 1}
+            </Btn>
+          )}
+          {career && canGoOn && career.terms.length >= 1 && (
+            <Btn
+              onClick={() => {
+                recordCareerTerm(state, { retire: true });
+                onMenu();
+              }}
+              title={career.terms.length >= CAREER.retireBonusFrom ? `Retire with honour: +${CAREER.retireBonus} career points` : 'End your career here'}
+            >
+              Retire{career.terms.length >= CAREER.retireBonusFrom ? ` (+${CAREER.retireBonus} points)` : ''}
             </Btn>
           )}
           <Btn kind="primary" onClick={onMenu}>

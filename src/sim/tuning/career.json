@@ -1,0 +1,87 @@
+{
+  "$comment": "Release 19.2 'Career' (docs/career.md). A career is a campaign in one country, term after term, open-ended until dismissal, a failing term or retirement.",
+  "reappointMinScore": 42,
+  "termRatchetMax": 3,
+  "bandCeiling": {
+    "readiness": 1.0
+  },
+  "termBonus": 0.15,
+  "diffMult": {
+    "easy": 0.8,
+    "normal": 1.0,
+    "hard": 1.25
+  },
+  "postingMult": {
+    "standard": 1.0,
+    "warFooting": 1.1,
+    "sanctions": 1.15,
+    "rebuild": 1.2,
+    "custom": 1.0,
+    "tutorial": 0
+  },
+  "worldMult": 1.05,
+  "dismissedTermFactor": 0.5,
+  "retireBonusFrom": 3,
+  "retireBonus": 40,
+  "ranks": [
+    {
+      "name": "Acting Director",
+      "points": 0
+    },
+    {
+      "name": "Director",
+      "points": 60
+    },
+    {
+      "name": "Senior Director",
+      "points": 150
+    },
+    {
+      "name": "Director-General",
+      "points": 260
+    },
+    {
+      "name": "Permanent Director",
+      "points": 400
+    },
+    {
+      "name": "Architect of the Arsenal",
+      "points": 560
+    }
+  ],
+  "unlocks": {
+    "warFooting": {
+      "name": "War footing postings",
+      "terms": 1
+    },
+    "world": {
+      "name": "Postings abroad (a new country)",
+      "term": 3
+    },
+    "sanctions": {
+      "name": "Sanctions postings",
+      "term": 3
+    },
+    "rebuild": {
+      "name": "Rebuild postings",
+      "rank": 3,
+      "orTerm": 4
+    },
+    "hard": {
+      "name": "Hard difficulty",
+      "rank": 3,
+      "orTerm": 4
+    }
+  },
+  "recordKeep": 20,
+  "budgetRebase": {
+    "months": 3,
+    "cover": 1.05
+  },
+  "reappointConfidence": {
+    "base": 45,
+    "perPoint": 0.4,
+    "min": 30,
+    "max": 75
+  }
+}
