@@ -2,6 +2,8 @@
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    // Art bible: corners are 2–3px; circles only for dials and slider thumbs (rounded-full).
+    borderRadius: { none: '0', sm: '1px', DEFAULT: '2px', md: '3px', lg: '3px', xl: '3px', '2xl': '3px', full: '9999px' },
     extend: {
       colors: {
         ops: {
@@ -17,6 +19,7 @@ export default {
           amber: 'rgb(var(--ops-amber) / <alpha-value>)',
           red: 'rgb(var(--ops-red) / <alpha-value>)',
           violet: 'rgb(var(--ops-violet) / <alpha-value>)',
+          bronze: 'rgb(var(--fc-bronze) / <alpha-value>)',
         },
       },
       fontFamily: {

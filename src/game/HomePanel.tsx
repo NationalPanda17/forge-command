@@ -142,8 +142,8 @@ export default function HomePanel({
             <li key={line}>
               <button type="button" className="grid w-full grid-cols-[minmax(0,7rem)_minmax(0,1fr)_3rem] items-center gap-2 text-left hover:text-white" onClick={() => onLine(line)}>
                 <span className="truncate text-ops-text">{MATERIALS[line].name}</span>
-                <span className="h-1.5 overflow-hidden rounded bg-ops-line/60">
-                  <span className={`block h-full ${level < 0.5 ? 'bg-ops-red' : level < 0.85 ? 'bg-ops-amber' : 'bg-ops-green'}`} style={{ width: `${Math.min(100, Math.round(level * 100))}%` }} />
+                <span className="bar">
+                  <span className={`${level < 0.5 ? 'bg-ops-red' : level < 0.85 ? 'bg-ops-amber' : 'bg-ops-green'}`} style={{ width: `${Math.min(100, Math.round(level * 100))}%` }} />
                 </span>
                 <span className={`text-right ${textToneFor(level)}`}>{pct(level)}</span>
               </button>

@@ -11,6 +11,8 @@ export interface Placed { x: number; y: number; anchor: Anchor; /** Draw a leade
 
 export const FONT_MONO = '"JetBrains Mono", ui-monospace, monospace';
 export const FONT_HEAD = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif';
+/** Site names: a name, not a readout, so the reading face (mono stays for rulers, coordinates and figures). */
+export const FONT_BODY = '"Inter", system-ui, sans-serif';
 
 const hit = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 const shift = (b: Box, dx: number, dy: number): Box => ({ x0: b.x0 + dx, y0: b.y0 + dy, x1: b.x1 + dx, y1: b.y1 + dy });
@@ -300,9 +302,9 @@ export function layoutMap(inp: LayoutInput): Layout {
     const name = inp.names?.[id] ?? s.name;
     const [x, y] = markerAt(id, S, spread);
     const isHot = inp.hot.includes(id);
-    const w0 = textWidth(name, SITE_FONT, FONT_MONO, isHot ? 700 : 500);
+    const w0 = textWidth(name, SITE_FONT, FONT_BODY, isHot ? 700 : 500);
     const sub = isHot ? kindLine(id, inp.kinds?.[id]) : '';
-    const w = Math.max(w0, sub ? textWidth(sub, SITE_SUB_FONT, FONT_MONO, 400, 0.1) : 0);
+    const w = Math.max(w0, sub ? textWidth(sub, SITE_SUB_FONT, FONT_BODY, 500, 0.1) : 0);
     const extra = sub ? [{ gap: SITE_SUB_GAP, size: SITE_SUB_FONT }] : [];
     const tall = sub ? SITE_SUB_GAP : 0;
     const g = (id === inp.selected ? h + 8 : h + 4);

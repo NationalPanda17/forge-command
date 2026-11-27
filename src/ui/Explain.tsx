@@ -46,9 +46,9 @@ export function Explain({ children, title, lines }: { children: ReactNode; title
         <span
           id={id}
           role="tooltip"
-          className={`absolute top-full z-50 mt-1 block w-64 max-w-[80vw] rounded border border-ops-line bg-ops-bg p-2 text-left text-[11px] font-normal normal-case leading-snug tracking-normal text-ops-text shadow-lg ${side === 'left' ? 'left-0' : 'right-0'}`}
+          className={`fc-hud absolute top-full z-50 mt-1 block w-64 max-w-[80vw] p-2 text-left font-body text-[11.5px] font-normal normal-case leading-snug tracking-normal text-ops-text ${side === 'left' ? 'left-0' : 'right-0'}`}
         >
-          <span className="label mb-1 block text-ops-cyan">{title}</span>
+          <span className="label mb-1 block !text-ops-amber">{title}</span>
           {lines().map((l, i) => (
             <span key={i} className="block">
               {l}

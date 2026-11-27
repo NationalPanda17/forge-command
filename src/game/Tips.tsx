@@ -58,7 +58,7 @@ export function nextTip(s: SimState): Tip | null {
 
 export function TipCard({ tip, onShow, onDismiss, onOff }: { tip: Tip; onShow: () => void; onDismiss: () => void; onOff: () => void }) {
   return (
-    <section className="border-b border-ops-amber/40 bg-ops-amber/5 px-3 py-2 text-[11px]" aria-live="polite">
+    <section className="fc-coach-card px-3 py-2 text-[11px]" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="label text-ops-amber">Field notes</span>
         <span className="flex flex-wrap gap-1">

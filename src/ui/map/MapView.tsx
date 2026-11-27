@@ -1,11 +1,12 @@
 // Operational map of the country (classic or generated): static geography, transport network, sites, shipments.
 
+import { Icon } from '../icons';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { CITIES, REGIONS, ROUTE_KEY, SITES, SITE_BY_ID, type RegionId, type SiteDef, type SiteKind } from '../../sim/world';
 import * as G from './geo';
 import { countryTitle, onWorldChange } from '../../sim/worldgen';
 import { KIND_LABEL, SITE_KINDS, SiteIcon, SiteIconSvg } from './icons';
-import { FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
+import { FONT_BODY, FONT_HEAD, FONT_MONO, SITE_FONT, SITE_SUB_FONT, SITE_SUB_GAP, EXIT_FIRST_GAP, EXIT_LINE_GAP, cityDot, citySize, clashes, kindLine, layoutMap, markerAt, markerPx, resetTextWidths, smallTextBox, spreadMarkers, uiScale, type Box, type ExitGroup, type Layout, type Placed } from './layout';
 
 // ---------- Public types ----------
 
@@ -89,7 +90,8 @@ const ROAD = 'rgba(222, 196, 142, 0.85)';
 export const MODE_COLOR: Record<string, string> = { rail: ops('amber'), road: ops('text'), sea: ops('cyan'), air: ops('violet') };
 const TONE_COLOR: Record<NonNullable<MapMarker['tone']>, string> = { ok: ops('green'), warn: ops('amber'), bad: ops('red'), idle: ops('dim') };
 const OWNER_COLOR: Record<SiteDef['owner'], string> = { state: ops('cyan'), private: ops('text'), foreign: ops('violet') };
-const REGION_COLOR: Record<RegionId, string> = { north: ops('blue'), coast: ops('cyan'), east: ops('amber'), isles: ops('violet'), central: ops('green') };
+// Regions have muted hues of their own: amber, green and red are for command and status, never for territory.
+const REGION_COLOR: Record<RegionId, string> = { north: '#86a2c8', coast: '#72b2b4', east: '#bfa07c', isles: '#a497c6', central: '#93a6b8' };
 const FIGHTING: RegionId[] = ['north', 'coast', 'east', 'isles'];
 
 
@@ -154,6 +156,12 @@ const Defs = memo(function Defs({ uid }: { uid: string }) {
   const geo = G.geography();
   return (
     <defs>
+      {/* The face of a site counter: steel lit from above (one map at a time, so a fixed id is safe). */}
+      <linearGradient id="fc-plate" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#24324a" />
+        <stop offset="0.55" stopColor="#111a2a" />
+        <stop offset="1" stopColor="#080d16" />
+      </linearGradient>
       <clipPath id={`${uid}-frame`}>
         <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} />
       </clipPath>
@@ -559,14 +567,22 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
         const mk = markers[s.id];
         const col = mk?.tone ? TONE_COLOR[mk.tone] : OWNER_COLOR[s.owner];
         const sel = s.id === selected;
-        const body =
+        // A plated counter (17.2): a shadow under it, a steel face lit from above, the owner's rim, and a bevel inside it.
+        const shape = (inset: number, props: Record<string, unknown>) =>
           s.owner === 'state' ? (
-            <rect className="fcm-mbody" x={-h} y={-h} width={m} height={m} rx={3.5} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+            <rect x={-h + inset} y={-h + inset} width={m - inset * 2} height={m - inset * 2} rx={Math.max(1, 3.5 - inset)} {...props} />
           ) : s.owner === 'foreign' ? (
-            <path className="fcm-mbody" d={`M0 ${-h - 2}L${h + 2} 0L0 ${h + 2}L${-h - 2} 0Z`} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+            <path d={`M0 ${-h - 2 + inset * 1.4}L${h + 2 - inset * 1.4} 0L0 ${h + 2 - inset * 1.4}L${-h - 2 + inset * 1.4} 0Z`} {...props} />
           ) : (
-            <circle className="fcm-mbody" r={h + 0.5} fill="#0a1322" stroke={col} strokeWidth={1.5} />
+            <circle r={h + 0.5 - inset} {...props} />
           );
+        const body = (
+          <>
+            <g transform="translate(0 1.4)">{shape(0, { fill: 'rgba(0, 0, 0, 0.55)' })}</g>
+            {shape(0, { className: 'fcm-mbody', fill: 'url(#fc-plate)', stroke: col, strokeWidth: 1.6 })}
+            {shape(1.7, { fill: 'none', stroke: 'rgba(255, 255, 255, 0.14)', strokeWidth: 0.8 })}
+          </>
+        );
         return (
           <g
             key={s.id}
@@ -600,8 +616,8 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
             <circle r={h + 6} fill="transparent" />
             {mk?.pulse && <circle className="fcm-pulse" r={h + 1} fill="none" stroke={col} strokeWidth={2} />}
             {sel && (
-              <g stroke={ops('cyan')} strokeWidth={2} fill="none" strokeLinecap="round">
-                <circle r={h + 7} stroke={ops('cyan', 0.25)} strokeWidth={6} />
+              <g stroke={ops('amber')} strokeWidth={2} fill="none" strokeLinecap="round">
+                <circle r={h + 7} stroke={ops('amber', 0.25)} strokeWidth={6} />
                 <path d={`M${-h - 6} ${-h + 1}V${-h - 6}H${-h + 1}M${h - 1} ${-h - 6}H${h + 6}V${-h + 1}M${h + 6} ${h - 1}V${h + 6}H${h - 1}M${-h + 1} ${h + 6}H${-h - 6}V${h - 1}`} />
               </g>
             )}
@@ -646,11 +662,11 @@ const SitesLayer = memo(function SitesLayer({ S, markers, selected, focused, hov
                   strokeWidth={1}
                 />
               )}
-              <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_MONO} fontWeight={hot ? 700 : 500} fontSize={SITE_FONT} fill={id === selected ? ops('cyan') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
+              <text x={p.x} y={p.y} textAnchor={p.anchor} fontFamily={FONT_BODY} fontWeight={hot ? 700 : 500} fontSize={SITE_FONT} fill={id === selected ? ops('amber') : hot ? '#ffffff' : ops('text', 0.92)} {...halo(3)}>
                 {mk?.name ?? s.name}
               </text>
               {hot && (
-                <text x={p.x} y={p.y + SITE_SUB_GAP} textAnchor={p.anchor} fontFamily={FONT_MONO} fontSize={SITE_SUB_FONT} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
+                <text x={p.x} y={p.y + SITE_SUB_GAP} textAnchor={p.anchor} fontFamily={FONT_BODY} fontWeight={500} fontSize={SITE_SUB_FONT} letterSpacing="0.1em" fill={ops('dim')} {...halo(2.5)}>
                   {kindLine(id, mk?.kind)}
                 </text>
               )}
@@ -855,7 +871,7 @@ function Minimap({ view, size, onCenter }: { view: View; size: Size; onCenter: (
     onCenter(G.FRAME.x0 + ((e.clientX - r.left) / r.width) * G.FRAME_W, G.FRAME.y0 + ((e.clientY - r.top) / r.height) * G.FRAME_H);
   };
   return (
-    <div data-hud="" className="absolute bottom-8 right-3 rounded border border-ops-line/80 bg-ops-bg p-1">
+    <div data-hud="" className="fc-hud absolute bottom-8 right-3 p-1">
       <svg
         width={w}
         height={h}
@@ -927,7 +943,7 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
       )}
       {/* Scale and north arrow sit on a plate, so nothing on the map runs underneath their text. */}
       <g data-hud="">
-      <rect x={6} y={size.h - 52} width={Math.max(bar + 52, 120) + 22} height={46} rx={4} fill="#060b14" stroke={ops('line', 0.8)} />
+      <rect x={6} y={size.h - 52} width={Math.max(bar + 52, 120) + 22} height={46} rx={2} fill={ops('panel', 0.94)} stroke={ops('line', 0.9)} />
       <g transform={`translate(16 ${size.h - 22})`}>
         {[0, 1, 2, 3].map((i) => (
           <rect key={i} x={(bar / 4) * i} y={0} width={bar / 4} height={4} fill={i % 2 ? 'rgba(6, 11, 20, 0.9)' : ops('text', 0.9)} stroke={ops('text', 0.9)} strokeWidth={0.8} />
@@ -940,10 +956,10 @@ const Furniture = memo(function Furniture({ view, size, boxes, quiet }: { view: 
         </text>
       </g>
       <g transform={`translate(${Math.max(bar + 52, 120)} ${size.h - 30})`}>
-        <circle r={13} fill="rgba(6, 11, 20, 0.7)" stroke={ops('cyan', 0.4)} />
-        <path d="M0 -10L4 3L0 0.5L-4 3Z" fill={ops('cyan')} />
-        <path d="M0 10L4 3L0 0.5L-4 3Z" fill="none" stroke={ops('cyan', 0.6)} strokeWidth={0.8} />
-        <text y={-16} textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={11} fill={ops('cyan')} {...halo(2.5)}>
+        <circle r={13} fill="rgba(6, 11, 20, 0.7)" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.6} />
+        <path d="M0 -10L4 3L0 0.5L-4 3Z" fill="#e8c68a" />
+        <path d="M0 10L4 3L0 0.5L-4 3Z" fill="none" stroke="rgb(var(--fc-bronze))" strokeWidth={0.8} />
+        <text y={-16} textAnchor="middle" fontFamily={FONT_HEAD} fontWeight={700} fontSize={11} fill="#e8c68a" {...halo(2.5)}>
           N
         </text>
       </g>
@@ -1434,8 +1450,23 @@ export default function MapView(props: MapViewProps): JSX.Element {
               <RegionLayer uid={uid} show={layers.regions} crisis={crisisRegion} />
               <RoutesLayer layers={layers} use={routeUse} sig={useSig} network={network} showPlans={showPlans} highlight={highlight} />
             </g>
-            <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke={ops('cyan', 0.35)} strokeWidth={1} style={nss} />
-            <rect x={G.FRAME.x0 - 4 / S} y={G.FRAME.y0 - 4 / S} width={G.FRAME_W + 8 / S} height={G.FRAME_H + 8 / S} fill="none" stroke={ops('cyan', 0.12)} strokeWidth={1} style={nss} />
+            {/* The sheet's frame (17.2): a bronze double neatline with brackets at the corners, a constant size on screen. */}
+            <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill="none" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.55} strokeWidth={1} style={nss} />
+            <rect x={G.FRAME.x0 - 5 / S} y={G.FRAME.y0 - 5 / S} width={G.FRAME_W + 10 / S} height={G.FRAME_H + 10 / S} fill="none" stroke="rgb(var(--fc-bronze))" strokeOpacity={0.3} strokeWidth={1} style={nss} />
+            <path
+              d={(() => {
+                const L = 22 / S;
+                const o = 5 / S;
+                const [x0, y0, x1, y1] = [G.FRAME.x0 - o, G.FRAME.y0 - o, G.FRAME.x1 + o, G.FRAME.y1 + o];
+                return `M${x0} ${y0 + L}V${y0}H${x0 + L}M${x1 - L} ${y0}H${x1}V${y0 + L}M${x1} ${y1 - L}V${y1}H${x1 - L}M${x0 + L} ${y1}H${x0}V${y1 - L}`;
+              })()}
+              fill="none"
+              stroke="#e0b874"
+              strokeWidth={2}
+              strokeLinecap="square"
+              style={nss}
+              pointerEvents="none"
+            />
             {layers.flows && <ShipmentsLayer S={S} shipments={shipments} clock={clock} paused={dragging || zooming} aggregate={size.w < 640 ? lod <= 1 : S < 0.9} />}
             {!zooming && <LabelsLayer S={S} geo={placement.geo} regions={placement.regions} exits={placement.exits} />}
             <CitiesLayer S={S} placed={zooming ? NO_CITY_LABELS : placement.cities} />
@@ -1469,8 +1500,8 @@ export default function MapView(props: MapViewProps): JSX.Element {
           <Furniture view={view} size={size} boxes={placement.boxes} quiet={zooming} />
         </svg>
       )}
-      <div data-hud="" className={`pointer-events-none absolute left-3 top-3 rounded border border-ops-line/80 bg-ops-bg px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`}>
-        <div className="font-sans text-[13px] font-bold uppercase leading-none tracking-[0.16em] text-ops-cyan">{countryTitle()}</div>
+      <div data-hud="" className={`fc-hud pointer-events-none absolute left-3 top-3 px-2.5 py-1.5 ${size.w < 520 ? 'hidden' : ''}`}>
+        <div className="font-sans text-[14px] font-bold uppercase leading-none tracking-[0.16em] text-ops-amber">{countryTitle()}</div>
         <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-ops-dim">Defence logistics · grid km</div>
       </div>
       {hoverCard && hovered && !markers[hovered]?.hidden && !menu && !dragging && !zooming && G.SITE_POS[hovered] && size.w >= 480 && (() => {
@@ -1483,7 +1514,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
         const top = y < size.h / 2 ? Math.max(8, y - 20) : undefined;
         const bottom = y < size.h / 2 ? undefined : Math.max(8, size.h - y - 20);
         return (
-          <div className="pointer-events-none absolute z-20 max-h-[calc(100%-16px)] overflow-hidden rounded border border-ops-line bg-ops-panel/95 p-2 shadow-lg" style={{ left, right, top, bottom }} role="tooltip">
+          <div className="pointer-events-none absolute z-20 max-h-[calc(100%-16px)] overflow-hidden fc-hud p-2" style={{ left, right, top, bottom }} role="tooltip">
             {hoverCard(hovered)}
           </div>
         );
@@ -1494,7 +1525,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           data-map-menu=""
           role="menu"
           aria-label="Quick actions"
-          className="absolute z-30 max-h-[calc(100%-8px)] min-w-[180px] max-w-[260px] overflow-y-auto rounded border border-ops-line bg-ops-panel p-1 shadow-lg"
+          className="absolute z-30 max-h-[calc(100%-8px)] min-w-[180px] max-w-[260px] overflow-y-auto fc-hud p-1"
           style={{ left: menu.x, top: menu.y }}
           onKeyDown={(e) => {
             // Up and down move between the actions; Escape and Tab close the menu.
@@ -1516,14 +1547,14 @@ export default function MapView(props: MapViewProps): JSX.Element {
       )}
       {/* On a narrow map the buttons sit in a row, in the strip of sea above the country, so they never cover a label. */}
       <div data-hud="" className={`absolute right-3 top-3 flex gap-1 ${size.w < 520 ? 'flex-row' : 'flex-col'}`}>
-        <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in">
-          +
+        <button type="button" className="btn h-7 w-7 px-0" onClick={() => zoomBy(1.6)} aria-label="Zoom in" title="Zoom in (+)">
+          <Icon name="zoomIn" />
         </button>
-        <button type="button" className="btn h-7 w-7 px-0 text-[14px]" onClick={() => zoomBy(1 / 1.6)} aria-label="Zoom out" title="Zoom out">
-          −
+        <button type="button" className="btn h-7 w-7 px-0" onClick={() => zoomBy(1 / 1.6)} aria-label="Zoom out" title="Zoom out (−)">
+          <Icon name="zoomOut" />
         </button>
-        <button type="button" className="btn h-7 w-7 px-0 text-[12px]" onClick={reset} aria-label="Reset view" title="Reset view">
-          ⟲
+        <button type="button" className="btn h-7 w-7 px-0" onClick={reset} aria-label="Reset view" title="Reset view (0)">
+          <Icon name="recenter" />
         </button>
       </div>
       {size.w >= 420 && size.w > 0 && (
@@ -1536,7 +1567,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
           }}
         />
       )}
-      <div data-hud="" className="pointer-events-none absolute bottom-2 right-3 rounded border border-ops-line/80 bg-ops-bg px-1.5 py-0.5 text-[9.5px] tracking-wider text-ops-dim">
+      <div data-hud="" className="fc-hud pointer-events-none absolute bottom-2 right-3 px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider text-ops-dim">
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
       </div>

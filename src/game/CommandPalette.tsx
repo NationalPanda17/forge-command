@@ -92,11 +92,8 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
     c.run();
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[8vh]" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Search and commands" className="fixed inset-0 z-50 flex items-start justify-center bg-ops-bg/90 px-4 pt-[8vh]" onClick={onClose}>
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Search and commands"
         className="panel w-full max-w-lg overflow-hidden"
         onClick={(e) => {
           e.stopPropagation();

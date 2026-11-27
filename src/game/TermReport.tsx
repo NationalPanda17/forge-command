@@ -44,8 +44,8 @@ export default function TermReport({ state, onClose, onMenu, onSecondTerm }: { s
       <div className="fc-zoom panel mx-auto max-w-3xl space-y-4 p-4 text-[12px]">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="label">{state.mode === 'sandbox' ? 'Sandbox · ' : ''}{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
-            <h2 id="term-title" className="font-sans text-2xl font-bold tracking-[0.12em] text-white">
+            <div className="label !text-ops-amber">{state.mode === 'sandbox' ? 'Sandbox · ' : ''}{SCENARIOS[state.scenario].name} · {state.difficulty}</div>
+            <h2 id="term-title" className="fc-dialog-title">
               {state.outcome === 'dismissed' ? 'Dismissed' : (state.term ?? 1) > 1 ? `Term ${state.term} complete` : 'Term complete'}
             </h2>
             <p className="text-ops-dim">{state.outcome === 'dismissed' ? 'The Defence Committee lost confidence in you.' : 'Your term as Director of the Munitions Production Board is over.'}</p>
