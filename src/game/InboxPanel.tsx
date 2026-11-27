@@ -1,20 +1,23 @@
-// The inbox: one list of what needs you or happened to you, newest first, with filters and unread marks.
+// The situation log (17.1: the inbox and the feed in one place): what needs you or happened to you, newest first,
+// with filters and unread marks, and "Everything" for the full record of the game.
 import { useState } from 'react';
 import type { SimState } from '../sim/types';
 import { Btn, Segmented } from '../ui/kit';
 import { inboxItems, type InboxItem, type InboxKind } from './inbox';
+import { Feed } from './OpsPanels';
 import type { PanelId } from './nav';
 import type { Tip } from './Tips';
 import { dateLabel } from './useSim';
 import { tr } from '../sim/worldgen';
 
-type Filter = 'all' | InboxKind;
+type Filter = 'all' | InboxKind | 'everything';
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' },
+  { id: 'all', label: 'Important' },
   { id: 'decision', label: 'Decisions' },
   { id: 'alert', label: 'Alerts' },
   { id: 'warning', label: 'Bad news' },
   { id: 'note', label: 'Notes' },
+  { id: 'everything', label: 'Everything' },
 ];
 
 const TONE_DOT: Record<InboxItem['tone'], string> = { bad: 'bg-ops-red', warn: 'bg-ops-amber', good: 'bg-ops-green', info: 'bg-ops-cyan' };
@@ -47,8 +50,12 @@ export default function InboxPanel({
           Mark all read
         </Btn>
       </div>
-      {items.length === 0 ? (
-        <p className="text-ops-dim">{filter === 'all' ? 'Your inbox is empty.' : 'Nothing here.'}</p>
+      {filter === 'everything' ? (
+        <div className="-mx-3">
+          <Feed state={state} onSite={onSite} limit={200} />
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-ops-dim">{filter === 'all' ? 'Nothing important yet.' : 'Nothing here.'}</p>
       ) : (
         <ol className="space-y-1">
           {items.map((i) => (

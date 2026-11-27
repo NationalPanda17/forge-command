@@ -1,5 +1,38 @@
 # Changelog
 
+## 17.1.0: command clarity
+
+The game now tells you what needs you in one place, answers every action where you clicked, and keeps the map still.
+
+### Know what needs you
+- **Alerts.** A row of icons in the new status bar, one for each tab where something needs fixing, red or amber, with
+  every item in its tooltip. They clear themselves once the problem is dealt with. Press `.` to step through them.
+- **One status bar under the command bar** holds one notice at a time, the most important first: the save box, a save
+  that failed, the pause and what caused it, an achievement, then the Courier's headline. It never moves the map.
+- **The Log** brings the inbox and the feed together: decisions, alerts, bad news and notes, or "Everything" for the
+  full record.
+
+### See what is under way
+- **The outliner** down the left of the map: the crisis, research, building and upgrade projects, plants being built
+  or repaired, suppliers being qualified, intelligence operations and doctrines bedding in, each with the time left and
+  a bar. Click one to go to it; fold it away to a heading.
+
+### Feedback where you click
+- **Every action answers beside the pointer**: what it did and what it cost (or brought in), or, in red, why it could
+  not be done. Taking the safe advice sums its steps into one note.
+
+### Tabs that make sense
+- **Six groups:** Command (Home, Log, Board, Story, Sandbox, Guide), Production, Supply, People (Staff, Towns,
+  Allies), Treasury (Money, Policy, Doctrine, Stats, Courier) and Rival. The Board moves to Command; Money and the
+  Courier to Treasury.
+- **Watch is part of Home:** the advisor, "Take the safe advice", "Why short?" and the three-month plan now sit under
+  "Needs you now".
+- **Keyboard:** Shift 1–6 opens a group, H goes Home, `.` jumps to the next alert.
+
+### A tutorial that points
+- **Each step rings the control it is about** (the pause button, then the tab, or its group until that is open), and
+  the step text follows the new tabs. The tutorial and the field notes no longer stack: one coach at a time.
+
 ## 17.0.0: the Committee's mandate
 
 A new way to win. Every term the Defence Committee sets a mandate: three or four goals that pull against each other,

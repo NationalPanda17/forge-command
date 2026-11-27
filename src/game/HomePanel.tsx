@@ -1,8 +1,10 @@
 // Home: the whole game on one screen. The key numbers and their trend, what needs you now, what is coming, and what
 // changed since you last looked.
 import { useMemo } from 'react';
-import { validate, type SimAction } from '../sim/actions';
-import { advise, threeMonthPlan } from '../sim/advisor';
+import type { SimAction } from '../sim/actions';
+import { threeMonthPlan } from '../sim/advisor';
+import AdvisorCard from './AdvisorCard';
+import type { MaterialId } from '../sim/world';
 import { GOALS, projectMandate, type GoalId } from '../sim/mandate';
 import { nationalStock, readiness, reserveTarget } from '../sim/selectors';
 import type { SimState } from '../sim/types';
@@ -69,6 +71,7 @@ export default function HomePanel({
   onPanel,
   onSite,
   onLine,
+  onMaterial,
 }: {
   state: SimState;
   act: (a: SimAction) => void;
@@ -77,6 +80,8 @@ export default function HomePanel({
   onPanel: (p: PanelId) => void;
   onSite: (id: string) => void;
   onLine: (l: LineId) => void;
+  /** Where the advisor's "chain" links go; defaults to the round's own view. */
+  onMaterial?: (m: MaterialId) => void;
 }) {
   const h = state.history.slice(-12);
   const ready = readiness(state);
@@ -92,7 +97,6 @@ export default function HomePanel({
     .sort((a, b) => a.level - b.level);
   // The advice and the plan try actions on copies of the game, so they are worked out only when the (once-a-second)
   // state Home is given changes, not on every redraw of the game screen.
-  const advice = useMemo(() => advise(state, 3), [state]);
   const plan = useMemo(() => threeMonthPlan(state).slice(0, 4), [state]);
   const ch = useMemo(() => changesSince(state, seen), [state, seen]);
   const mandate = useMemo(() => projectMandate(state), [state]);
@@ -125,35 +129,10 @@ export default function HomePanel({
                 {state.strategy.decisions.length} decision{state.strategy.decisions.length > 1 ? 's' : ''}
               </Btn>
             )}
-            <Btn onClick={() => onPanel('inbox')}>{unread ? `Inbox · ${unread} new` : 'Inbox'}</Btn>
+            <Btn onClick={() => onPanel('inbox')}>{unread ? `Log · ${unread} new` : 'Log'}</Btn>
           </span>
         </div>
-        {advice.length === 0 ? (
-          <p className="text-ops-dim">Nothing urgent. The advisor has no suggestions right now.</p>
-        ) : (
-          <ol className="space-y-1.5">
-            {advice.map((a) => {
-              const why = a.action ? validate(state, a.action) : null;
-              return (
-                <li key={a.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded border p-2 ${a.tone === 'bad' ? 'border-ops-red/50' : a.tone === 'warn' ? 'border-ops-amber/40' : 'border-ops-line/60'}`}>
-                  <span className="min-w-0">
-                    <span className="text-white">{a.title}</span>
-                    <span className="block text-[10px] text-ops-dim">{a.why}</span>
-                  </span>
-                  {a.action ? (
-                    <Btn kind="primary" why={why} onClick={() => act(a.action!)}>
-                      Do it
-                    </Btn>
-                  ) : a.panel || a.site ? (
-                    <Btn onClick={() => (a.panel ? onPanel(a.panel === 'programmes' ? 'policy' : (a.panel as PanelId)) : onSite(a.site!))}>Show me</Btn>
-                  ) : (
-                    <span />
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        <AdvisorCard state={state} act={act} onPanel={(p) => onPanel(p === 'programmes' ? 'policy' : (p as PanelId))} onSite={onSite} onMaterial={onMaterial ?? ((m) => onLine(m as LineId))} />
       </section>
 
       <section>
