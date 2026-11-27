@@ -1,5 +1,24 @@
 # Changelog
 
+## 19.0.0: Depth, part one, the adaptive rival
+
+The Vardan Directorate now studies you. It no longer follows a fixed order: it develops the weapon your stockpile is
+least ready for.
+
+- **It watches your reserves.** Each month the rival reads how full each line is against its target. It smooths the
+  reading over months, so a last-minute top-up does not fool it.
+- **It aims at your weak spots.** When intel reports, the rival picks the development that hits your thinnest lines
+  hardest. It also leans towards weapons that exploit the doctrine you chose, and is half as keen on any you already
+  hold the counter to.
+- **Intel tells you why.** The report and the Intel panel name the lines it is aiming at, for example "your
+  Interceptor missiles at 42% of target".
+- **Hard bites harder.** The rival's weapons hit at 125% strength on Hard.
+- **Scenario tuning.**
+  - War footing and Rebuild get a rival that aims at half strength.
+  - Rebuild's first intel report comes four months later.
+  - In Rebuild, the Committee judges leaks and land shortfalls more leniently.
+- **Unchanged:** the tutorial keeps its scripted rival. Old saves load as before.
+
 ## 18.3.0: the map fills the window
 
 The map is now the whole screen, in the tradition of the grand strategy games, with the command bar, the status bar

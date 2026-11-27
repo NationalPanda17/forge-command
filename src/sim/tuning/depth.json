@@ -1,0 +1,59 @@
+{
+  "$comment": "Release 19.0 'Depth' tuning (docs/depth.md): the adaptive rival. Values are starting points tuned with the balance harness.",
+  "rival": {
+    "adaptive": true,
+    "firstDay": [
+      120,
+      180
+    ],
+    "gap": [
+      180,
+      270
+    ],
+    "gapByDifficulty": {
+      "easy": 120,
+      "normal": 0,
+      "hard": -30
+    },
+    "gapJitter": 15,
+    "termSpeedup": 0.1,
+    "termSpeedupCap": 2,
+    "warningDays": 90,
+    "strength": {
+      "easy": 0.5,
+      "normal": 1,
+      "hard": 1.25
+    },
+    "watchAlpha": 0.4,
+    "doctrineBias": 0.15,
+    "counterPenalty": 0.5,
+    "seedLean": 0.04,
+    "doctrineTargets": {
+      "production:a": [
+        "manoeuvring",
+        "decoys"
+      ],
+      "production:b": [
+        "swarms",
+        "barrages"
+      ],
+      "reserves:b": [
+        "armour"
+      ],
+      "rival:b": [
+        "fastCruise"
+      ]
+    },
+    "aimByScenario": {
+      "standard": 1,
+      "warFooting": 0.5,
+      "sanctions": 1,
+      "rebuild": 0.5,
+      "tutorial": 0,
+      "custom": 1
+    },
+    "firstDelayByScenario": {
+      "rebuild": 120
+    }
+  }
+}

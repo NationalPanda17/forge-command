@@ -189,6 +189,9 @@ export function mandateConfidence(s: SimState, ready: number): { mandate: number
   return { mandate, floor };
 }
 
+/** How the Committee weighs leaks and land shortfalls in this scenario (1 = in full). */
+export const fightScale = (s: SimState) => (T.confidence.fightScale as Record<string, number>)[s.scenario] ?? 1;
+
 /** Next year's budget factor from the Committee's confidence (a narrow band, so the leader is not run away with). */
 export const budgetFactor = (confidence: number) => T.budget.base + confidence / T.budget.divisor;
 

@@ -40,11 +40,19 @@
     "floorGain": 10,
     "scenarioOffset": {
       "standard": 0,
-      "warFooting": -0.03,
+      "warFooting": -0.06,
       "sanctions": -0.12,
-      "rebuild": -0.15,
+      "rebuild": -0.18,
       "tutorial": 0,
       "custom": 0
+    },
+    "fightScale": {
+      "standard": 1,
+      "warFooting": 1,
+      "sanctions": 1,
+      "rebuild": 0.7,
+      "tutorial": 1,
+      "custom": 1
     }
   },
   "budget": {
