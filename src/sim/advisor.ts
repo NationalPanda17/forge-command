@@ -114,13 +114,13 @@ export function advise(s: SimState, limit = 6): Advice[] {
     if (b && b.material !== line && b.top && SITE_BY_ID[b.top].owner === 'private') {
       const k = s.sites[b.top].processes.findIndex((p) => RECIPES[p.recipe].output === b.material);
       const a: SimAction = { type: 'invest', site: b.top, process: k };
-      add({ id: `fund-${line}`, priority: urgency, tone: 'bad', title: `Fund ${SITE_BY_ID[b.top].name}`, why: `${name} ${when ? `falls below half of target in ${when} months` : 'is below half of target'}, and ${MATERIALS[b.material].name.toLowerCase()} is the tightest link under it (${Math.round(b.ratio * 100)}% of demand).`, action: k >= 0 && ok(s, a) ? a : undefined, site: b.top, material: b.material });
+      add({ id: `fund-${line}`, priority: urgency, tone: 'bad', title: `Fund ${SITE_BY_ID[b.top].name}`, why: `${name} ${when ? `falls below half of target in ${when} month${when > 1 ? 's' : ''}` : 'is below half of target'}, and ${MATERIALS[b.material].name.toLowerCase()} is the tightest link under it (${Math.round(b.ratio * 100)}% of demand).`, action: k >= 0 && ok(s, a) ? a : undefined, site: b.top, material: b.material });
     } else {
       const arsenal = SITES.find((d) => d.owner === 'state' && d.processes.some((p) => p.recipe === line));
       const idx = arsenal ? s.sites[arsenal.id].processes.findIndex((p) => p.recipe === line) : -1;
       const p = arsenal ? s.sites[arsenal.id].processes[idx] : undefined;
       const a: SimAction | undefined = arsenal && p ? (p.run === 'idle' || p.run === 'single' ? { type: 'setRun', site: arsenal.id, process: idx, run: 'normal' } : { type: 'expand', site: arsenal.id, process: idx }) : undefined;
-      add({ id: `line-${line}`, priority: urgency, tone: 'bad', title: arsenal && p && (p.run === 'idle' || p.run === 'single') ? `Put ${name} back on two shifts` : `Expand the ${name} line`, why: `${name} ${when ? `falls below half of target in ${when} months` : 'is below half of target'}, and the arsenal line itself is the limit.`, action: a && ok(s, a) ? a : undefined, site: arsenal?.id, material: line });
+      add({ id: `line-${line}`, priority: urgency, tone: 'bad', title: arsenal && p && (p.run === 'idle' || p.run === 'single') ? `Put ${name} back on two shifts` : `Expand the ${name} line`, why: `${name} ${when ? `falls below half of target in ${when} month${when > 1 ? 's' : ''}` : 'is below half of target'}, and the arsenal line itself is the limit.`, action: a && ok(s, a) ? a : undefined, site: arsenal?.id, material: line });
     }
   }
 

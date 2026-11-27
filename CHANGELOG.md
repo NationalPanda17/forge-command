@@ -1,5 +1,21 @@
 # Changelog
 
+## 20.0.0: ready for itch.io
+
+The game is ready to put on itch.io. Nothing has been uploaded: that is the owner's call.
+
+- **An itch.io build.** `npm run build:itch` makes `release/forge-command-<version>-itch.zip`. It uses relative paths
+  and has no offline service worker, since itch serves each upload from its own folder. Before zipping, the script
+  checks the paths, the file count and the file sizes against itch's limits. It was checked from a nested folder: the
+  game loads, nothing fails to load and the console is clean. The GitHub Pages site is unchanged.
+- **The store page, written:** the tagline, description, genre and tags, embed size, controls, and a checklist for
+  upload day (`docs/launch/itch.md`).
+- **Store images:** a 630×500 cover and six 1920×1080 screenshots, in `production/launch/itch/`.
+  `scripts/store-shots.ts` takes them again from the running game, so they can be redone after any change.
+- **Fix:** the advisor said "in 1 months"; it now says "in 1 month".
+- **The in-game feedback form from 19.3.5 is removed.** The playtest brief keeps its questions; testers answer them
+  in writing.
+
 ## 19.3.5: ready for playtesters
 
 - **A feedback form in the game.** The speech-bubble button at the top right, or "Tell us how this term went" on the

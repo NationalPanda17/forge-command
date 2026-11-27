@@ -3,7 +3,6 @@
 const PATHS = {
   pause: 'M6 4v8M10 4v8',
   play: 'M5.5 3.5l7 4.5-7 4.5z',
-  chat: 'M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z M5 6.5h6M5 8.5h4',
   check: 'M3.5 8.5l3 3 6-7',
   house: 'M2.5 7.5L8 3l5.5 4.5M4 6.5V13h8V6.5M6.8 13V9.8h2.4V13',
   lock: 'M4.5 7.5h7v6h-7zM6 7.5V5.5a2 2 0 0 1 4 0v2',

@@ -68,8 +68,10 @@ self.addEventListener('fetch', (e) => {
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
-export default defineConfig({
-  plugins: [react(), offlineServiceWorker()],
+// `--mode itch` (npm run build:itch) builds for itch.io: no offline service worker, since itch serves each upload
+// from its own folder inside its own frame, and an old cache there would outlive the upload it came from.
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), mode === 'itch' ? null : offlineServiceWorker()],
   // The version the player sees on the title screen.
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   build: {
@@ -81,4 +83,4 @@ export default defineConfig({
     },
   },
   server: { port: 5174 },
-});
+}));

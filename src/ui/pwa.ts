@@ -17,7 +17,8 @@ export function applyUpdate() {
 }
 
 export function registerOfflineSupport() {
-  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+  // The itch.io build has no service worker (vite.config.ts).
+  if (!import.meta.env.PROD || import.meta.env.MODE === 'itch' || !('serviceWorker' in navigator)) return;
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
