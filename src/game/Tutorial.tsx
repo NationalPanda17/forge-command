@@ -1,6 +1,8 @@
 // The tutorial coach: one step at a time, each finished by doing it.
 import { useEffect } from 'react';
 import type { SimState } from '../sim/types';
+import CORE from '../sim/tuning/core.json';
+import { RECIPES, SITES, type MaterialId } from '../sim/world';
 import { Btn } from '../ui/kit';
 
 export interface TutorialUi {
@@ -15,6 +17,31 @@ interface Step {
   done: (s: SimState, ui: TutorialUi, start: SimState) => boolean;
   /** What to ring on screen, first match that is showing: e.g. the tab itself, or its group until that is open. */
   ring?: string[];
+}
+
+const INCIDENT = CORE.opening.incident;
+
+/** The opening incident (20.2), if it has happened: the supplier, and the materials it makes for you. */
+export function openingTrouble(s: SimState): { site: string; day: number; materials: MaterialId[] } | null {
+  const f = s.feed.find((x) => x.site && x.day <= INCIDENT.dayMax && / at .+: output down to \d+%/.test(x.text));
+  if (!f?.site) return null;
+  const materials = s.sites[f.site].processes.map((p) => RECIPES[p.recipe].output);
+  return { site: f.site, day: f.day, materials };
+}
+
+/**
+ * Whether the player has answered the opening incident: a tender for what the supplier makes, a contract with someone
+ * else for it, or a second maker being qualified. With no incident (it can be absent), there is nothing to answer.
+ */
+export function answered(s: SimState): boolean {
+  const t = openingTrouble(s);
+  if (!t) return s.day > INCIDENT.dayMax + 5;
+  const makes = (id: string) => s.sites[id].processes.some((p) => t.materials.includes(RECIPES[p.recipe].output));
+  return (
+    s.tenders.some((x) => t.materials.includes(x.material)) ||
+    s.contracts.some((c) => c.site !== t.site && t.materials.includes(c.material)) ||
+    SITES.some((d) => d.owner !== 'state' && d.id !== t.site && makes(d.id) && (s.sites[d.id].qualifyingDays !== null || (s.sites[d.id].qualified && !d.qualified)))
+  );
 }
 
 export const TUTORIAL_DONE = 99;
@@ -41,38 +68,33 @@ export const STEPS: Step[] = [
     ring: ['[data-panel="plan"]', '[data-group="production"]'],
   },
   {
-    title: 'Find the weak link',
-    text: 'Under “What limits it”, click any material. The Materials tab traces it from round to mine, with every site that makes it.',
-    done: (_s, ui) => ui.panel === 'material',
+    title: 'Trouble is coming',
+    // The tutorial teaches by solving a real problem (20.7, design pass C7): the opening incident (20.2) gives it one.
+    text: 'Speed up the clock (press 3). Before long one of your suppliers will run into trouble, and the game will pause when it does.',
+    done: (s) => openingTrouble(s) !== null || s.day > INCIDENT.dayMax + 5,
+    ring: ['.fc-clock-pause'],
   },
   {
-    title: 'Buy at a better price',
-    text: 'The starting contracts end after nine months; after that you pay 30% over list. Open Markets, under Supply, and open a tender for something your arsenals use.',
-    ring: ['[data-panel="markets"]', '[data-group="supply"]'],
-    done: (s) => s.tenders.length > 0 || s.feed.some((f) => f.text.startsWith('Contract awarded')),
+    title: 'Answer it',
+    text: 'A supplier you buy from has broken down. On Home, the advisor’s Next step says what to do about it, and the line marked ↳ says what that will do. Press Do it.',
+    done: (s) => answered(s),
+    ring: ['[data-panel="home"]', '[data-group="home"]'],
   },
   {
     title: 'Award the contract',
-    text: 'Suppliers bid at once. Pick a cheap bid with good reliability and press Award.',
-    done: (s) => s.feed.some((f) => f.text.startsWith('Contract awarded')),
+    text: 'Bids for your tender come in within a month, under Supply, Markets. Pick a cheap bid with good reliability and press Award.',
+    // Only when a tender was the answer: a second source being qualified needs nothing more now.
+    done: (s) => {
+      const t = openingTrouble(s);
+      return !t || !s.tenders.some((x) => t.materials.includes(x.material));
+    },
+    ring: ['[data-panel="markets"]', '[data-group="supply"]'],
   },
   {
     title: 'People and projects',
-    text: 'Open the Board, under Command. Hire someone for a key post, and start a research project. Both pay off for years.',
+    text: 'Open the Board, under Command. Hire someone for a key post, and start a research project. Both pay off for years. (Your engineers and the towns around your plants are under People; a field note explains each when it matters.)',
     ring: ['[data-panel="strategy"]', '[data-group="home"]'],
     done: (s) => Object.values(s.strategy.staff).some(Boolean) && (s.strategy.research.active !== null || s.strategy.research.done.length > 0),
-  },
-  {
-    title: 'Your engineers',
-    text: 'Open the Staff tab, under People. Your research project and every plant line need engineers. Too few and plants lose output and research slows. Hire from the market, or found an academy for the long run.',
-    done: (_s, ui) => ui.panel === 'staff',
-    ring: ['[data-panel="staff"]', '[data-group="people"]'],
-  },
-  {
-    title: 'The towns around you',
-    text: 'Open the Towns tab, under People. Every town has a mood toward you. Jobs and housing lift it; an unhappy town strikes, protests and objects to new plants.',
-    done: (_s, ui) => ui.panel === 'towns',
-    ring: ['[data-panel="towns"]', '[data-group="people"]'],
   },
   {
     title: 'Keep watch',

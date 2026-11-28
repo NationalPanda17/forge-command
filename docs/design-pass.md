@@ -325,6 +325,15 @@ points to test on 40 or more seeds, since balance runs are noisy.
     how long it takes to arrive, output before and after a shift change, how long a tender, a qualification, hiring or
     housing takes. Tests check each sentence against what the rules then do.
 
+- **C7 (done, 20.7.0):**
+  - **The change:** the tutorial is eight steps built around the opening incident: wait for it, answer it with the
+    advisor's move, and award a contract if the answer was a tender.
+  - **Dropped:** the tab tours for Materials, Staff and Towns. Field notes cover those systems when they come up.
+  - **Played in the browser:** the breakdown came on 1 February (Kestrel Propulsion), Home showed the answer, Do it
+    started qualifying Vantor, and the tutorial moved on.
+  - **Found on the way:** the advisor then suggested a third maker; fixed, with a regression test seen failing first.
+  - **That completes Tier 2.** Phase 5 (playtest and polish) is next.
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

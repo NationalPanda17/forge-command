@@ -1,5 +1,24 @@
 # Changelog
 
+## 20.7.0: a tutorial that solves a real problem (design pass C7)
+
+- **The tutorial now teaches the game by playing it.** It used to be ten steps, most of them "open this tab". It is now
+  eight:
+  1. the goal and the clock;
+  2. your arsenal;
+  3. the year ahead;
+  4. **trouble is coming:** speed up, and a supplier breaks down;
+  5. **answer it:** the advisor's next step on Home says what to do and what that does;
+  6. award the contract, if your answer was a tender;
+  7. people and projects;
+  8. keep watch.
+- **Steps 4 to 6 use the first-month breakdown from 20.2.** In the tutorial on the classic map, it is a supplier of
+  rocket motors or RF seekers, and the answer is to start qualifying a second source.
+- **Dropped:** the tours of the Materials, Staff and Towns tabs. The field notes explain engineers, strikes, permits
+  and the hearing when they first come up. The "People and projects" step now says where engineers and towns live.
+- **Fix:** once a second source is being qualified, the advisor stopped asking for the breakdown to be answered. It
+  had gone on to suggest qualifying a third maker.
+
 ## 20.6.0: what each move does (design pass C6)
 
 - **Advice cards now say what a move does, in the game's own numbers.** Examples:
