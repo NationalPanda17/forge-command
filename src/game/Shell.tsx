@@ -47,6 +47,7 @@ import { AlertChips, alertGroups } from './Alerts';
 import { Outliner } from './Outliner';
 import { useEffect } from 'react';
 import { dateLabel, useSim, type Speed } from './useSim';
+import { isPeak, momentsBetween, type Moment } from './moments';
 
 // Panels opened now and then are loaded the first time they are opened, so the game starts sooner.
 const MarketsPanel = lazyPart(() => import('./MarketsPanel'));
@@ -332,6 +333,25 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
     return () => clearTimeout(t);
   }, [state.history.length, state.over, state.tutorial?.step]);
 
+  // The big moments (20.5): a motif, a banner and a larger ripple for the peaks, found as the state changes.
+  const [moment, setMoment] = useState<Moment | null>(null);
+  const prevForMoments = useRef(state);
+  useEffect(() => {
+    const prev = prevForMoments.current;
+    prevForMoments.current = state;
+    if (prev === state) return;
+    const found = momentsBetween(prev, state);
+    if (!found.length) return;
+    const last = found[found.length - 1];
+    setMoment(last);
+    play('moment');
+  }, [state]);
+  useEffect(() => {
+    if (!moment) return;
+    const t = window.setTimeout(() => setMoment(null), 7000);
+    return () => window.clearTimeout(t);
+  }, [moment]);
+
   const [reportClosed, setReportClosed] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(null);
 
@@ -414,8 +434,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
         .map((f, i) => ({ f, i }))
         .filter(({ f }) => f.site && f.day >= state.day - 1 && f.tone !== 'info')
         .slice(-12)
-        .map(({ f, i }) => ({ key: `${f.day}-${i}-${f.site}`, site: f.site!, tone: f.tone })),
-    [state.feed, state.day],
+        .map(({ f, i }): MapRipple => ({ key: `${f.day}-${i}-${f.site}`, site: f.site!, tone: f.tone }))
+        .concat(moment?.site ? [{ key: `moment-${moment.key}`, site: moment.site, tone: 'good' as const, big: true }] : []),
+    [state.feed, state.day, moment],
   );
   const lead = state.news.at(-1)?.headlines[0];
   const plansOn = panel === 'build' || panel === 'industry';
@@ -529,6 +550,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
   useEffect(() => {
     if (toast.length) setAnnounce(`Achievement: ${toast.map((a) => a.title).join(', ')}`);
   }, [toast]);
+  useEffect(() => {
+    if (moment) setAnnounce(tr(moment.text));
+  }, [moment]);
 
   return (
     <div className={`relative h-[100dvh] min-w-[1100px] overflow-hidden ${speed === 0 ? 'fc-paused' : ''}`}>
@@ -692,8 +716,9 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
               <Btn kind="warn" onClick={() => downloadSave(state)}>Download save</Btn>
             </div>
           ) : banner && speed === 0 ? (
-            <div className={`fc-drop flex min-w-0 items-center gap-2 ${banner.tone === 'bad' ? 'text-ops-red' : banner.tone === 'good' ? 'text-ops-green' : 'text-ops-amber'}`}>
-              <Icon name="pause" />
+            <div className={`fc-drop flex min-w-0 items-center gap-2 ${isPeak(banner.text, banner.tone) ? 'fc-moment' : banner.tone === 'bad' ? 'text-ops-red' : banner.tone === 'good' ? 'text-ops-green' : 'text-ops-amber'}`}>
+              {/* A peak that pauses the game is still a moment (20.5): the star and the bronze, with the Resume button. */}
+              <Icon name={isPeak(banner.text, banner.tone) ? 'star' : 'pause'} />
               <span className="min-w-0 truncate" title={tr(banner.text)}>
                 Paused: {tr(banner.text)}
               </span>
@@ -714,6 +739,14 @@ export default function Shell({ initial, onMenu }: { initial: SimState; onMenu: 
                 <span className="text-white">{toast[0].title}</span> <span className="text-ops-dim">· {toast[0].text}</span>
                 {toast.length > 1 && <span className="text-ops-dim"> · and {toast.length - 1} more</span>}
               </span>
+            </div>
+          ) : moment ? (
+            <div key={moment.key} role="status" className="fc-drop fc-moment flex min-w-0 items-center gap-2">
+              <Icon name="star" />
+              <span className="min-w-0 truncate" title={tr(moment.text)}>
+                {tr(moment.text)}
+              </span>
+              {moment.site && <Btn onClick={() => select(moment.site!)}>Show</Btn>}
             </div>
           ) : lastDone ? (
             <div key={lastDone.key} className={`fc-drop flex min-w-0 items-center gap-2 ${lastDone.tone === 'bad' ? 'text-ops-amber' : 'text-ops-green'}`}>

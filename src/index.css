@@ -731,3 +731,6 @@ html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber))
 /* While the clock is stopped, the play button breathes, so a new player sees that time is waiting on them (19.3). */
 @keyframes fc-breathe { 50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 4px rgb(var(--ops-amber) / 0.22), 0 0 18px rgb(var(--ops-amber) / 0.5); } }
 .fc-clock-pause.is-paused { animation: fc-breathe 2s ease-in-out infinite; }
+
+/* A big moment in the status bar (20.5): bronze text with a soft glow, so a peak reads apart from routine news. */
+.fc-moment { color: #f0c47e; text-shadow: 0 0 12px rgb(var(--fc-bronze) / 0.55); }

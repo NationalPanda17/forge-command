@@ -307,6 +307,13 @@ points to test on 40 or more seeds, since balance runs are noisy.
     with C3's first version, so that scenario looks sensitive to small confidence costs. Watch it in playtests.
   - **Possible next step:** the advisor could also point at the reserve ask, as it now does for a second source.
 
+- **C5 (done, 20.5.0):**
+  - **The change:** seven kinds of peak get a motif, a gold banner and a larger bronze ripple on the map.
+  - **How it was built:** the moments are worked out on the display side, by comparing two states, so the simulation
+    is untouched.
+  - **Not checked in the browser:** the motif itself (the browser pane was muted) and the larger ripple (the test
+    moment had no site).
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

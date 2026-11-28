@@ -170,6 +170,13 @@ export const sfx = {
     strike(147, 0, 0.034, 0.9);
     tone(110, 0.05, 0.45, 'triangle', 0.03, 92);
   },
+  /** A big moment (20.5): three bell notes rising over a soft brass swell, distinct from routine good news. */
+  moment: () => {
+    strike(392, 0, 0.024, 1.1);
+    strike(523, 0.14, 0.024, 1.1);
+    strike(784, 0.28, 0.026, 1.6);
+    brass(196, 0.05, 1.2, 0.018);
+  },
   /** Research or building finished: the anvil. */
   done: () => {
     strike(880, 0, 0.022, 0.8);
@@ -186,7 +193,7 @@ export type SoundId = keyof typeof sfx;
 
 /** How weighty each sound is: a lesser sound never cuts across a weightier one just played. */
 const PRIORITY: Record<SoundId, number> = {
-  click: 0, speed: 1, pause: 1, resume: 1, month: 2, done: 3, success: 3, decision: 4, failure: 4, crowd: 5, spy: 5, cyber: 5, fanfare: 5, alert: 6, blackout: 7, rival: 8, alarm: 9,
+  click: 0, speed: 1, pause: 1, resume: 1, month: 2, done: 3, success: 3, moment: 5, decision: 4, failure: 4, crowd: 5, spy: 5, cyber: 5, fanfare: 5, alert: 6, blackout: 7, rival: 8, alarm: 9,
 };
 /** The least time, in real milliseconds, before the same sound plays again. */
 const COOLDOWN: Partial<Record<SoundId, number>> = { click: 40, speed: 60, pause: 150, resume: 150, month: 20000 };
