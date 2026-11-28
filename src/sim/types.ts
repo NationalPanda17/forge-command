@@ -459,6 +459,10 @@ export interface SimState {
     factions: Record<FactionId, number>;
     decisions: Decision[];
     objectives: { id: string; status: 'open' | 'done' | 'failed' }[];
+    /** The Committee's open short-term ask (20.4), if any. */
+    ask?: import('./asks').Ask | null;
+    /** Asks met this game. */
+    askDone?: number;
     baseBudget: number;
     startWorkers: number;
     investedThisMonth: number;

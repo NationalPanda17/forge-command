@@ -297,6 +297,16 @@ points to test on 40 or more seeds, since balance runs are noisy.
   - **Found on the way:** the confidence explanation had been leaving out the mandate since 17.0, so it read +0.0 while
     confidence rose. Fixed.
 
+- **C4 (done, 20.4.0):**
+  - **The change:** every three months, one Committee ask with a 90-day deadline: raise the thinnest round by 10% of
+    its goal, or start a second source. Met: $40M and +2 confidence. Missed: −1.
+  - **How often it is met** (8 seeds): the attentive advice player meets about half the reserve asks (27 of 54); a
+    passive player meets almost none (2 of 64), so inaction shows months earlier.
+  - **Dropped:** a running-cost ask, met 0 of 5 times, because it cannot be turned round in 90 days.
+  - **Balance:** mostly within noise on 40 seeds. War footing's advice player went from 1 to 4 dismissals, as it did
+    with C3's first version, so that scenario looks sensitive to small confidence costs. Watch it in playtests.
+  - **Possible next step:** the advisor could also point at the reserve ask, as it now does for a second source.
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

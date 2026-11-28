@@ -21,6 +21,7 @@
     "D": 42
   },
   "gateWidth": 0.15,
+  "asks": { "$comment": "20.4 (design pass C4): the Committee's short asks. Every `everyMonths` months from month `firstMonth`, when none is open, it asks for one thing within `days` days: the thinnest round raised by `reserveStep` of its goal if it is below `reserveBelow`; else a second source started for a part only one qualified maker supplies. Met: `money` ($M) and `confidence`. Missed: `missedConfidence` off.", "enabled": true, "firstMonth": 2, "everyMonths": 3, "days": 90, "reserveBelow": 0.95, "reserveStep": 0.1, "money": 40, "confidence": 2, "missedConfidence": 1 },
   "confidence": {
     "gain": 12,
     "earnRamp": { "$comment": "20.3 (design pass C3): in a first term, the Committee's praise starts at `start` of its full gain and reaches all of it after `months` months; criticism is never reduced. The reserve a new director inherits earns little credit; what they build earns all of it. Only in the quiet scenarios (`scenarios`): under War footing, Sanctions or Rebuild the opening is already hard, and early praise is earned.", "months": 6, "start": 0.25, "scenarios": ["standard", "tutorial"] },

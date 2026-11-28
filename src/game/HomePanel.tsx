@@ -17,6 +17,10 @@ import { eventKind, EVENT_KINDS, type EventKind } from './events';
 import { feedKey } from './inbox';
 import type { PanelId } from './nav';
 import { dateLabel } from './useSim';
+import { askProgress, askText } from '../sim/asks';
+import MANDATE_T from '../sim/tuning/mandate.json';
+
+const ASKS = MANDATE_T.asks;
 
 /** What the player saw last time they were on Home. */
 export interface Snapshot {
@@ -123,6 +127,7 @@ export default function HomePanel({
 
       {state.probation && <ProbationCard state={state} />}
       {state.war && <FrontCard state={state} />}
+      {state.strategy.ask && <AskCard state={state} />}
 
       {/* What to do comes first (19.3); how the year is going follows. */}
       <section>
@@ -252,6 +257,32 @@ function ProbationCard({ state }: { state: SimState }) {
       </div>
       <p className="mt-1.5 text-ops-dim">
         The Committee wants readiness at {Math.round(p.target * 100)}% by the end of probation; it stands at {Math.round(ready * 100)}%. Until then it holds its judgment. Miss the target and you are dismissed.
+      </p>
+    </section>
+  );
+}
+
+/** The Committee's short ask (20.4): one thing it wants within a few months, how far along it is, and what it is worth. */
+function AskCard({ state }: { state: SimState }) {
+  const a = state.strategy.ask!;
+  const { title, detail } = askText(state, a);
+  const progress = askProgress(state, a);
+  const days = Math.max(0, a.by - state.day);
+  const left = days >= 45 ? `${Math.round(days / 30)} months left` : `${days} day${days === 1 ? '' : 's'} left`;
+  return (
+    <section className="rounded-[2px] border border-ops-amber/50 p-2" style={{ boxShadow: 'inset 3px 0 0 rgb(var(--ops-amber) / 0.85)' }} aria-label="The Committee asks">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
+        <h3 className="label !text-ops-amber">The Committee asks</h3>
+        <span className={`whitespace-nowrap ${days <= 30 ? 'text-ops-amber' : 'text-ops-dim'}`}>{left}</span>
+      </div>
+      <div className="mt-1 text-[13px] font-semibold text-white">{title}</div>
+      {a.kind === 'reserve' && (
+        <div className="relative mt-1.5 h-2 rounded-sm bg-ops-line/40" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Progress towards the ask">
+          <span className="absolute inset-y-0 left-0 rounded-sm bg-ops-amber/80" style={{ width: `${progress * 100}%` }} aria-hidden="true" />
+        </div>
+      )}
+      <p className="mt-1.5 text-ops-dim">
+        {detail} Meet it for {money(ASKS.money)} and the Committee’s goodwill; miss it and it remembers, a little.
       </p>
     </section>
   );

@@ -144,6 +144,17 @@ export function advise(s: SimState, limit = 6): Advice[] {
   }
 
   // Contracts about to lapse; bids waiting.
+  // The Committee asked for a second source (20.4): the maker that could be it, qualified at the press of a button.
+  {
+    const ask = s.strategy.ask;
+    if (ask?.kind === 'source') {
+      const spare = SITES.find((d) => d.owner !== 'state' && !s.sites[d.id].qualified && s.sites[d.id].status !== 'closed' && s.sites[d.id].qualifyingDays === null && s.sites[d.id].processes.some((p) => RECIPES[p.recipe].output === ask.material));
+      if (spare) {
+        const a: SimAction = { type: 'qualify', site: spare.id };
+        add({ id: `ask-source-${spare.id}`, priority: 76, tone: 'warn', title: `Qualify ${spare.name}: the Committee asked for a second source`, why: `Only one qualified maker supplies ${MATERIALS[ask.material].name.toLowerCase()}. Starting ${spare.name}'s qualification meets the Committee's ask.`, action: ok(s, a) ? a : undefined, site: spare.id, material: ask.material });
+      }
+    }
+  }
   // A supplier you buy from has broken down (20.2): make up what it can no longer send, from another qualified maker by
   // tender, or qualify a second maker if it was the only one. Said at once, so the first trouble of a game has a
   // concrete answer on Home.
