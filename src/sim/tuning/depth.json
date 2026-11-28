@@ -154,5 +154,12 @@
     },
     "criticalBelow": 0.3,
     "newLineSupply": 0.7
+  },
+  "spending": {
+    "$comment": "20.1 (design pass C0): running costs against the budget. gapMonths: months averaged for the running gap. reserveMonths: months of that gap the safe advice and the chief of staff keep in hand before new spending. warnRunwayMonths: the advisor warns when the treasury would run out within this many months. warnMinGap: and only when the gap is at least this ($M a month).",
+    "gapMonths": 3,
+    "reserveMonths": 12,
+    "warnRunwayMonths": 18,
+    "warnMinGap": 5
   }
 }

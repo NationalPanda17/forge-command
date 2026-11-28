@@ -5,6 +5,7 @@ import { applyInPlace, expandCost, investCost, qualifyCost, refurbishCost, repai
 import { scoreMonths } from './mandate';
 import { replaceCost } from './scenarios';
 import DEPTH from './tuning/depth.json';
+import { prudentReserve } from './spending';
 
 /** The chief of staff's supply planning (19.0.4). */
 const AUTO = DEPTH.autopilot;
@@ -452,7 +453,8 @@ export function automationDay(s: SimState): void {
       if (!FREE.has(a.type)) {
         const trial = structuredClone(s);
         applyInPlace(trial, a);
-        if (trial.treasury < s.treasury && trial.treasury < s.automation.reserve) continue;
+        // The reserve grows with the running gap (20.1), so the staff do not take on costs the budget cannot carry.
+        if (trial.treasury < s.treasury && trial.treasury < prudentReserve(s, s.automation.reserve)) continue;
       }
       const lastBefore = s.feed[s.feed.length - 1];
       if (!applyInPlace(s, a)) continue;

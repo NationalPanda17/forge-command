@@ -1,5 +1,21 @@
 # Changelog
 
+## 20.1.0: the running deficit is visible (design pass C0)
+
+- **A new warning on Home: "Running costs exceed your budget by $X a month".** It appears when wages, contracts,
+  power, freight and disposal together cost more each month than the budget brings in, and the treasury would run out
+  within 18 months at that rate. It says how many months are left and what to do: put over-target lines on one shift,
+  let surplus contracts lapse, or ask for more at the hearing. Before this, the game slid into debt with no warning.
+- **The chief of staff and the safe advice keep more in hand when the budget is short.** Their $300M safety margin now
+  also covers a year of any running gap, so they stop taking on costs the budget cannot carry. Over 160 games each
+  (four scenarios, 40 seeds), the chief of staff's games that went into debt fell from 25 to 17. For the safe advice
+  the count was unchanged (21 and 21), because by the time a gap appears the costs behind it are already committed;
+  the warning is what helps there. Scores and dismissals did not change.
+- **The design pass** (`docs/design-pass.md`): an audit of the game, a diagnosis, and a plan, with the measurements
+  behind them. It corrects one of its own first findings: the safe advice does not lose games when the player answers
+  the Board and the hearing.
+- New tuning: `depth.json` → `spending`.
+
 ## 20.0.1: the header fits the window
 
 - **The top bar no longer runs off the right edge.** A leftover style moved it 8 pixels right instead of insetting it,

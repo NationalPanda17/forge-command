@@ -14,12 +14,16 @@ import { crewNeed, nationalStock, reserveTarget } from './selectors';
 import { RESEARCH, RESEARCH_IDS } from './strategy';
 import type { SimState } from './types';
 import { controlBlock } from './hotseat';
+import { prudentReserve, runningGap, runway } from './spending';
+import DEPTH from './tuning/depth.json';
 import { hireRoom, townIndex, townOf } from './towns';
 import { academyCost, academyTowns, coverage, engineerNeed } from './engineers';
 import { OPS, opCost, opOdds } from './intelops';
 import { FORKS, doctrineCost, forkOpen } from './doctrine';
 import { MAX_LEVEL, TRAITS, promoteCost } from './cast';
 import { CITIES, FINISHED, MATERIALS, REGIONS, RECIPES, ROUTE_KEY, SITES, SITE_BY_ID, type LineId, type MaterialId } from './world';
+
+const SPENDING = DEPTH.spending;
 
 export type AdvicePanel = 'doctrine' | 'staff' | 'strategy' | 'markets' | 'build' | 'plan' | 'logistics' | 'site' | 'intel' | 'programmes' | 'towns' | 'power' | 'money' | 'allies';
 
@@ -254,6 +258,23 @@ function newSystems(s: SimState, add: (a: Advice) => void): void {
       add({ id: 'audit', priority: 66, tone: 'warn', title: 'Cut waste before the audit', why: `The Auditor-General reviews your spending ${monthsLeft ? 'next month' : 'at the end of this month'}, and waste is running at ${Math.round(ratio * 100)}%${worst?.[0] === 'spot' ? ', mostly from buying without contracts: tender for what you buy on the spot' : worst?.[0] === 'idle' ? ', mostly from idle lines: mothball or run them' : ''}.`, panel: 'money' });
     }
   }
+  // Running costs (20.1): when the monthly bill outgrows the budget, the treasury drains however careful each purchase
+  // was. Said early enough to act on: well before the money runs out.
+  {
+    const gap = runningGap(s);
+    const left = runway(s);
+    if (left !== null && gap >= SPENDING.warnMinGap && left <= SPENDING.warnRunwayMonths) {
+      const months = Math.max(1, Math.round(left));
+      add({
+        id: 'deficit',
+        priority: left <= 6 ? 88 : 64,
+        tone: left <= 6 ? 'bad' : 'warn',
+        title: `Running costs exceed your budget by ${money(gap)} a month`,
+        why: `At this rate the treasury runs out in about ${months} month${months > 1 ? 's' : ''}. Wages, contracts, power and freight are what keep costing: put lines that are over target on one shift, let surplus contracts lapse, or ask the Committee for more at the hearing.`,
+        panel: 'money',
+      });
+    }
+  }
   // Unions: a strong one is a strike waiting to happen.
   if (s.unions) {
     const strong = unionTowns(s).filter((i) => s.unions.towns[i].strength >= 70);
@@ -331,7 +352,7 @@ export const SAFE_RESERVE = 300;
  * advisor's own list (advise) explains and ranks, but on its own it overspends and leaves hearings and cards to their
  * defaults.
  */
-export function safeAdvice(s: SimState, reserve = Math.max(s.automation?.reserve ?? 0, SAFE_RESERVE)): SimAction[] {
+export function safeAdvice(s: SimState, reserve = prudentReserve(s, Math.max(s.automation?.reserve ?? 0, SAFE_RESERVE))): SimAction[] {
   if (s.over) return [];
   let t = s;
   const out: SimAction[] = [];
