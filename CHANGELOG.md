@@ -1,5 +1,11 @@
 # Changelog
 
+## 20.5.1: no overview map
+
+- **The small overview map in the map's bottom-right corner is gone.** At the normal zoom, the main map already shows
+  the whole country, so the overview only repeated it, and it showed no sites, alerts or shipments. The zoom buttons
+  and Reset view (0) still cover moving around the map.
+
 ## 20.5.0: the big moments (design pass C5)
 
 - **The peaks of a term now feel different from routine news.** They are:

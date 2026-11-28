@@ -645,7 +645,7 @@ html.rm .fc-coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--ops-amber))
   color: #1a1208;
   letter-spacing: 0.04em;
 }
-/* An overlay on the map (title card, minimap, readouts, hover cards, menus): a small plate with a bronze top edge. */
+/* An overlay on the map (title card, readouts, hover cards, menus): a small plate with a bronze top edge. */
 .fc-hud {
   border: 1px solid rgb(var(--ops-line));
   border-top-color: rgb(var(--fc-bronze) / 0.75);

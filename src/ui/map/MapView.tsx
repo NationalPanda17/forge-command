@@ -847,7 +847,7 @@ const ShipmentsLayer = memo(function ShipmentsLayer({ S, shipments, clock, pause
   );
 });
 
-// ---------- Weather, night and the minimap ----------
+// ---------- Weather and night ----------
 
 export type MapWeather = 'snow' | 'flood' | 'heat' | null;
 
@@ -893,46 +893,6 @@ const NightLayer = memo(function NightLayer({ uid }: { uid: string }) {
   );
 });
 
-function Minimap({ view, size, onCenter }: { view: View; size: Size; onCenter: (x: number, y: number) => void }) {
-  const w = size.w < 640 ? 96 : 144;
-  const h = (w * G.FRAME_H) / G.FRAME_W;
-  const vx = -view.tx / view.S;
-  const vy = -view.ty / view.S;
-  const vw = size.w / view.S;
-  const vh = size.h / view.S;
-  const drag = useRef(false);
-  const at = (e: ReactPointerEvent<SVGSVGElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    onCenter(G.FRAME.x0 + ((e.clientX - r.left) / r.width) * G.FRAME_W, G.FRAME.y0 + ((e.clientY - r.top) / r.height) * G.FRAME_H);
-  };
-  return (
-    <div data-hud="" className="fc-hud absolute p-1" style={{ right: (size.r ?? 0) + 12, bottom: (size.b ?? 0) + 32 }}>
-      <svg
-        width={w}
-        height={h}
-        viewBox={`${G.FRAME.x0} ${G.FRAME.y0} ${G.FRAME_W} ${G.FRAME_H}`}
-        role="img"
-        aria-label="Overview map. Click or drag to move the view."
-        className="block cursor-pointer"
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          drag.current = true;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          at(e);
-        }}
-        onPointerMove={(e) => drag.current && at(e)}
-        onPointerUp={() => (drag.current = false)}
-        onPointerCancel={() => (drag.current = false)}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <rect x={G.FRAME.x0} y={G.FRAME.y0} width={G.FRAME_W} height={G.FRAME_H} fill={SEA} />
-        <path d={G.geography().land} fill="#2b4654" stroke={COAST} strokeWidth={4} />
-        <path d={G.ringPath(G.VARDAN_RING)} fill="rgba(242, 84, 91, 0.12)" />
-        <rect x={vx} y={vy} width={vw} height={vh} fill="rgb(var(--ops-cyan) / 0.1)" stroke="rgb(var(--ops-cyan))" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-      </svg>
-    </div>
-  );
-}
 
 // ---------- Screen furniture ----------
 
@@ -1662,17 +1622,6 @@ export default function MapView(props: MapViewProps): JSX.Element {
           <Icon name="recenter" />
         </button>
       </div>
-      {size.w >= 420 && size.w > 0 && (
-        <Minimap
-          view={view}
-          size={size}
-          onCenter={(x, y) => {
-            const v = viewRef.current;
-            const a = safe(sizeRef.current);
-            apply(clampView({ S: v.S, tx: a.x + a.w / 2 - x * v.S, ty: a.y + a.h / 2 - y * v.S }, sizeRef.current));
-          }}
-        />
-      )}
       <div data-hud="" className="fc-hud pointer-events-none absolute px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider text-ops-dim" style={{ right: (size.r ?? 0) + 12, bottom: (size.b ?? 0) + 8 }}>
         <span ref={readoutRef} />
         <span className="ml-2 text-ops-dim">×{(S / Math.max(0.0001, fitScale(size))).toFixed(1)}</span>
