@@ -5,7 +5,7 @@
 - **Advice cards now say what a move does, in the game's own numbers.** Examples:
   - "Adds 4.6 a day of silicon chip sets: about a tenth at once, all of it in about 11 months."
   - a shift change gives the line's output before and after, a day;
-  - "Qualified makers bid within 1 month for 0.6 a day over 12 months; you choose the bid."
+  - a tender says how much it asks for, for how long, and that bids come within a month;
   - "Vantor Motor Works can supply your arsenals in about 8 months."
 
   Hiring, housing and research say how soon they pay off. A card whose move is already fully explained shows no
