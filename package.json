@@ -1,7 +1,7 @@
 {
   "name": "forge-command",
   "private": true,
-  "version": "20.7.0",
+  "version": "20.7.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

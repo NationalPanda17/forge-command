@@ -1,5 +1,17 @@
 # Changelog
 
+## 20.7.1: design pass results
+
+- **The design pass is complete.** `docs/design-pass.md` now ends with Phase 5:
+  - the opening before and after (the first trouble moves from day 100 to day 55, and a passive player's confidence
+    rises 10 points less by month 3);
+  - the whole pass's balance on 40 seeds, within noise and with fewer games in debt;
+  - War footing rechecked on 80 seeds;
+  - the regressions found and fixed;
+  - the known issues;
+  - the recommended next sprint.
+- **No game changes.** A tuning change for War footing was tested, made no difference, and was not kept.
+
 ## 20.7.0: a tutorial that solves a real problem (design pass C7)
 
 - **The tutorial now teaches the game by playing it.** It used to be ten steps, most of them "open this tab". It is now
