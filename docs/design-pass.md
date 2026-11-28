@@ -314,6 +314,17 @@ points to test on 40 or more seeds, since balance runs are noisy.
   - **Not checked in the browser:** the motif itself (the browser pane was muted) and the larger ripple (the test
     moment had no site).
 
+- **C6 (changed and done, 20.6.0):**
+  - **What was planned:** a forecast effect on each card.
+  - **Why it was dropped, measured:**
+    - The quick forecast showed no change for any move, even expansions and investments: it caps output at last
+      month's level, and capacity ramps up over about 11 months on Normal.
+    - Playing the game forward with and without a move took about 70 ms per card, but it was dominated by divergent
+      random events: research "added" 7 points of readiness within six months, and an extra shift "cut" shell stock.
+  - **What was built instead:** each advice card states what the move does in the rules' own numbers: capacity and
+    how long it takes to arrive, output before and after a shift change, how long a tender, a qualification, hiring or
+    housing takes. Tests check each sentence against what the rules then do.
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

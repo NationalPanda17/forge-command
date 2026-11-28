@@ -10,6 +10,7 @@ import type { MaterialId } from '../sim/world';
 import { Btn, ChoiceCard } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { adviceIcon } from '../ui/kinds';
+import { whatItDoes } from './whatItDoes';
 
 const TONE = { bad: 'border-ops-red/50', warn: 'border-ops-amber/50', info: 'border-ops-line/60' } as const;
 
@@ -128,6 +129,7 @@ export default function AdvisorCard({
               <div className="mb-1.5">
                 <ChoiceCard as="div" tone={first.tone === 'bad' ? 'red' : 'amber'} eyebrow="Next step" icon={<Icon name={adviceIcon(first.id)} size={16} />} title={first.title}>
                   <div className="mt-0.5 text-ops-dim">{first.why}</div>
+                  {first.action && whatItDoes(state, first.action) && <div className="mt-0.5 text-ops-cyan">↳ {whatItDoes(state, first.action)}</div>}
                   {first.tradeoff && <div className="mt-0.5 text-ops-amber/90">{first.tradeoff}</div>}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {first.action && (
@@ -151,6 +153,7 @@ export default function AdvisorCard({
                   <span className="min-w-0">
                     <span className="text-white">{a.title}</span>
                     <span className="block text-[10px] text-ops-dim">{a.why}</span>
+                    {a.action && whatItDoes(state, a.action) && <span className="block text-[10px] text-ops-cyan">↳ {whatItDoes(state, a.action)}</span>}
                     {a.tradeoff && <span className="block text-[10px] text-ops-amber/90">{a.tradeoff}</span>}
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">

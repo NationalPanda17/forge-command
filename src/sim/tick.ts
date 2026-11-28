@@ -68,6 +68,10 @@ const DEMIL_SITE = 'karrowDemil';
 const DEMIL_TPD = CORE.economy.demilTonnesPerDay;
 /** How hard the world pushes back, by difficulty. */
 export const DIFF: Record<'easy' | 'normal' | 'hard', { events: number; crisis: number; ramp: number }> = CORE.difficulty.world;
+
+/** How much of new capacity matures each day (a new line or an expansion ramps from about 10% to all of it). Shared
+ * with the cards that say how long new capacity takes (20.6). */
+export const rampStep = (s: SimState) => ((0.08 * DIFF[s.difficulty].ramp) / DAYS_PER_MONTH) * (hasPolicy(s, 'warmBase') ? 1.5 : 1);
 /** Minimum ready rounds a base keeps of each type it can fire. */
 /** How often things go wrong: difficulty times the sandbox setting. */
 export const eventScale = (s: SimState) => DIFF[s.difficulty].events * (s.settings?.events ?? 1);
@@ -619,7 +623,7 @@ function world(s: SimState): void {
       }
     }
     for (const p of site.processes) {
-      const step = ((0.08 * DIFF[s.difficulty].ramp) / DAYS_PER_MONTH) * (hasPolicy(s, 'warmBase') ? 1.5 : 1);
+      const step = rampStep(s);
       if (p.maturity < 1) p.maturity = Math.min(1, p.maturity + step);
       if (p.ramp?.length) {
         for (const r of p.ramp) r.maturity = Math.min(1, r.maturity + step);

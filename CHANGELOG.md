@@ -1,5 +1,25 @@
 # Changelog
 
+## 20.6.0: what each move does (design pass C6)
+
+- **Advice cards now say what a move does, in the game's own numbers.** Examples:
+  - "Adds 4.6 a day of silicon chip sets: about a tenth at once, all of it in about 11 months."
+  - a shift change gives the line's output before and after, a day;
+  - "Qualified makers bid within 1 month for 0.6 a day over 12 months; you choose the bid."
+  - "Vantor Motor Works can supply your arsenals in about 8 months."
+
+  Hiring, housing and research say how soon they pay off. A card whose move is already fully explained shows no
+  extra line.
+- **Why not a forecast number:** the design pass planned to show each move's effect on the 12-month forecast. Measured,
+  that was unreliable. The quick forecast cannot see new capacity, because it is capped at last month's output and
+  capacity ramps up over months. Playing the game forward with and without the move was mostly noise: research
+  "raised" readiness 7 points within six months, before it could finish. A wrong number teaches players to distrust
+  the cards, so the cards state facts instead.
+- **The catch lines are shorter** where the new line now gives the exact timing.
+- **Fix:** "for about 1 weeks" on the breakdown advice now reads "1 week".
+- **No rule changes.** The ramp-up rate is now one shared function (`rampStep`), so the cards and the rules use the
+  same sum. The golden masters are unchanged.
+
 ## 20.5.1: no overview map
 
 - **The small overview map in the map's bottom-right corner is gone.** At the normal zoom, the main map already shows

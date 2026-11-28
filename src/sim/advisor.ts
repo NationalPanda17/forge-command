@@ -43,16 +43,12 @@ export interface Advice {
   tradeoff?: string;
 }
 
-/** The catch with each kind of action, beyond its price. */
+/** The catch with each kind of action, beyond its price. (How much and how soon is on the card's own line, 20.6.) */
 const CATCH: Partial<Record<SimAction['type'], string>> = {
-  hire: 'Trainees take about three months to pull their weight.',
   research: 'It ties up your engineers until it is done.',
-  invest: 'New capacity ramps up over several months.',
-  expand: 'New capacity ramps up over several months, and needs more crew.',
+  expand: 'The bigger line needs more crew.',
   setPolicy: 'Rounds held in a regional depot are rounds not held elsewhere.',
-  openTender: 'Bids take a few weeks to come in.',
   awardTender: 'A contract locks the price, and the supplier, for its term.',
-  housing: 'Homes take about five months to build.',
   generator: 'While it runs in a blackout, the plant pays double for power.',
   powerContract: 'It locks today’s price for two years, whether the market falls or rises.',
   payDeal: 'Pay stays 3% higher for good.',
@@ -164,7 +160,7 @@ export function advise(s: SimState, limit = 6): Advice[] {
     const name = MATERIALS[c.material].name.toLowerCase();
     const lost = Math.round(c.perDay * (1 - site.disruptionFactor) * 100) / 100;
     if (lost <= 0) continue;
-    const why = `${SITE_BY_ID[c.site].name} is down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.max(1, Math.round(site.disruptionDays / 7))} weeks, and it holds your ${name} contract.`;
+    const why = `${SITE_BY_ID[c.site].name} is down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.max(1, Math.round(site.disruptionDays / 7))} week${Math.round(site.disruptionDays / 7) > 1 ? 's' : ''}, and it holds your ${name} contract.`;
     const others = bidders(s, c.material).filter((id) => id !== c.site);
     if (others.length) {
       const a: SimAction = { type: 'openTender', material: c.material, perDay: lost, months: 12 };
