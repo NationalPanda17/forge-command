@@ -1,6 +1,6 @@
 // The advisor: the next best things to do, ranked, each with the action that does it where there is one.
 import { cyberLevel } from './cyber';
-import { apply, validate, type SimAction } from './actions';
+import { QUALIFY_DAYS, apply, validate, type SimAction } from './actions';
 import { AUDIT_LIMITS, REVIEW_MONTHS, counted, wasteSince } from './audit';
 import { MOOD_WORD, communityTowns, permitHeld } from './communities';
 import { attackOdds } from './cyber';
@@ -14,6 +14,7 @@ import { crewNeed, nationalStock, reserveTarget } from './selectors';
 import { RESEARCH, RESEARCH_IDS } from './strategy';
 import type { SimState } from './types';
 import { controlBlock } from './hotseat';
+import { bidders } from './economy';
 import { prudentReserve, runningGap, runway } from './spending';
 import DEPTH from './tuning/depth.json';
 import { hireRoom, townIndex, townOf } from './towns';
@@ -143,6 +144,27 @@ export function advise(s: SimState, limit = 6): Advice[] {
   }
 
   // Contracts about to lapse; bids waiting.
+  // A supplier you buy from has broken down (20.2): make up what it can no longer send, from another qualified maker by
+  // tender, or qualify a second maker if it was the only one. Said at once, so the first trouble of a game has a
+  // concrete answer on Home.
+  for (const c of s.contracts) {
+    const site = s.sites[c.site];
+    if (c.endDay <= s.day || site.disruptionDays <= 0 || s.tenders.some((t) => t.material === c.material)) continue;
+    const name = MATERIALS[c.material].name.toLowerCase();
+    const lost = Math.round(c.perDay * (1 - site.disruptionFactor) * 100) / 100;
+    if (lost <= 0) continue;
+    const why = `${SITE_BY_ID[c.site].name} is down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.max(1, Math.round(site.disruptionDays / 7))} weeks, and it holds your ${name} contract.`;
+    const others = bidders(s, c.material).filter((id) => id !== c.site);
+    if (others.length) {
+      const a: SimAction = { type: 'openTender', material: c.material, perDay: lost, months: 12 };
+      add({ id: `cover-${c.id}`, priority: 82, tone: 'warn', title: `Tender for ${name} to cover the gap`, why: `${why} ${others.length} other qualified maker${others.length > 1 ? 's' : ''} can bid for the ${lost} a day it cannot send.`, action: ok(s, a) ? a : undefined, panel: 'markets', material: c.material });
+    } else {
+      const spare = SITES.find((d) => d.owner !== 'state' && !s.sites[d.id].qualified && s.sites[d.id].status !== 'closed' && s.sites[d.id].qualifyingDays === null && s.sites[d.id].processes.some((p) => RECIPES[p.recipe].output === c.material));
+      if (!spare) continue;
+      const a: SimAction = { type: 'qualify', site: spare.id };
+      add({ id: `cover-${c.id}`, priority: 82, tone: 'warn', title: `Qualify ${spare.name} as a second source of ${name}`, why: `${why} No other qualified maker can step in. Qualifying ${spare.name} takes about ${Math.round(QUALIFY_DAYS / 30)} months: too late for this breakdown, in time for the next.`, action: ok(s, a) ? a : undefined, site: spare.id, material: c.material });
+    }
+  }
   for (const c of s.contracts) {
     const left = c.endDay - s.day;
     if (left > 45 || s.contracts.some((k) => k !== c && k.material === c.material && k.endDay > c.endDay) || s.tenders.some((t) => t.material === c.material)) continue;

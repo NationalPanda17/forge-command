@@ -271,6 +271,21 @@ points to test on 40 or more seeds, since balance runs are noisy.
   deeper fix (planning recurring costs before committing them) is possible later if playtests show players still
   slide into debt.
 
+- **C2 and Q5 (done, 20.2.0):**
+  - **C2:** a supplier the player holds a contract with breaks down between day 25 and day 50 in Peacetime and the
+    tutorial. It is always one with an answer: another qualified maker to tender with, or one to qualify.
+  - **Q5:** the advisor's first move answers it, with a tender or a second source.
+  - **Balance:** within noise on 40 seeds at every difficulty.
+- **C1 (not shipped, measured):**
+  - **What was tried:** opening with 65% of the usual reserve (82% readiness).
+  - **Result:** on 20 seeds on Normal, the advice player was dismissed in 15 games (3 before), and the chief of staff
+    in 8 (about 1 before).
+  - **Why:** a start below the goal is not a climb, because the Committee counts it as failure from the first day, and
+    plants are sized to hold the reserve, not rebuild it.
+  - **What it would need:** a gentler readiness judgement in the first months, like the easing Rebuild already has,
+    and some spare capacity to climb with. That is a design change of its own, now **C1b**. It is not worth doing
+    until playtests say the opening still feels flat with C2 in place.
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

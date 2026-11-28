@@ -21,5 +21,9 @@
     }
   },
   "baseMinimumRounds": { "pac3": 8, "sm6": 4, "tamir": 20, "irist": 6, "stinger": 8, "apkws": 30, "coyote": 6, "gmlrs": 30, "shell155": 2000, "javelin": 12 },
-  "reserve": { "days": 365, "stockpileLawDays": 450, "graceDays": 360 }
+  "reserve": { "days": 365, "stockpileLawDays": 450, "graceDays": 360 },
+  "opening": {
+    "$comment": "20.2 (design pass C2): the first weeks of a quiet scenario. incident: one supplier breakdown early in the game, at one of the `candidates` suppliers you hold contracts with for a part another maker also makes, qualified or not (fewest qualified makers, then the biggest contract), so there is an answer: a tender now or a second source for next time, on a day chosen from the seed between dayMin and dayMax; its output falls to factorMin-factorMax for daysMin-daysMax days. Chosen with its own generator from the seed, so the game's own random sequence is untouched.",
+    "incident": { "scenarios": ["standard", "tutorial"], "candidates": 3, "dayMin": 25, "dayMax": 50, "factorMin": 0.3, "factorMax": 0.5, "daysMin": 45, "daysMax": 70 }
+  }
 }

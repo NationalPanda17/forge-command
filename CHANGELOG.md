@@ -1,5 +1,26 @@
 # Changelog
 
+## 20.2.0: trouble in the first month (design pass C2)
+
+- **A Peacetime campaign and the tutorial now open with a problem.** Between day 25 and day 50, one of the suppliers
+  you hold a contract with breaks down: a fire, a breakdown, a flood or a strike takes its output down to 30–50% for 6
+  to 10 weeks. The game pauses for it. Before, nothing went wrong for months: ordinary breakdowns cannot happen before
+  day 60, and readiness stayed above 90% until about month 10.
+- **The advisor answers it at once.** Its next step is either a tender sized to what the supplier cannot send, or, if
+  no other qualified maker exists, qualifying a second source. In that case it says plainly that qualifying takes about
+  8 months: too late for this breakdown, in time for the next.
+- **The incident varies.** The supplier, the day, the damage and the length come from the game's seed, so a replay
+  meets a different problem. It never touches the game's own random sequence, so every other event is unchanged.
+- **The sandbox, the story and the scenarios with their own pressure** (War footing, Sanctions, Rebuild) are unchanged.
+- **Balance** (40 seeds each, before → after): the advice player was dismissed in 1 → 1 games on Easy, 6 → 8 on Normal
+  and 11 → 12 on Hard; the chief of staff in 0 → 0, 2 → 1 and 6 → 6. All are within noise.
+- **Golden masters re-recorded on purpose:** peacetime-normal, peacetime-hard, generated-map and hands-off. These are
+  the standard scored games the incident now reaches. The story and the sandbox records are unchanged.
+- **Not shipped: opening short of the goal (C1).** Measured, it broke games. With the reserve at 65% and no incident, the
+  advice player was dismissed in 15 of 20 games on Normal (3 of 20 before), and the chief of staff in 8 of 20. The
+  Committee counts a short reserve as failure from the first day, and plants are sized to hold the reserve, not
+  rebuild it. See the design pass for what it would take.
+
 ## 20.1.1: a shorter welcome, and the "?" explained (design pass quick wins)
 
 - **The tutorial's first step is three short sentences:** the goal, the threat, and the one thing to do (start the
