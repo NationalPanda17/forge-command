@@ -123,6 +123,7 @@ export function feed(s: SimState, tone: FeedItem['tone'], text: string, site?: s
 // Lots live in their own module so that testing and the world events can use them without loading the tick.
 export { addLots, takeLots } from './lots';
 import { addLots, takeLots } from './lots';
+import { askDay, askMonth } from './asks';
 
 function stockOf(site: SiteState, m: MaterialId): number {
   return isLine(m) ? lotQty(site.lots[m]) : site.stock[m] ?? 0;
@@ -710,6 +711,7 @@ function closeMonth(s: SimState, fightTotals: { leakSeverity: number; landShort:
   intelMonth(s);
   rivalMonth(s);
   scenarioMonth(s, feed);
+  askMonth(s, feed);
   // The fiscal year ends in a hearing before the Committee.
   // No hearing in the term's last month: the Committee will judge you at the end instead.
   // An endless sandbox has no last month, so it never skips a hearing (its nominal end date is only a placeholder).
@@ -795,6 +797,7 @@ function stepDay(s: SimState): void {
   rivalDay(s, feed);
   industryDay(s, feed);
   scenarioDay(s, feed);
+  askDay(s, feed);
   cyberDay(s, feed);
   energyDay(s, feed);
   intelDay(s, feed);

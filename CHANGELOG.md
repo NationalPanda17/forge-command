@@ -1,5 +1,25 @@
 # Changelog
 
+## 20.4.0: the Committee asks (design pass C4)
+
+- **A short goal between the long ones.** From month 2, every three months, the Committee asks for one concrete thing
+  within 90 days. It takes the ask from where your game stands: raise your thinnest round by a tenth of its goal, or
+  start qualifying a second maker for a part only one supplier makes. It shows on Home under "The Committee asks",
+  with the time left, a progress bar and what it is worth.
+- **Small stakes, both ways.** Meeting it releases $40M and +2 confidence. Missing it costs 1 confidence. A director
+  who does nothing misses almost every ask, so inaction shows months sooner than before.
+- **The advisor points at a second source** while the Committee is asking for one.
+- **In scored games only:** Peacetime, War footing, Sanctions, Rebuild and the tutorial. Not the sandbox, the story or
+  two-player games.
+- **Balance** (40 seeds, before → after): the advice player was dismissed in 0 → 1 games on Easy, 8 → 7 on Normal,
+  13 → 10 on Hard, 1 → 4 in War footing, 3 → 5 in Rebuild and 4 → 2 in Sanctions. Mostly within noise. War footing
+  is the one to watch: it rose the same way with an early version of 20.3.
+- **Tried and dropped: an ask to bring running costs inside the budget.** No player met it (0 of 5): a three-month
+  average cannot be turned round in 90 days, and an ask no one can meet only discourages. The 20.1 warning covers
+  running costs.
+- **Golden masters re-recorded on purpose** for the scored games: peacetime-normal, peacetime-hard, war-footing,
+  sanctions, generated-map and hands-off. The story and the sandbox are unchanged.
+
 ## 20.3.0: praise is earned (design pass C3)
 
 - **A new director earns the Committee's praise slowly.** In a first term in Peacetime or the tutorial, the
