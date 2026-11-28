@@ -46,7 +46,7 @@ export interface MapNetwork {
   upgrading: string[];
 }
 /** A brief ring at a site when something happens there. */
-export interface MapRipple { key: string; site: string; tone: 'good' | 'bad' | 'warn' | 'info' }
+export interface MapRipple { key: string; site: string; tone: 'good' | 'bad' | 'warn' | 'info'; /** A big moment (20.5): larger, bronze, and longer. */ big?: boolean }
 
 export interface MapViewProps {
   /** How far the game's overlays reach over the map on each side (18.3). The map keeps its view and furniture clear. */
@@ -164,6 +164,7 @@ const LOD_CSS = `
 .fcm-build{animation:fcm-build 1.2s linear infinite}
 @keyframes fcm-ripple{from{transform:scale(0.6);opacity:.9}to{transform:scale(3.2);opacity:0}}
 .fcm-ripple{transform-box:fill-box;transform-origin:center;animation:fcm-ripple 1.8s ease-out 2 forwards}
+.fcm-ripple-big{animation:fcm-ripple 2.2s ease-out 3 forwards}
 @keyframes fcm-flow{to{stroke-dashoffset:-18}}
 .fcm-flow{animation:fcm-flow 1.4s linear infinite}
 .fcm-marker:hover .fcm-mbody{stroke-width:2.2}
@@ -1537,6 +1538,7 @@ export default function MapView(props: MapViewProps): JSX.Element {
               {ripples.map((r) => {
                 if (!G.SITE_POS[r.site]) return null;
                 const [x, y] = markerAt(r.site, S, liveSpread);
+                if (r.big) return <circle key={r.key} className="fcm-ripple fcm-ripple-big" cx={x / S} cy={y / S} r={(markerPx(S) * 1.4) / S} fill="none" stroke="rgb(var(--fc-bronze))" strokeWidth={3} style={nss} />;
                 return <circle key={r.key} className="fcm-ripple" cx={x / S} cy={y / S} r={markerPx(S) / S} fill="none" stroke={r.tone === 'bad' ? ops('red') : r.tone === 'good' ? ops('green') : r.tone === 'warn' ? ops('amber') : ops('cyan')} strokeWidth={2} style={nss} />;
               })}
             </g>

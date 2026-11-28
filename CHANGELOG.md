@@ -6,6 +6,25 @@
   the whole country, so the overview only repeated it, and it showed no sites, alerts or shipments. The zoom buttons
   and Reset view (0) still cover moving around the map.
 
+## 20.5.0: the big moments (design pass C5)
+
+- **The peaks of a term now feel different from routine news.** They are:
+  - a promise kept;
+  - an objective or a Committee ask met;
+  - the Committee granting a budget request;
+  - a crisis winding down;
+  - an operation succeeding;
+  - a new plant opening;
+  - a round climbing back to the Committee's goal at a month's close.
+
+  Each gets a short motif of its own (three rising bell notes over a soft brass swell), a gold banner with a star in
+  the status bar for a few seconds, and a larger bronze ripple on the map where it happened. Routine good news stays a
+  line in the log.
+- **A peak that pauses the game** shows the same star and gold in the pause banner, with Resume beside it.
+- **The motif follows the sound switch**, and the ripple follows the reduced-motion setting. The moment is also
+  announced to screen readers.
+- **Display only:** the simulation and the golden masters are unchanged.
+
 ## 20.4.0: the Committee asks (design pass C4)
 
 - **A short goal between the long ones.** From month 2, every three months, the Committee asks for one concrete thing
