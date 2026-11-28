@@ -12,8 +12,9 @@ import { rand } from './rng';
 import { lotQty, nationalDailyDraw, nationalStock, regionBases, regionDailyDraw, reserveTarget } from './selectors';
 import type { Decision } from './strategy';
 import type { FeedItem, SimState } from './types';
-import { FIGHTING_REGIONS, MATERIALS, REGIONS, SITES, SITE_BY_ID, type LineId, type RegionId } from './world';
+import { FIGHTING_REGIONS, MATERIALS, RECIPES, REGIONS, SITES, SITE_BY_ID, type LineId, type RegionId } from './world';
 import { mulberry } from './worldgen';
+import CORE from './tuning/core.json';
 
 type Feed = (s: SimState, tone: FeedItem['tone'], text: string, site?: string, alert?: boolean) => void;
 const T = DEPTH.scenarios;
@@ -267,7 +268,53 @@ export const dealReadiness = (s: SimState, year: number) => (s.budgetDeals?.[yea
 // ---------- The hooks ----------
 
 /** Each day: surges, wear and replacements. */
+/**
+ * The opening incident (20.2, design pass C2). A quiet scenario otherwise has no problem to solve for months, so one
+ * supplier breaks down early: one you hold a contract with, for a part another maker also makes (so there is an
+ * answer: a tender, or a second source), preferring the fewest qualified makers and then the biggest contract, on a day
+ * chosen from the seed. Chosen without random draws, so every later event of
+ * the game is the same as it would have been.
+ */
+/** How many makers outside your own plants have a working line for this material: qualified ones only, or with unqualifiedToo all of them. */
+function makers(s: SimState, m: string, unqualifiedToo = false): number {
+  return SITES.filter((d) => {
+    const site = s.sites[d.id];
+    return d.owner !== 'state' && (site.qualified || unqualifiedToo) && site.status !== 'closed' && site.processes.some((p) => RECIPES[p.recipe].output === m);
+  }).length;
+}
+
+function openingIncident(s: SimState, feed: Feed): void {
+  const T = CORE.opening.incident;
+  // Scored games only: not the sandbox, and not the story, whose chapters bring their own trouble.
+  if (s.mode !== 'campaign' || s.story || !T.scenarios.includes(s.scenario)) return;
+  // Its own generator from the seed: the day, the site and the harm vary between games, and the game's own random
+  // sequence is not touched.
+  const r = mulberry((s.seed ^ 0x0be1) >>> 0);
+  if (s.day !== T.dayMin + Math.floor(r() * (T.dayMax - T.dayMin + 1))) return;
+  // The suppliers you hold contracts with, for parts that another maker also makes (qualified or not): the breakdown
+  // touches your chain, and there is something to do about it, a tender now or a second source for next time.
+  // Fewest qualified makers first, then the biggest contract.
+  const ranked = s.contracts
+    .filter((c) => {
+      const d = SITE_BY_ID[c.site];
+      const site = s.sites[c.site];
+      return c.endDay > s.day && d.owner !== 'state' && site.status === 'active' && site.disruptionDays === 0 && makers(s, c.material, true) >= 2;
+    })
+    .map((c) => ({ d: SITE_BY_ID[c.site], others: makers(s, c.material), value: c.perDay * MATERIALS[c.material].price }))
+    .sort((a, b) => a.others - b.others || b.value - a.value || a.d.id.localeCompare(b.d.id))
+    .filter((x, i, all) => all.findIndex((y) => y.d.id === x.d.id) === i);
+  // One of the few makers the chain depends on most, so a replay meets a different problem.
+  const pick = ranked[Math.floor(r() * Math.min(T.candidates, ranked.length))];
+  if (!pick) return;
+  const site = s.sites[pick.d.id];
+  site.disruptionDays = T.daysMin + Math.floor(r() * (T.daysMax - T.daysMin + 1));
+  site.disruptionFactor = Math.round((T.factorMin + r() * (T.factorMax - T.factorMin)) * 100) / 100;
+  const kinds = ['An explosion and fire', 'A major equipment failure', 'Flooding', 'A strike'];
+  feed(s, 'bad', `${kinds[Math.floor(r() * kinds.length)]} at ${pick.d.name}: output down to ${Math.round(site.disruptionFactor * 100)}% for about ${Math.round(site.disruptionDays / 7)} weeks.`, site.id, true);
+}
+
 export function scenarioDay(s: SimState, feed: Feed): void {
+  openingIncident(s, feed);
   if (s.war) warDay(s, feed);
   if (s.rebuild) rebuildDay(s, feed);
 }
