@@ -1,6 +1,6 @@
 # Design pass: findings and plan (Phases 1–3)
 
-**Status:** for review. Nothing below has been built yet.
+**Status:** done. Phases 1–3 were reviewed, Tier 1 and Tier 2 were built in 20.1.0–20.7.0, and Phase 5 (below) checked the result.
 
 **Assumptions** (no questions were needed to plan):
 - The target player is a strategy or management fan on a desktop browser, as the game is built today.
@@ -339,3 +339,95 @@ points to test on 40 or more seeds, since balance runs are noisy.
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.
 C1, C3 and the balance table change numbers in `src/sim/tuning/`. Any change to the golden masters will be named and
 re-recorded on purpose.
+
+---
+
+## Phase 5: Playtest and polish
+
+Checked on 27 November 2026, comparing 20.0.1 (before the pass) with 20.7.0.
+
+### The opening, again (a player who does nothing, Peacetime Normal, 12 seeds)
+
+| | Before (20.0.1) | After (20.7.0) |
+|---|---|---|
+| First bad alert, on average | day 100 | day 55 (the breakdown, in month 1 or 2) |
+| Alerts a month, months 1–3 | 0.94 | 1.42 |
+| Committee asks | none | one every 3 months |
+| Confidence at month 3 / month 6 (start 60) | 75.6 / 85.3 | 65.4 / 75.7 |
+| Readiness, months 1–6 | 98–99% | 97–98% |
+
+**Against the Phase 1 notes:**
+- **A quiet, already-won opening:** partly fixed. There is now a real problem in the first month or two, with an answer
+  on Home and a short goal from the Committee. Readiness still opens near full, because C1 broke games (see C1b below).
+- **A tutorial that tours:** fixed. It now solves the first breakdown.
+- **Inaction rewarded early:** fixed in the measure that mattered. Passive confidence rises 10 points less by
+  month 3, and missed asks cost confidence within months rather than years.
+- **Payoffs land quietly:** fixed. Seven kinds of peak get a motif, a gold banner and a ripple on the map.
+- **Causes far from effects:** improved differently from the plan. Each card states what its move does, in the rules'
+  own numbers, because a forecast number was unreliable.
+- **A silent running deficit:** fixed. Home warns before the money runs out.
+
+### Balance, the whole pass (40 seeds, Normal unless noted, before → after)
+
+| | Advice player: dismissed · score · games in debt | Chief of staff: dismissed · score · games in debt |
+|---|---|---|
+| Peacetime Easy | 1 → 1 · 70 → 67 · 0 → 0 | 0 → 0 · 71 → 70 · 2 → 0 |
+| Peacetime Normal | 6 → 7 · 54 → 54 · 9 → 3 | 2 → 1 · 63 → 62 · 6 → 3 |
+| Peacetime Hard | 12 → 10 · 39 → 39 · 7 → 8 | 5 → 6 · 48 → 48 · 11 → 7 |
+| War footing | 1 → 4 · 47 → 45 · 4 → 6 | 1 → 0 · 58 → 58 · 2 → 3 |
+| Rebuild | 3 → 5 · 55 → 52 · 3 → 2 | 2 → 1 · 60 → 60 · 8 → 8 |
+| Sanctions | 4 → 2 · 55 → 57 · 5 → 4 | 4 → 2 · 54 → 57 · 9 → 5 |
+
+- **Overall:** dismissals and scores stay within noise, and fewer games slide into debt.
+- **War footing** was the one setting that moved the wrong way on seeds 1–40, so it was rerun on seeds 41–80. Over all
+  80 seeds:
+  - advice player: 9 → 12 dismissals, score −1.7;
+  - chief of staff: 4 → 1 dismissals, score +3.
+
+  The two halves differ by 7 points of score on the same version, so this is not a clear regression.
+- **Tuning tried and reverted:** waiving the missed-ask cost in War footing made no difference (still 4 in 40), so no
+  tuning was changed without evidence.
+
+### Played in the browser
+
+- **The tutorial,** at 1440: the breakdown came on 1 February, Home showed the answer, and Do it moved the tutorial on.
+- **A Peacetime game three months in,** at 1100: the header, the status bar and the panels have no overlaps or
+  clipped text. The ask, the breakdown advice with its "what it does" line, and the cost all read together.
+
+### Regressions found during the pass, and fixed
+
+- The confidence explanation left out the mandate since 17.0, and read +0.0 while confidence rose (20.3).
+- Long lines in explanations ran under the side panel (20.3).
+- The header ran off the right edge (20.0.1).
+- "In 1 months" and "for about 1 weeks" (20.0.x, 20.6).
+- The advisor suggested a third maker once a second was qualifying (20.7).
+- The opening incident first picked sole makers (no answer), then suppliers the player does not buy from (no effect);
+  it now picks contracted parts with an alternative (20.2).
+
+### Known issues
+
+1. **The opening still starts near full readiness.** Opening short of the goal (C1) broke games: 15 of 20 dismissed.
+   It needs C1b, an early easing of the readiness judgement plus spare capacity to climb with.
+2. **War footing's advice player** may be slightly weaker (80 seeds: 9 → 12 dismissed). Watch it in a real playtest.
+3. **The chief of staff ignores the Committee's asks.** A player who hands everything over meets them only by chance
+   (for example 0 of 5 second-source asks).
+4. **The safe advice can still slide into debt** (21 of 160 games). The warning tells the player; the advice does not
+   yet plan its running costs before committing them.
+5. **The breakdown advice keeps suggesting a second source to the last week of the breakdown.** That is honest ("in
+   time for the next"), but a player may read it as urgent.
+6. **Not checked by eye or ear:**
+   - the moment motif (the browser pane was muted);
+   - the big map ripple (the test moment had no site);
+   - the tutorial's tender branch (on the classic map the breakdown always calls for a second source).
+7. **The itch.io store screenshots predate 20.1–20.7.** Retake them (`scripts/store-shots.ts`) before any upload.
+
+### Recommended next sprint
+
+1. **The studio review of graphics, art and design** that you asked for. It brings together the studio head
+   (creative director) with art direction, technical art, game design, UX and audio, starting from the art bible and
+   this document.
+2. **A real playtest** with the brief in `docs/playtest.md`, now that the opening and the tutorial have changed. It
+   settles known issues 1, 2 and 5 with players rather than harnesses.
+3. **The chief of staff pursues the Committee's asks** (known issue 3).
+4. **C1b,** if the playtest says the opening still feels flat.
+5. **Retake the store screenshots** and check the motif and the ripple by ear and eye (known issues 6 and 7).
