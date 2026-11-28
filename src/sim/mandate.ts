@@ -199,6 +199,13 @@ export function mandateConfidence(s: SimState, ready: number): { mandate: number
   const m = filed.length + 1 < c.window ? measure(s, 'readiness', window, year).score : scoreMonths(s, window, year).total;
   let mandate = (m - c.expect[d] - offset - later) * c.gain;
   if (mandate > 0) mandate *= Math.max(c.satMin, Math.min(1, (100 - s.confidence) / c.satSpan));
+  // Praise is earned (20.3, design pass C3): in a first term it ramps up over the first months, so the reserve a new
+  // director inherits does not lift confidence on its own. Criticism counts in full from the start. Quiet scenarios
+  // only: where the opening is already hard, early praise is earned.
+  if (mandate > 0 && (s.term ?? 1) === 1 && c.earnRamp.scenarios.includes(s.scenario)) {
+    const r = c.earnRamp;
+    mandate *= Math.min(1, r.start + ((1 - r.start) * filed.length) / r.months);
+  }
   const floor = -Math.max(0, c.floor[d] + offset + later - ready) * c.floorGain;
   return { mandate, floor };
 }

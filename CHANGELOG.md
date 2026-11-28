@@ -1,5 +1,26 @@
 # Changelog
 
+## 20.3.0: praise is earned (design pass C3)
+
+- **A new director earns the Committee's praise slowly.** In a first term in Peacetime or the tutorial, the
+  Committee's praise starts at a quarter of its full weight and reaches all of it after six months. Criticism counts in
+  full from the first day. The reserve you inherit no longer lifts your confidence on its own: for a director who does
+  nothing, confidence after three months is 65 instead of 76, and after six months 76 instead of 86.
+- **Unchanged elsewhere.** War footing, Sanctions and Rebuild open under pressure, so early praise there is earned and
+  they are unchanged. So are second and later terms of a career.
+- **Balance** (40 seeds, Peacetime, before → after): the advice player was dismissed in 1 → 0 games on Easy, 8 → 8 on
+  Normal and 12 → 13 on Hard; the chief of staff in 0 → 0, 1 → 2 and 6 → 4. Scores fall by 1 to 3 points, from the
+  lower confidence early in the term.
+- **Fix: the confidence explanation now includes the mandate.** Pressing Confidence in the top bar showed "Last month:
+  +0.0" while confidence was rising. It left out the Committee's judgement of your mandate, the largest part, which has
+  been missing since 17.0. It now shows that line, with a note while a new director's praise is still ramping up. The
+  line once called "Readiness against expectation" is now "Readiness below the Committee's floor", which is what it
+  measures.
+- **Fix: long lines in the explanations wrap.** They inherited no-wrap from the top bar, so a long line ran out of its
+  box and under the side panel.
+- **Golden masters re-recorded on purpose:** peacetime-normal, peacetime-hard, generated-map, story, sandbox-endless and
+  hands-off (the Peacetime-based games). War footing and Sanctions are unchanged.
+
 ## 20.2.0: trouble in the first month (design pass C2)
 
 - **A Peacetime campaign and the tutorial now open with a problem.** Between day 25 and day 50, one of the suppliers

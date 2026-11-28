@@ -286,6 +286,17 @@ points to test on 40 or more seeds, since balance runs are noisy.
     and some spare capacity to climb with. That is a design change of its own, now **C1b**. It is not worth doing
     until playtests say the opening still feels flat with C2 in place.
 
+- **C3 (done, 20.3.0):**
+  - **The change:** in a first term in Peacetime or the tutorial, the Committee's praise ramps from 25% to full over six
+    months; criticism counts in full.
+  - **Effect on a passive player:** confidence after three months is 65 instead of 76, and after six months 76 instead
+    of 86.
+  - **Balance:** in Peacetime, within noise on 40 seeds; scores are 1–3 points lower.
+  - **Why the pressured scenarios are left out:** a first version that also applied to them took War footing's advice
+    player from 1 to 4 dismissals and Rebuild's from 3 to 5. Early praise is earned there.
+  - **Found on the way:** the confidence explanation had been leaving out the mandate since 17.0, so it read +0.0 while
+    confidence rose. Fixed.
+
 ### What this plan does not change
 
 The simulation's systems, the map, the scenarios, the career, the hearing and the save format all stay as they are.

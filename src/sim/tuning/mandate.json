@@ -23,6 +23,7 @@
   "gateWidth": 0.15,
   "confidence": {
     "gain": 12,
+    "earnRamp": { "$comment": "20.3 (design pass C3): in a first term, the Committee's praise starts at `start` of its full gain and reaches all of it after `months` months; criticism is never reduced. The reserve a new director inherits earns little credit; what they build earns all of it. Only in the quiet scenarios (`scenarios`): under War footing, Sanctions or Rebuild the opening is already hard, and early praise is earned.", "months": 6, "start": 0.25, "scenarios": ["standard", "tutorial"] },
     "window": 3,
     "expect": {
       "easy": 0.45,
