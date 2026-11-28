@@ -9,6 +9,7 @@ import { RIVAL_NAME, rivalArrivals, rivalShots } from '../sim/rival';
 import { DAYS_PER_MONTH, RUN_FACTOR, crewNeed, inGrace, nationalDailyDraw, nationalStock, reserveTarget } from '../sim/selectors';
 import type { ProcessState, SimState, ThreatId } from '../sim/types';
 import { FINISHED, MATERIALS, type LineId } from '../sim/world';
+import MANDATE from '../sim/tuning/mandate.json';
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const m = (v: number) => `$${Math.round(v).toLocaleString('en-US')}M`;
@@ -29,11 +30,14 @@ export function readinessWhy(s: SimState): string[] {
 export function confidenceWhy(s: SimState): string[] {
   const w = s.history.at(-1)?.why;
   if (!w) return ['The Committee’s trust in you, from 0 to 100. At zero you are dismissed.', 'A breakdown appears after the first month.'];
-  const total = w.readiness + w.leaks + w.land + w.debt + w.other;
+  // The mandate's judgement is the largest part (17.0); it was missing here until 20.3, so the total read +0.0.
+  const mandate = w.mandate ?? 0;
+  const total = mandate + w.readiness + w.leaks + w.land + w.debt + w.other;
   return [
     'The Committee’s trust in you, from 0 to 100. At zero you are dismissed.',
     `Last month: ${sign(total)}`,
-    `• Readiness against expectation: ${sign(w.readiness)}`,
+    `• Your mandate against what the Committee expects: ${sign(mandate)}${mandate > 0 && s.history.length <= MANDATE.confidence.earnRamp.months && (s.term ?? 1) === 1 && MANDATE.confidence.earnRamp.scenarios.includes(s.scenario) ? ' (a new director earns praise slowly)' : ''}`,
+    `• Readiness below the Committee’s floor: ${sign(w.readiness)}`,
     `• Threats that got through: ${sign(w.leaks)}`,
     `• Land fire missions short: ${sign(w.land)}`,
     `• Overdrawn treasury: ${sign(w.debt)}`,
