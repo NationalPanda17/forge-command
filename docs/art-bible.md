@@ -43,7 +43,7 @@ Every colour has an Okabe–Ito twin for the colour-blind palette (Settings, Dis
   radius. Corners are never rounder than 3px; full circles are only for the pause dial and slider thumbs.
 - **Heading plate:** an amber left mark and a fading amber wash.
 - **Wells** (readouts, inputs, the clock, the status bar) are recessed, with an inner shadow.
-- **Map overlays** (`.fc-hud`: the title card, minimap, readouts, hover cards, menus, popovers) are small plates with a
+- **Map overlays** (`.fc-hud`: the title card, readouts, hover cards, menus, popovers) are small plates with a
   bronze top edge.
 - **Dialogs** fade in and rise, with an amber top edge, and an amber kicker over a 26px heading.
 - **Site counters** are plated: a shadow under them, a steel face, the owner's rim and a bevel inside it. Squares are
