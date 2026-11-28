@@ -166,7 +166,10 @@ export function advise(s: SimState, limit = 6): Advice[] {
       const a: SimAction = { type: 'openTender', material: c.material, perDay: lost, months: 12 };
       add({ id: `cover-${c.id}`, priority: 82, tone: 'warn', title: `Tender for ${name} to cover the gap`, why: `${why} ${others.length} other qualified maker${others.length > 1 ? 's' : ''} can bid for the ${lost} a day it cannot send.`, action: ok(s, a) ? a : undefined, panel: 'markets', material: c.material });
     } else {
-      const spare = SITES.find((d) => d.owner !== 'state' && !s.sites[d.id].qualified && s.sites[d.id].status !== 'closed' && s.sites[d.id].qualifyingDays === null && s.sites[d.id].processes.some((p) => RECIPES[p.recipe].output === c.material));
+      // A second source already being qualified is the answer: no need to suggest a third.
+      const makesIt = (id: string) => s.sites[id].processes.some((p) => RECIPES[p.recipe].output === c.material);
+      if (SITES.some((d) => d.owner !== 'state' && s.sites[d.id].qualifyingDays !== null && makesIt(d.id))) continue;
+      const spare = SITES.find((d) => d.owner !== 'state' && !s.sites[d.id].qualified && s.sites[d.id].status !== 'closed' && s.sites[d.id].qualifyingDays === null && makesIt(d.id));
       if (!spare) continue;
       const a: SimAction = { type: 'qualify', site: spare.id };
       add({ id: `cover-${c.id}`, priority: 82, tone: 'warn', title: `Qualify ${spare.name} as a second source of ${name}`, why: `${why} No other qualified maker can step in. Qualifying ${spare.name} takes about ${Math.round(QUALIFY_DAYS / 30)} months: too late for this breakdown, in time for the next.`, action: ok(s, a) ? a : undefined, site: spare.id, material: c.material });
