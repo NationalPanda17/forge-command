@@ -24,7 +24,8 @@ export const TUTORIAL_SKIPPED = 100;
 export const STEPS: Step[] = [
   {
     title: 'Welcome, Director',
-    text: 'You run the munitions industry of Aldmere, from the mines to the launchers. Your job: keep a year’s supply of every round in reserve, the Committee’s target, and keep the Defence Committee’s confidence (top bar). If confidence falls to zero you are dismissed. Time is paused: press the round play button in the clock at the top right, or Space, to start it; the bars beside it set the speed. A number on a tab group shows how many things there need you, and Search (Ctrl K) finds any tab, site or command.',
+    // Three things only (20.1.1): the goal, the threat, and the one action. The rest is taught where it is used.
+    text: 'You run the munitions industry of Aldmere. Your goal: a year’s supply of every round in reserve. If the Committee’s confidence (top bar) falls to zero, you are dismissed. Press Space or the play button to start the clock.',
     done: (_s, ui) => ui.speed > 0,
     ring: ['.fc-clock-pause'],
   },
@@ -75,7 +76,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Keep watch',
-    text: 'The Home tab shows what needs you now and the advisor’s next best moves; “Take the safe advice” does what your chief of staff would, within your reserve, and “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens. Let three months pass.',
+    text: 'The Home tab shows what needs you now and the advisor’s next best moves; “Take the safe advice” does what your chief of staff would, within your reserve, and “Why short?” traces a struggling round to its root cause. The clock pauses itself when something big happens; the bars beside the play button set the speed, a number on a tab shows how many things there need you, and Search (Ctrl K) finds any tab, site or command. Let three months pass.',
     done: (s, _ui, start) => s.history.length >= start.history.length + 3 || s.history.length >= 3,
     ring: ['[data-panel="home"]', '[data-group="home"]'],
   },

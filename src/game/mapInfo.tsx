@@ -70,6 +70,10 @@ export function SiteCard({ state, id }: { state: SimState; id: string }) {
         {def.owner === 'state' ? ' · yours' : def.nation ? ` · ${def.nation}` : ' · private'}
       </div>
       <div className={`mt-1 ${bad ? 'text-ops-red' : site.disruptionDays > 0 ? 'text-ops-amber' : 'text-ops-green'}`}>{status}</div>
+      {/* The "?" badge on the map (20.1.1): said in words where the player points at it. */}
+      {def.owner !== 'state' && !site.qualified && site.processes.length > 0 && (
+        <div className="text-ops-amber">? Not qualified: you cannot buy from it until it is (right-click to qualify).</div>
+      )}
       {site.processes.length > 0 && (
         <ul className="mt-1 space-y-0.5">
           {site.processes.slice(0, 3).map((p, i) => {

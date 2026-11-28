@@ -256,6 +256,15 @@ points to test on 40 or more seeds, since balance runs are noisy.
 
 ### Progress
 
+- **Quick wins (20.1.1):**
+  - **Q2 done:** the first tutorial step is 40 words, down from 90.
+  - **Q3 done:** the hover card explains the "?" badge.
+  - **Q1 dropped, my misreading:** the tutorial does not dim anything. Panels fade in over 180 ms when you switch, and
+    my audit screenshot was taken inside that fade.
+  - **Q4 dropped:** step 1 is "start the clock", and the tutorial game has no crisis in its first year, so the two
+    months that pass while reading the next steps cost nothing.
+  - **Q5 folded into C1 and C2:** at 97% readiness there is nothing concrete to point at in month 1. It becomes
+    possible once the opening has a real problem.
 - **C0 (done, 20.1.0):** the running gap is measured; the safe advice and the chief of staff keep a year of it in hand;
   Home warns when the money would run out within 18 months. Measured on 160 games per player: the chief of staff's
   games in debt fell from 25 to 17; the safe advice's stayed at 21, so the warning is the main gain for players. A

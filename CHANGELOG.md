@@ -1,5 +1,13 @@
 # Changelog
 
+## 20.1.1: a shorter welcome, and the "?" explained (design pass quick wins)
+
+- **The tutorial's first step is three short sentences:** the goal, the threat, and the one thing to do (start the
+  clock). It was a 90-word paragraph. The speed bars, tab badges and Search move to the last step, "Keep watch",
+  where they are used.
+- **The "?" on a supplier is explained where you point at it.** Hovering a site that is not qualified now says so,
+  and that you cannot buy from it until it is (right-click to qualify). Before, only the map key said what "?" meant.
+
 ## 20.1.0: the running deficit is visible (design pass C0)
 
 - **A new warning on Home: "Running costs exceed your budget by $X a month".** It appears when wages, contracts,
