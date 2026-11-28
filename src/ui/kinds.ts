@@ -3,7 +3,7 @@
 import type { IconName } from './icons';
 
 const ADVICE: [RegExp, IconName][] = [
-  [/^(fund|tender|award|pay)/, 'coin'],
+  [/^(fund|tender|award|pay|deficit)/, 'coin'],
   [/^(gen|pc)-/, 'bolt'],
   [/^housing/, 'house'],
   [/^(hire|engineers|academy|keep)/, 'people'],
